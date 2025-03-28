@@ -1,6 +1,5 @@
-import React, { FormEvent, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import './App.css';
-import Hero from './components/Hero';
 import TextContentTitle from './components/TextContentTitle';
 import { supabase } from './lib/supabaseClient';
 
