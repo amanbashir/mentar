@@ -6,8 +6,9 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import './App.css';
 
 function App() {
+  console.log('App mounting');
   return (
-    <div className="app">
+    <div className="app" style={{ background: 'black', minHeight: '100vh' }}>
       <main className="app-main">
         <Routes>
           <Route path="/" element={<AIChatInterface />} />

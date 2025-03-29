@@ -18,6 +18,7 @@ const openai = new OpenAI({
 });
 
 function AIChatInterface() {
+  console.log('AIChatInterface mounting');
   const [messages, setMessages] = useState<Message[]>([
     {
       text: "Welcome, Aman. I am Mentar, think of me as your head coach. I am always around, whenever you need some advice whether it be about your ongoing journey or anything related to your life.\n\nI am not a chatbot for general info, I am tailored and designed to help you achieve your life and business goals.\n\nLet's start with your full name?",

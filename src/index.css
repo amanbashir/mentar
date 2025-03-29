@@ -22,5 +22,12 @@
 body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  min-height: 100vh;
+  background: #000;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 } 
