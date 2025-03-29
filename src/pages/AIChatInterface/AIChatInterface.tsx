@@ -7,6 +7,11 @@ interface Message {
   isUser: boolean;
 }
 
+type ChatMessage = {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
@@ -36,7 +41,7 @@ function AIChatInterface() {
     if (!inputMessage.trim() || isLoading) return;
 
     // Add user message
-    const userMessage = { text: inputMessage, isUser: true };
+    const userMessage: Message = { text: inputMessage, isUser: true };
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
@@ -47,7 +52,7 @@ function AIChatInterface() {
       }
 
       // Prepare conversation history for context
-      const conversationHistory = messages.map(msg => ({
+      const conversationHistory: ChatMessage[] = messages.map(msg => ({
         role: msg.isUser ? 'user' : 'assistant',
         content: msg.text
       }));
@@ -60,12 +65,12 @@ function AIChatInterface() {
 
       // Make API call to OpenAI
       const response = await openai.chat.completions.create({
-        model: "gpt-4", // or "gpt-3.5-turbo" depending on your needs
+        model: "gpt-4",
         messages: [
           {
             role: "system",
             content: "You are Mentar, a professional business and life coach. You help users achieve their life and business goals. Be concise, professional, and encouraging."
-          },
+          } as ChatMessage,
           ...conversationHistory
         ],
         temperature: 0.7,
@@ -73,10 +78,11 @@ function AIChatInterface() {
 
       // Add AI response to messages
       if (response.choices[0]?.message?.content) {
-        setMessages(prev => [...prev, {
+        const aiMessage: Message = {
           text: response.choices[0].message.content,
           isUser: false
-        }]);
+        };
+        setMessages(prev => [...prev, aiMessage]);
       }
     } catch (error: any) {
       console.error('Error calling OpenAI API:', error);
@@ -90,10 +96,11 @@ function AIChatInterface() {
         errorMessage = 'Too many requests. Please try again later.';
       }
 
-      setMessages(prev => [...prev, {
+      const errorMsg: Message = {
         text: errorMessage,
         isUser: false
-      }]);
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
