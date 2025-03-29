@@ -19,17 +19,17 @@ const openai = new OpenAI({
 
 function AIChatInterface() {
   console.log('AIChatInterface mounting');
+  console.log('API Key exists:', !!import.meta.env.VITE_OPENAI_API_KEY);
+  console.log('Environment:', import.meta.env.MODE);
   
+  const [error, setError] = useState<string | null>(null);
+
   if (!import.meta.env.VITE_OPENAI_API_KEY) {
+    console.log('No API key found');
     return (
-      <div className="chat-container">
-        <div className="messages-container">
-          <div className="message ai-message">
-            <div className="message-content">
-              API key not configured. Please check the environment variables.
-            </div>
-          </div>
-        </div>
+      <div style={{ color: 'white', padding: '20px' }}>
+        <h2>Error: API Key Missing</h2>
+        <p>Please configure the OpenAI API key in environment variables.</p>
       </div>
     );
   }
