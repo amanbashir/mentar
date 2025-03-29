@@ -7,12 +7,16 @@ import './App.css';
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<AIChatInterface />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-    </Routes>
+    <div className="app">
+      <main className="app-main">
+        <Routes>
+          <Route path="/" element={<AIChatInterface />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </main>
+    </div>
   );
 }
 
