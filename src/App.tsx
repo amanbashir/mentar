@@ -5,16 +5,23 @@ function App() {
   console.log('App mounting');
   
   return (
-    <div style={{ height: '100vh', background: 'black', color: 'white' }}>
+    <div style={{ 
+      height: '100vh', 
+      background: 'black', 
+      color: 'white',
+      padding: '20px'
+    }}>
       <h1>Debug: App is rendering</h1>
-      <Routes>
-        <Route path="/" element={
-          <div>
-            <h2>Debug: Route is matching</h2>
-            <AIChatInterface />
-          </div>
-        } />
-      </Routes>
+      <div>
+        <h2>Debug: Before Routes</h2>
+        <Routes>
+          <Route 
+            path="/" 
+            element={<h2>Debug: Route "/" matched</h2>} 
+          />
+        </Routes>
+        <h2>Debug: After Routes</h2>
+      </div>
     </div>
   );
 }
