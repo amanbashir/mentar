@@ -1,0 +1,131 @@
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  background-color: #000;
+  color: white;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.messages-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+/* WebKit browsers (Chrome, Safari) */
+.messages-container::-webkit-scrollbar {
+  display: none;
+}
+
+.message {
+  max-width: 600px;
+  padding: 0;
+  white-space: pre-wrap;
+  font-weight: 400;
+  line-height: 1.5;
+  background: none;
+  font-size: 18px;
+  display: flex;
+}
+
+.ai-message {
+  color: white;
+  align-self: flex-start;
+  margin-right: auto;
+  width: 100%;
+  justify-content: flex-start;
+  display: flex;
+}
+
+.user-message {
+  color: #0A84FF !important;
+  align-self: flex-end;
+  margin-left: auto;
+  width: 100%;
+  justify-content: flex-end;
+  display: flex;
+}
+
+.input-container {
+  display: flex;
+  gap: 10px;
+  padding: 15px 20px;
+  background-color: rgba(51, 51, 51, 0.8);
+  border-radius: 12px;
+  margin: 0 auto;
+  width: 95%;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 760px;
+}
+
+.message-input {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 16px;
+  padding: 0;
+}
+
+.message-input::placeholder {
+  color: #999;
+}
+
+.message-input:focus {
+  outline: none;
+}
+
+.send-button {
+  background: #fff;
+  border: none;
+  color: #000;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arrow-up {
+  font-size: 18px;
+  transform: translateY(-1px);
+}
+
+.typing-indicator {
+  display: inline-block;
+  padding: 0 3px;
+}
+
+.typing-indicator::after {
+  content: '...';
+  animation: dots 2s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80% { content: '...'; }
+}
+
+.message-content {
+  text-align: left;
+  max-width: 600px;
+} 
