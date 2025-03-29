@@ -81,7 +81,6 @@ function App() {
           </button>
         </form>
         {message && <p className="message">{message}</p>}
-        <p className="test-message">tester 123</p>
       </div>
     </div>
   );
