@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import TextContentTitle from '../../components/TextContentTitle';
 import './Login.css';
+import { Link } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -62,7 +63,7 @@ export default function Login() {
         {error && <p className="error-message">{error}</p>}
       </form>
       <p className="register-link">
-        Don't have an account? <a href="/register">Register Here</a>
+        Don't have an account? <Link to="/register">Register Here</Link>
       </p>
     </div>
   );
