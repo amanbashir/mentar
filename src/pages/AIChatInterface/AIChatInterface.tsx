@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import OpenAI from 'openai';
-import './AIChatInterface.css';
+// Remove CSS import temporarily
+// import './AIChatInterface.css';
 
 interface Message {
   text: string;
@@ -99,34 +100,88 @@ function AIChatInterface() {
     }
   };
 
+  const containerStyle = {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    height: '100vh',
+    padding: '20px',
+    color: 'white',
+  };
+
+  const messagesStyle = {
+    flex: 1,
+    overflowY: 'auto' as const,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '20px',
+  };
+
+  const messageStyle = {
+    maxWidth: '600px',
+    padding: '10px',
+    whiteSpace: 'pre-wrap' as const,
+  };
+
+  const inputContainerStyle = {
+    display: 'flex',
+    gap: '10px',
+    padding: '15px',
+    backgroundColor: 'rgba(51, 51, 51, 0.8)',
+    borderRadius: '12px',
+    position: 'fixed' as const,
+    bottom: '20px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '90%',
+    maxWidth: '760px',
+  };
+
   return (
-    <div className="chat-container">
-      <div className="messages-container">
+    <div style={containerStyle}>
+      <h2>Debug: AIChatInterface Rendering</h2>
+      <div style={messagesStyle}>
         {messages.map((message, index) => (
-          <div key={index} className={`message ${message.isUser ? 'user-message' : 'ai-message'}`}>
-            <div className="message-content">
-              {message.text}
-            </div>
+          <div key={index} style={messageStyle} className={`message ${message.isUser ? 'user-message' : 'ai-message'}`}>
+            {message.text}
           </div>
         ))}
         {isLoading && (
-          <div className="message ai-message">
+          <div style={messageStyle} className="message ai-message">
             <div className="typing-indicator">...</div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSubmit} className="input-container">
+      <form onSubmit={handleSubmit} style={inputContainerStyle}>
         <input
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           placeholder="Enter response here.."
-          className="message-input"
+          style={{
+            flex: 1,
+            background: 'transparent',
+            border: 'none',
+            color: 'white',
+            fontSize: '16px',
+          }}
           disabled={isLoading}
         />
-        <button type="submit" className="send-button" disabled={isLoading}>
-          <span className="arrow-up">↑</span>
+        <button
+          type="submit"
+          style={{
+            background: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          disabled={isLoading}
+        >
+          ↑
         </button>
       </form>
     </div>
