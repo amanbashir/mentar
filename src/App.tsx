@@ -17,7 +17,12 @@ function App() {
         <Routes>
           <Route 
             path="/" 
-            element={<h2>Debug: Route "/" matched</h2>} 
+            element={
+              <>
+                <h2>Debug: Route "/" matched</h2>
+                <AIChatInterface />
+              </>
+            } 
           />
         </Routes>
         <h2>Debug: After Routes</h2>
