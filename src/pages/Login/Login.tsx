@@ -2,13 +2,14 @@ import { FormEvent, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import TextContentTitle from '../../components/TextContentTitle';
 import './Login.css';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -23,12 +24,15 @@ export default function Login() {
 
       if (error) throw error;
 
-      // Handle successful login
-      console.log('Logged in:', data);
-      // Redirect or update UI state
-    } catch (error) {
-      setError('Invalid email or password');
+      if (data.user) {
+        console.log('Logged in successfully:', data.user);
+        // Redirect to dashboard or home page after successful login
+        navigate('/dashboard');
+      }
+
+    } catch (error: any) {
       console.error('Error:', error);
+      setError(error.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
