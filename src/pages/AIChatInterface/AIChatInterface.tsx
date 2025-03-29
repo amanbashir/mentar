@@ -7,6 +7,11 @@ interface Message {
   isUser: boolean;
 }
 
+type ChatCompletionMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
@@ -36,25 +41,26 @@ function AIChatInterface() {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
 
-    // Add user message
     setMessages(prev => [...prev, { text: inputMessage, isUser: true }]);
     setInputMessage('');
     setIsLoading(true);
 
     try {
+      const conversationHistory: ChatCompletionMessage[] = messages.map(msg => ({
+        role: msg.isUser ? 'user' as const : 'assistant' as const,
+        content: msg.text
+      }));
+
       const response = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           {
-            role: "system",
+            role: 'system' as const,
             content: "You are Mentar, a professional business and life coach. You help users achieve their life and business goals. Be concise, professional, and encouraging."
           },
-          ...messages.map(msg => ({
-            role: msg.isUser ? 'user' : 'assistant',
-            content: msg.text
-          })),
+          ...conversationHistory,
           {
-            role: 'user',
+            role: 'user' as const,
             content: inputMessage
           }
         ],
