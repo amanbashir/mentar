@@ -7,6 +7,7 @@ function App() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -30,6 +31,7 @@ function App() {
 
       setMessage('Thanks for joining our waitlist!');
       setEmail('');
+      setIsSubmitted(true);
     } catch (error) {
       console.error('Caught error:', error);
       setMessage('Error signing up. Please try again.');
@@ -37,6 +39,20 @@ function App() {
       setLoading(false);
     }
   };
+
+  if (isSubmitted) {
+    return (
+      <div className="app">
+        <div className="container">
+          <TextContentTitle
+            align="center"
+            title="You're in."
+            subtitle="Your first step, taken."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
