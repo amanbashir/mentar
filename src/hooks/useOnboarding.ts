@@ -18,6 +18,18 @@ interface OnboardingMessage {
   isUser: boolean;
 }
 
+interface UserProfileDB {
+  full_name: string;
+  goals: string;
+  resources: {
+    capital: string;
+    time_commitment: string;
+  };
+  interests: string;
+  hobbies: string;
+  learning_style: string;
+}
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -32,6 +44,8 @@ const ONBOARDING_QUESTIONS = [
   "Last question: How do you prefer to learn? (e.g., videos, reading, practical challenges, etc.)"
 ];
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export function useOnboarding() {
   const [currentStep, setCurrentStep] = useState(0);
   const [profile, setProfile] = useState<Partial<UserProfile>>({});
@@ -42,7 +56,7 @@ export function useOnboarding() {
   const [isComplete, setIsComplete] = useState(false);
 
   const handleResponse = useCallback(async (response: string) => {
-    // Add user's response to messages
+    // Add user's response immediately
     setMessages(prev => [...prev, { text: response, isUser: true }]);
 
     // Update profile based on current step
@@ -67,7 +81,9 @@ export function useOnboarding() {
         break;
     }
 
-    // If not the last question, proceed to next
+    // Add delay before AI response
+    await delay(1000);
+
     if (currentStep < ONBOARDING_QUESTIONS.length - 1) {
       setCurrentStep(prev => prev + 1);
       setMessages(prev => [...prev, {
@@ -75,13 +91,31 @@ export function useOnboarding() {
         isUser: false
       }]);
     } else {
-      // Complete onboarding
       try {
+        // Transform the profile to match DB schema
+        const dbProfile: UserProfileDB = {
+          full_name: profile.fullName!,
+          goals: profile.goals!,
+          resources: {
+            capital: profile.resources?.capital!,
+            time_commitment: profile.resources?.timeCommitment!
+          },
+          interests: profile.interests!,
+          hobbies: profile.hobbies!,
+          learning_style: profile.learningStyle!
+        };
+
         const { error } = await supabase
           .from('user_profiles')
-          .insert([profile]);
+          .insert([dbProfile]);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase error:', error);
+          throw error;
+        }
+
+        // Add delay before final message
+        await delay(1000);
 
         setMessages(prev => [...prev, {
           text: "Awesome! I'm now matching you with the perfect mentor based on what you shared. I'll use this information to provide personalized guidance and recommendations for your journey.",
@@ -90,6 +124,10 @@ export function useOnboarding() {
         setIsComplete(true);
       } catch (error) {
         console.error('Error saving profile:', error);
+        
+        // Add delay before error message
+        await delay(1000);
+        
         setMessages(prev => [...prev, {
           text: "I apologize, but I encountered an issue saving your profile. Don't worry though, I'll still be able to help you!",
           isUser: false
