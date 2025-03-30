@@ -55,98 +55,16 @@ export function useOnboarding() {
   }]);
   const [isComplete, setIsComplete] = useState(false);
 
-  const handleResponse = useCallback(async (response: string) => {
-    setMessages(prev => [...prev, { text: response, isUser: true }]);
-
-    // Update profile based on current step
-    switch (currentStep) {
-      case 0:
-        setProfile(prev => ({ ...prev, fullName: response }));
-        break;
-      case 1:
-        setProfile(prev => ({ ...prev, goals: response }));
-        break;
-      case 2:
-        setProfile(prev => ({ ...prev, resources: { capital: response, timeCommitment: response } }));
-        break;
-      case 3:
-        setProfile(prev => ({ ...prev, interests: response }));
-        break;
-      case 4:
-        setProfile(prev => ({ ...prev, hobbies: response }));
-        break;
-      case 5:
-        setProfile(prev => ({ ...prev, learningStyle: response }));
-        break;
-    }
-
-    await delay(1000);
-
-    if (currentStep < ONBOARDING_QUESTIONS.length - 1) {
-      setCurrentStep(prev => prev + 1);
-      setMessages(prev => [...prev, {
-        text: ONBOARDING_QUESTIONS[currentStep + 1],
-        isUser: false
-      }]);
-    } else {
-      try {
-        const dbProfile: UserProfileDB = {
-          full_name: profile.fullName!,
-          goals: profile.goals!,
-          resources: {
-            capital: profile.resources?.capital!,
-            time_commitment: profile.resources?.timeCommitment!
-          },
-          interests: profile.interests!,
-          hobbies: profile.hobbies!,
-          learning_style: profile.learningStyle!
-        };
-
-        const { error } = await supabase
-          .from('user_profiles')
-          .insert([dbProfile]);
-
-        if (error) {
-          console.error('Supabase error:', error);
-          throw error;
-        }
-
-        await delay(1000);
-
-        // Determine mentor based on profile
-        const mentorType = determineMentorType(dbProfile);
-        
-        setMessages(prev => [...prev, {
-          text: `Perfect! Based on your profile, I'm connecting you with ${getMentorIntro(mentorType)}. They'll be your dedicated mentor on this journey.`,
-          isUser: false
-        }]);
-
-        // Short delay before starting mentor chat
-        await delay(2000);
-
-        setMessages(prev => [...prev, {
-          text: getMentorWelcome(mentorType, dbProfile.full_name),
-          isUser: false
-        }]);
-
-        setIsComplete(true);
-      } catch (error) {
-        console.error('Error saving profile:', error);
-        
-        // Add delay before error message
-        await delay(1000);
-        
-        setMessages(prev => [...prev, {
-          text: "I apologize, but I encountered an issue saving your profile. Don't worry though, I'll still be able to help you!",
-          isUser: false
-        }]);
-      }
-    }
-  }, [currentStep, profile]);
+  const handleResponse = useCallback(async (text: string) => {
+    // Add message to chat history
+    setMessages(prev => [...prev, { text, isUser: true }]);
+  }, []);
 
   return {
     messages,
-    handleResponse,
+    handleResponse: useCallback((text: string, isUser = true) => {
+      setMessages(prev => [...prev, { text, isUser }]);
+    }, []),
     isComplete,
     currentStep,
     profile
