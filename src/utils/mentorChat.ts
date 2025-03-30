@@ -1,10 +1,5 @@
 import type { ChatMessage } from '../types/chat';
 
-interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
 interface UserProfile {
   selectedMentor: string;
   // ... other profile fields
