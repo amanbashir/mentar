@@ -5,7 +5,11 @@ const handleIndustrySelect = (industry: string) => {
 };
 
 // In your JSX where you want to show the options:
-<div>
-  <p className="mb-2">What industries or areas of business excite you the most?</p>
-  <IndustryOptions onSelect={handleIndustrySelect} />
+<div className="flex flex-col h-screen">
+  <div className="mt-12">
+    <div>
+      <p className="mb-2">What industries or areas of business excite you the most?</p>
+      <IndustryOptions onSelect={handleIndustrySelect} />
+    </div>
+  </div>
 </div> 
