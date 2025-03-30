@@ -1,5 +1,3 @@
-import type { ChatCompletionMessageParam } from 'openai/resources/chat';
-
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
