@@ -4,6 +4,26 @@ const handleIndustrySelect = (industry: string) => {
   handleUserMessage(industry);
 };
 
+const handleUserMessage = async (message: string) => {
+  if (!currentProfile) return;
+
+  const userMessage = { role: 'user', content: message };
+  
+  // If this is the first message or no business type is set
+  if (!currentProfile.businessType) {
+    const response = await MentarService.handleOnboarding(message, currentProfile);
+    // Update UI with response
+    return;
+  }
+
+  const mentarResponse = await MentarService.startMentarChat(
+    [...messages, userMessage],
+    currentProfile
+  );
+  
+  // Update UI with response
+};
+
 // In your JSX where you want to show the options:
 <div className="flex flex-col h-screen">
   <div className="mt-12">
