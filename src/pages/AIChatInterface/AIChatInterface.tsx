@@ -17,31 +17,42 @@ function AIChatInterface() {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
 
+    const userMessage = inputMessage;
+    setInputMessage('');
     setIsLoading(true);
-    
+
+    // Add user message immediately
+    handleResponse(userMessage, true);
+
     if (isComplete) {
-      // Use mentor chat after onboarding is complete
-      const mentorResponse = await startMentorChat(
-        messages.map(msg => ({
+      try {
+        // Convert messages to OpenAI format
+        const chatHistory = messages.map(msg => ({
           role: msg.isUser ? 'user' : 'assistant',
           content: msg.text
-        })),
-        { selectedMentor: 'ecommerce', ...profile }
-      );
-      
-      // Add user message
-      handleResponse(inputMessage);
-      
-      // Add mentor response after a delay
-      setTimeout(() => {
-        handleResponse(mentorResponse);
-      }, 1000);
-    } else {
-      // Use onboarding flow
-      await handleResponse(inputMessage);
+        }));
+
+        // Add the latest user message
+        chatHistory.push({
+          role: 'user',
+          content: userMessage
+        });
+
+        // Get mentor response
+        const mentorResponse = await startMentorChat(
+          chatHistory,
+          { selectedMentor: 'ecommerce', ...profile }
+        );
+
+        // Add AI response after delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        handleResponse(mentorResponse, false);
+      } catch (error) {
+        console.error('Error in mentor chat:', error);
+        handleResponse("I apologize, but I'm having trouble connecting right now. Please try again in a moment.", false);
+      }
     }
-    
-    setInputMessage('');
+
     setIsLoading(false);
   };
 
