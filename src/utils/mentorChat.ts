@@ -1,3 +1,5 @@
+import type { ChatMessage } from '../types/chat';
+
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -18,19 +20,29 @@ export async function startMentorChat(
   }
 
   try {
+    // Make sure we're using the correct environment variable
+    if (!import.meta.env.VITE_OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured');
+    }
+
     const response = await fetch('/api/mentor-chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
       },
       body: JSON.stringify({ messages }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to get mentor response');
+      throw new Error(`API error: ${response.status}`);
     }
 
     const data = await response.json();
+    if (!data.reply) {
+      throw new Error('Invalid response format');
+    }
+
     return data.reply;
 
   } catch (error) {

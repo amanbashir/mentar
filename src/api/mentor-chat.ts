@@ -1,12 +1,9 @@
 import OpenAI from 'openai';
-
-interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+import type { ChatMessage } from '../types/chat';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true // Since we're using Vite
 });
 
 const MENTOR_PROMPTS = {
@@ -46,7 +43,7 @@ export async function POST(request: Request) {
       model: "gpt-4",
       messages: [
         MENTOR_PROMPTS.ecommerce,
-        ...messages as ChatMessage[]
+        ...messages
       ],
       temperature: 0.7,
     });
@@ -55,7 +52,12 @@ export async function POST(request: Request) {
       JSON.stringify({ 
         reply: response.choices[0]?.message?.content || "I apologize, but I'm unable to respond at the moment."
       }),
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     );
 
   } catch (error) {
