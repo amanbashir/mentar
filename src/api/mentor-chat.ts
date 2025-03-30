@@ -1,5 +1,9 @@
 import OpenAI from 'openai';
-import type { ChatCompletionMessageParam } from 'openai/resources/chat';
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -7,7 +11,7 @@ const openai = new OpenAI({
 
 const MENTOR_PROMPTS = {
   ecommerce: {
-    role: "system",
+    role: "system" as const,
     content: `You are Eli the eCom Builder, an expert dropshipping mentor specializing in general stores in the EU market. 
 
 Your approach is:
@@ -42,7 +46,7 @@ export async function POST(request: Request) {
       model: "gpt-4",
       messages: [
         MENTOR_PROMPTS.ecommerce,
-        ...messages as ChatCompletionMessageParam[]
+        ...messages as ChatMessage[]
       ],
       temperature: 0.7,
     });

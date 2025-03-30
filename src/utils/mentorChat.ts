@@ -1,12 +1,17 @@
 import type { ChatCompletionMessageParam } from 'openai/resources/chat';
 
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 interface UserProfile {
   selectedMentor: string;
   // ... other profile fields
 }
 
 export async function startMentorChat(
-  messages: ChatCompletionMessageParam[],
+  messages: ChatMessage[],
   userProfile: UserProfile
 ): Promise<string> {
   // Check if ecommerce mentor is selected
