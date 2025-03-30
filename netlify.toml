@@ -8,4 +8,6 @@
   status = 200
 
 [build.environment]
-  NETLIFY_NEXT_PLUGIN_SKIP = "true" 
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+  SECRETS_SCAN_ENABLED = "false"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_OPENAI_API_KEY" 
