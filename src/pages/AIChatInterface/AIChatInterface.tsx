@@ -4,7 +4,7 @@ import { startMentorChat } from '../../utils/mentorChat';
 import './AIChatInterface.css';
 
 function AIChatInterface() {
-  const { messages, handleResponse, isComplete, profile } = useOnboarding();
+  const { messages, handleResponse, addMessage, isComplete, profile } = useOnboarding();
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -21,20 +21,23 @@ function AIChatInterface() {
     setInputMessage('');
     setIsLoading(true);
 
-    // Add user message immediately
-    handleResponse(userMessage, true);
-
-    if (isComplete) {
+    if (!isComplete) {
+      // Use onboarding flow
+      await handleResponse(userMessage);
+    } else {
       try {
+        // Add user message immediately
+        addMessage(userMessage, true);
+
         // Convert messages to OpenAI format
         const chatHistory = messages.map(msg => ({
-          role: msg.isUser ? 'user' : 'assistant',
+          role: msg.isUser ? 'user' as const : 'assistant' as const,
           content: msg.text
         }));
 
         // Add the latest user message
         chatHistory.push({
-          role: 'user',
+          role: 'user' as const,
           content: userMessage
         });
 
@@ -46,10 +49,10 @@ function AIChatInterface() {
 
         // Add AI response after delay
         await new Promise(resolve => setTimeout(resolve, 1000));
-        handleResponse(mentorResponse, false);
+        addMessage(mentorResponse, false);
       } catch (error) {
         console.error('Error in mentor chat:', error);
-        handleResponse("I apologize, but I'm having trouble connecting right now. Please try again in a moment.", false);
+        addMessage("I apologize, but I'm having trouble connecting right now. Please try again in a moment.", false);
       }
     }
 

@@ -13,7 +13,7 @@ interface UserProfile {
   learningStyle: string;
 }
 
-interface OnboardingMessage {
+export interface OnboardingMessage {
   text: string;
   isUser: boolean;
 }
@@ -55,30 +55,30 @@ export function useOnboarding() {
   }]);
   const [isComplete, setIsComplete] = useState(false);
 
-  const handleResponse = useCallback(async (response: string) => {
-    // Add user's response
-    setMessages(prev => [...prev, { text: response, isUser: true }]);
+  const handleResponse = useCallback(async (text: string) => {
+    // Add message to chat history
+    setMessages(prev => [...prev, { text, isUser: true }]);
 
     if (!isComplete) {
       // Handle onboarding flow
       switch (currentStep) {
         case 0:
-          setProfile(prev => ({ ...prev, fullName: response }));
+          setProfile(prev => ({ ...prev, fullName: text }));
           break;
         case 1:
-          setProfile(prev => ({ ...prev, goals: response }));
+          setProfile(prev => ({ ...prev, goals: text }));
           break;
         case 2:
-          setProfile(prev => ({ ...prev, resources: { capital: response, timeCommitment: response } }));
+          setProfile(prev => ({ ...prev, resources: { capital: text, timeCommitment: text } }));
           break;
         case 3:
-          setProfile(prev => ({ ...prev, interests: response }));
+          setProfile(prev => ({ ...prev, interests: text }));
           break;
         case 4:
-          setProfile(prev => ({ ...prev, hobbies: response }));
+          setProfile(prev => ({ ...prev, hobbies: text }));
           break;
         case 5:
-          setProfile(prev => ({ ...prev, learningStyle: response }));
+          setProfile(prev => ({ ...prev, learningStyle: text }));
           break;
       }
 
@@ -143,9 +143,14 @@ export function useOnboarding() {
     }
   }, [currentStep, profile, isComplete]);
 
+  const addMessage = useCallback((text: string, isUser: boolean) => {
+    setMessages(prev => [...prev, { text, isUser }]);
+  }, []);
+
   return {
     messages,
     handleResponse,
+    addMessage,
     isComplete,
     currentStep,
     profile
