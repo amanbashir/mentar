@@ -24,12 +24,49 @@ const handleUserMessage = async (message: string) => {
   // Update UI with response
 };
 
-// In your JSX where you want to show the options:
+// Replace or update the current questions logic with:
+const initialQuestion = "Do you already know what kind of business you want to build?";
+
+const industryOptions = [
+  'Ecommerce',
+  'SAAS (Software as a service)',
+  'Copywriting',
+  'Media Buying'
+];
+
+const onboardingQuestions = [
+  "What do you really want to build or change in your life?",
+  "What's your 1–2 year vision if things go right?",
+  "What's your starting point? (money, time, skills)",
+  "What's holding you back?",
+  "What do you hope I can help you with?"
+];
+
+// In your JSX where the questions are displayed:
 <div className="flex flex-col h-screen">
+  <div className="flex-1 overflow-y-auto">
+    {messages.length === 0 ? (
+      <div className="p-4">
+        <p className="mb-4">{initialQuestion}</p>
+        <div className="flex flex-col gap-2">
+          {industryOptions.map((option) => (
+            <button
+              key={option}
+              onClick={() => handleUserMessage(option)}
+              className="p-3 text-left rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : (
+      // Your existing messages display code
+    )}
+  </div>
+  
+  {/* Add spacing above input */}
   <div className="mt-12">
-    <div>
-      <p className="mb-2">What industries or areas of business excite you the most?</p>
-      <IndustryOptions onSelect={handleIndustrySelect} />
-    </div>
+    {/* Your existing input component */}
   </div>
 </div> 
