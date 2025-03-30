@@ -1,13 +1,15 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+[dev]
+  functions = "netlify/functions"
+
 [build.environment]
-  NETLIFY_NEXT_PLUGIN_SKIP = "true"
-  SECRETS_SCAN_ENABLED = "false"
-  SECRETS_SCAN_OMIT_KEYS = "VITE_OPENAI_API_KEY" 
+  NETLIFY_NEXT_PLUGIN_SKIP = "true" 
