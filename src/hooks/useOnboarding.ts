@@ -56,7 +56,6 @@ export function useOnboarding() {
   const [isComplete, setIsComplete] = useState(false);
 
   const handleResponse = useCallback(async (response: string) => {
-    // Add user's response immediately
     setMessages(prev => [...prev, { text: response, isUser: true }]);
 
     // Update profile based on current step
@@ -81,7 +80,6 @@ export function useOnboarding() {
         break;
     }
 
-    // Add delay before AI response
     await delay(1000);
 
     if (currentStep < ONBOARDING_QUESTIONS.length - 1) {
@@ -92,7 +90,6 @@ export function useOnboarding() {
       }]);
     } else {
       try {
-        // Transform the profile to match DB schema
         const dbProfile: UserProfileDB = {
           full_name: profile.fullName!,
           goals: profile.goals!,
@@ -114,13 +111,24 @@ export function useOnboarding() {
           throw error;
         }
 
-        // Add delay before final message
         await delay(1000);
 
+        // Determine mentor based on profile
+        const mentorType = determineMentorType(dbProfile);
+        
         setMessages(prev => [...prev, {
-          text: "Awesome! I'm now matching you with the perfect mentor based on what you shared. I'll use this information to provide personalized guidance and recommendations for your journey.",
+          text: `Perfect! Based on your profile, I'm connecting you with ${getMentorIntro(mentorType)}. They'll be your dedicated mentor on this journey.`,
           isUser: false
         }]);
+
+        // Short delay before starting mentor chat
+        await delay(2000);
+
+        setMessages(prev => [...prev, {
+          text: getMentorWelcome(mentorType, dbProfile.full_name),
+          isUser: false
+        }]);
+
         setIsComplete(true);
       } catch (error) {
         console.error('Error saving profile:', error);
@@ -140,6 +148,29 @@ export function useOnboarding() {
     messages,
     handleResponse,
     isComplete,
-    currentStep
+    currentStep,
+    profile
   };
+}
+
+// Helper functions
+function determineMentorType(profile: UserProfileDB): string {
+  // For now, always return ecommerce, but we can add logic here later
+  return 'ecommerce';
+}
+
+function getMentorIntro(mentorType: string): string {
+  const mentors = {
+    ecommerce: "Eli the eCom Builder, an expert in EU dropshipping and general stores"
+    // Add more mentors here as we expand
+  };
+  return mentors[mentorType as keyof typeof mentors];
+}
+
+function getMentorWelcome(mentorType: string, userName: string): string {
+  const welcomes = {
+    ecommerce: `Hi ${userName}, I'm Eli! I've reviewed your profile and I'm excited to help you build your dropshipping business. I specialize in EU market strategies and have helped many entrepreneurs like you succeed in this space. Let's start by discussing your first steps into ecommerce. What specific questions do you have about starting a general store?`
+    // Add more welcome messages as we expand
+  };
+  return welcomes[mentorType as keyof typeof welcomes];
 } 
