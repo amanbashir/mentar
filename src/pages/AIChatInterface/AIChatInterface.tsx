@@ -47,6 +47,7 @@ function AIChatInterface() {
           placeholder="Enter response here.."
           className="message-input"
           disabled={isLoading || isComplete}
+          autoFocus
         />
         <button type="submit" className="send-button" disabled={isLoading || isComplete}>
           <span className="arrow-up">↑</span>
