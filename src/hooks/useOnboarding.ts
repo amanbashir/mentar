@@ -36,12 +36,12 @@ const supabase = createClient(
 );
 
 const ONBOARDING_QUESTIONS = [
-  "Let's start with your full name?",
-  "Great! Now, tell me about your dreams or long-term goals. What do you want to achieve?",
-  "What resources do you have available? Please share your available capital and time commitment.",
-  "What industries or areas of business excite you the most?",
-  "What hobbies or activities energize you and make you feel alive?",
-  "Last question: How do you prefer to learn? (e.g., videos, reading, practical challenges, etc.)"
+  "Do you already know what kind of business you want to build?",
+  "What do you really want to build or change in your life?",
+  "What's your 1–2 year vision if things go right?",
+  "What's your starting point? (money, time, skills)",
+  "What's holding you back?",
+  "What do you hope I can help you with?"
 ];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
