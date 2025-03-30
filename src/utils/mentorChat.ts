@@ -15,16 +15,10 @@ export async function startMentorChat(
   }
 
   try {
-    // Make sure we're using the correct environment variable
-    if (!import.meta.env.VITE_OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    const response = await fetch('/api/mentor-chat', {
+    const response = await fetch('/.netlify/functions/mentor-chat', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ messages }),
     });

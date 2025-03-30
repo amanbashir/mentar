@@ -12,4 +12,6 @@
   functions = "netlify/functions"
 
 [build.environment]
-  NETLIFY_NEXT_PLUGIN_SKIP = "true" 
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+  SECRETS_SCAN_ENABLED = "true"
+  SECRETS_SCAN_OMIT_PATHS = "dist/assets/*" 
