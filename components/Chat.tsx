@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 const handleIndustrySelect = (industry: string) => {
   // Handle the selected industry here
   // For example, send it as a user message
@@ -45,7 +47,7 @@ const onboardingQuestions = [
 // In your JSX where the questions are displayed:
 <div className="flex flex-col h-screen">
   <div className="flex-1 overflow-y-auto">
-    {messages.length === 0 ? (
+    {messages.length === 0 && (
       <div className="p-4">
         <p className="mb-4">{initialQuestion}</p>
         <div className="flex flex-col gap-2">
@@ -60,8 +62,6 @@ const onboardingQuestions = [
           ))}
         </div>
       </div>
-    ) : (
-      // Your existing messages display code
     )}
   </div>
   
