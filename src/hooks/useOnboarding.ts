@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import OpenAI from 'openai';
 
 interface UserProfile {
@@ -31,27 +31,11 @@ interface UserProfileDB {
 }
 
 const INITIAL_MESSAGE: OnboardingMessage = {
-  text: "Hi! I'm Mentar, your AI business coach. I'm here to help you start and grow your online business. What would you like to know about?",
+  text: "My name is Mentar. I am here, specialised and ready, to help you start your online business journey. I have a range of different business experts that can train, guide and help you launch your own business. Do you know what business you want to start?",
   isUser: false
 };
 
-const SYSTEM_PROMPT = `You are Mentar, an AI business coach focused on helping people start and grow online businesses. Your approach is:
-
-1. Direct and practical - Give actionable advice
-2. Step-by-step - Break down complex topics
-3. Encouraging - Support and motivate
-4. Professional - Maintain a business-appropriate tone
-5. Concise - Keep responses clear and focused
-
-When responding:
-- Ask one question at a time
-- Provide specific examples when relevant
-- Focus on practical implementation
-- Keep responses under 3-4 sentences when possible
-- Use bullet points for multiple steps
-- End with a clear next step or question
-
-Your goal is to guide users through starting their online business journey, from ideation to launch.`;
+const SYSTEM_PROMPT = `You are Mentar, an AI business mentor. Do not introduce yourself again. Start from the message above. If the user knows what they want to build, reply with: 'Starting module...'. If they're unsure, ask direct questions to help them choose from: eCommerce, Digital Products, Freelancing, or Content Creation. Keep replies short and clear.`;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -90,14 +74,10 @@ export function useOnboarding() {
         throw new Error('OpenAI API key is missing');
       }
 
-      console.log('Initializing OpenAI client with API key:', apiKey.substring(0, 5) + '...');
-      
       const openai = new OpenAI({
         apiKey: apiKey,
-        dangerouslyAllowBrowser: true // Allow browser usage
+        dangerouslyAllowBrowser: true
       });
-
-      console.log('Sending request to OpenAI with messages:', chatHistory);
 
       // Get AI response
       const completion = await openai.chat.completions.create({
@@ -109,8 +89,6 @@ export function useOnboarding() {
         temperature: 0.7,
         max_tokens: 500
       });
-
-      console.log('Received response from OpenAI:', completion);
 
       const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I'm having trouble generating a response right now. Please try again.";
 
