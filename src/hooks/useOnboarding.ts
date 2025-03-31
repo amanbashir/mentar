@@ -84,8 +84,14 @@ export function useOnboarding() {
       });
 
       // Initialize OpenAI client
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      if (!apiKey) {
+        console.error('OpenAI API key is missing. Please check your environment variables.');
+        throw new Error('OpenAI API key is missing');
+      }
+
       const openai = new OpenAI({
-        apiKey: import.meta.env.VITE_OPENAI_API_KEY
+        apiKey: apiKey
       });
 
       // Get AI response
