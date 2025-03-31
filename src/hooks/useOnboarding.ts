@@ -93,7 +93,8 @@ export function useOnboarding() {
       console.log('Initializing OpenAI client with API key:', apiKey.substring(0, 5) + '...');
       
       const openai = new OpenAI({
-        apiKey: apiKey
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true // Allow browser usage
       });
 
       console.log('Sending request to OpenAI with messages:', chatHistory);
