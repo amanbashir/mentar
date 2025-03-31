@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import OpenAI from 'openai';
 
 interface UserProfile {
   fullName: string;
@@ -30,118 +30,88 @@ interface UserProfileDB {
   learning_style: string;
 }
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+const openai = new OpenAI({
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY
+});
 
-const ONBOARDING_QUESTIONS = [
-  "Do you already know what kind of business you want to build?",
-  "What do you really want to build or change in your life?",
-  "What's your 1–2 year vision if things go right?",
-  "What's your starting point? (money, time, skills)",
-  "What's holding you back?",
-  "What do you hope I can help you with?"
-];
+const INITIAL_MESSAGE = "My name is Mentar. I am here, specialised and ready, to help you start your online business journey. I have a range of different business experts that can train, guide and help you launch your own business. Do you know what business you want to start?";
+
+const SYSTEM_PROMPT = `You are Mentar, a sharp, experienced AI business coach.
+You help users launch online businesses.
+You specialize in 4 business paths: eCommerce, Digital Products, Freelancing, and Content Creation.
+
+Your approach:
+1. If the user says they already know what business they want to start:
+   - Acknowledge their choice
+   - Reply with "Starting module..."
+   - Be ready to begin specialized guidance
+
+2. If the user says they're unsure:
+   - Ask thoughtful, direct questions to learn their goals, interests, and situation
+   - Guide them toward one of the 4 recommended paths
+   - Keep replies short, motivating, and clear
+
+Always maintain a friendly, encouraging tone while being direct and practical.`;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function useOnboarding() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [profile, setProfile] = useState<Partial<UserProfile>>({});
   const [messages, setMessages] = useState<OnboardingMessage[]>([{
-    text: ONBOARDING_QUESTIONS[0],
+    text: INITIAL_MESSAGE,
     isUser: false
   }]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
   const handleResponse = useCallback(async (text: string) => {
-    // Add message to chat history
+    // Add user message to chat history
     setMessages(prev => [...prev, { text, isUser: true }]);
+    setIsLoading(true);
 
-    if (!isComplete) {
-      // Handle onboarding flow
-      switch (currentStep) {
-        case 0:
-          setProfile(prev => ({ ...prev, fullName: text }));
-          break;
-        case 1:
-          setProfile(prev => ({ ...prev, goals: text }));
-          break;
-        case 2:
-          setProfile(prev => ({ ...prev, resources: { capital: text, timeCommitment: text } }));
-          break;
-        case 3:
-          setProfile(prev => ({ ...prev, interests: text }));
-          break;
-        case 4:
-          setProfile(prev => ({ ...prev, hobbies: text }));
-          break;
-        case 5:
-          setProfile(prev => ({ ...prev, learningStyle: text }));
-          break;
-      }
+    try {
+      // Convert messages to OpenAI format
+      const chatHistory = messages.map(msg => ({
+        role: msg.isUser ? 'user' as const : 'assistant' as const,
+        content: msg.text
+      }));
 
+      // Add the latest user message
+      chatHistory.push({
+        role: 'user' as const,
+        content: text
+      });
+
+      // Get GPT-4 response
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          ...chatHistory
+        ],
+        temperature: 0.7,
+      });
+
+      const aiResponse = response.choices[0]?.message?.content || "I apologize, but I'm having trouble connecting right now. Please try again in a moment.";
+
+      // Add AI response after a small delay
       await delay(1000);
+      setMessages(prev => [...prev, { text: aiResponse, isUser: false }]);
 
-      if (currentStep < ONBOARDING_QUESTIONS.length - 1) {
-        setCurrentStep(prev => prev + 1);
-        setMessages(prev => [...prev, {
-          text: ONBOARDING_QUESTIONS[currentStep + 1],
-          isUser: false
-        }]);
-      } else {
-        try {
-          const dbProfile: UserProfileDB = {
-            full_name: profile.fullName!,
-            goals: profile.goals!,
-            resources: {
-              capital: profile.resources?.capital!,
-              time_commitment: profile.resources?.timeCommitment!
-            },
-            interests: profile.interests!,
-            hobbies: profile.hobbies!,
-            learning_style: profile.learningStyle!
-          };
-
-          const { error } = await supabase
-            .from('user_profiles')
-            .insert([dbProfile]);
-
-          if (error) {
-            console.error('Supabase error:', error);
-            throw error;
-          }
-
-          await delay(1000);
-
-          // Determine mentor based on profile
-          const mentorType = determineMentorType(dbProfile);
-          
-          setMessages(prev => [...prev, {
-            text: `Perfect! Based on your profile, I'm connecting you with ${getMentorIntro(mentorType)}. They'll be your dedicated mentor on this journey.`,
-            isUser: false
-          }]);
-
-          await delay(2000);
-
-          setMessages(prev => [...prev, {
-            text: getMentorWelcome(mentorType, dbProfile.full_name),
-            isUser: false
-          }]);
-
-          setIsComplete(true);
-        } catch (error) {
-          console.error('Error saving profile:', error);
-          await delay(1000);
-          setMessages(prev => [...prev, {
-            text: "I apologize, but I encountered an issue saving your profile. Don't worry though, I'll still be able to help you!",
-            isUser: false
-          }]);
-        }
+      // Check if we should start a module
+      if (aiResponse.includes("Starting module")) {
+        setIsComplete(true);
       }
+
+    } catch (error) {
+      console.error('Error in chat:', error);
+      setMessages(prev => [...prev, {
+        text: "I apologize, but I'm having trouble connecting right now. Please try again in a moment.",
+        isUser: false
+      }]);
+    } finally {
+      setIsLoading(false);
     }
-  }, [currentStep, profile, isComplete]);
+  }, [messages]);
 
   const addMessage = useCallback((text: string, isUser: boolean) => {
     setMessages(prev => [...prev, { text, isUser }]);
@@ -152,8 +122,7 @@ export function useOnboarding() {
     handleResponse,
     addMessage,
     isComplete,
-    currentStep,
-    profile
+    isLoading
   };
 }
 

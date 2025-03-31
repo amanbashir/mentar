@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useOnboarding } from '../../hooks/useOnboarding';
-import { startMentorChat } from '../../utils/mentorChat';
 import './AIChatInterface.css';
 
 function AIChatInterface() {
-  const { messages, handleResponse, addMessage, isComplete, profile } = useOnboarding();
+  const { messages, handleResponse, addMessage, isComplete, isLoading: onboardingLoading } = useOnboarding();
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -15,48 +14,20 @@ function AIChatInterface() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || onboardingLoading) return;
 
     const userMessage = inputMessage;
     setInputMessage('');
     setIsLoading(true);
 
-    if (!isComplete) {
-      // Use onboarding flow
+    try {
       await handleResponse(userMessage);
-    } else {
-      try {
-        // Add user message immediately
-        addMessage(userMessage, true);
-
-        // Convert messages to OpenAI format
-        const chatHistory = messages.map(msg => ({
-          role: msg.isUser ? 'user' as const : 'assistant' as const,
-          content: msg.text
-        }));
-
-        // Add the latest user message
-        chatHistory.push({
-          role: 'user' as const,
-          content: userMessage
-        });
-
-        // Get mentor response
-        const mentorResponse = await startMentorChat(
-          chatHistory,
-          { selectedMentor: 'ecommerce', ...profile }
-        );
-
-        // Add AI response after delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        addMessage(mentorResponse, false);
-      } catch (error) {
-        console.error('Error in mentor chat:', error);
-        addMessage("I apologize, but I'm having trouble connecting right now. Please try again in a moment.", false);
-      }
+    } catch (error) {
+      console.error('Error in chat:', error);
+      addMessage("I apologize, but I'm having trouble connecting right now. Please try again in a moment.", false);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -69,7 +40,7 @@ function AIChatInterface() {
             </div>
           </div>
         ))}
-        {isLoading && (
+        {(isLoading || onboardingLoading) && (
           <div className="message ai-message">
             <div className="typing-indicator">...</div>
           </div>
@@ -83,10 +54,10 @@ function AIChatInterface() {
           onChange={(e) => setInputMessage(e.target.value)}
           placeholder="Enter response here.."
           className="message-input"
-          disabled={isLoading}
+          disabled={isLoading || onboardingLoading}
           autoFocus
         />
-        <button type="submit" className="send-button" disabled={isLoading}>
+        <button type="submit" className="send-button" disabled={isLoading || onboardingLoading}>
           <span className="arrow-up">↑</span>
         </button>
       </form>
