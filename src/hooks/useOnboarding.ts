@@ -30,45 +30,47 @@ interface UserProfileDB {
   learning_style: string;
 }
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY
-});
+const INITIAL_MESSAGE: OnboardingMessage = {
+  text: "Hi! I'm Mentar, your AI business coach. I'm here to help you start and grow your online business. What would you like to know about?",
+  isUser: false
+};
 
-const INITIAL_MESSAGE = "My name is Mentar. I am here, specialised and ready, to help you start your online business journey. I have a range of different business experts that can train, guide and help you launch your own business. Do you know what business you want to start?";
+const SYSTEM_PROMPT = `You are Mentar, an AI business coach focused on helping people start and grow online businesses. Your approach is:
 
-const SYSTEM_PROMPT = `You are Mentar, a sharp, experienced AI business coach.
-You help users launch online businesses.
-You specialize in 4 business paths: eCommerce, Digital Products, Freelancing, and Content Creation.
+1. Direct and practical - Give actionable advice
+2. Step-by-step - Break down complex topics
+3. Encouraging - Support and motivate
+4. Professional - Maintain a business-appropriate tone
+5. Concise - Keep responses clear and focused
 
-Your approach:
-1. If the user says they already know what business they want to start:
-   - Acknowledge their choice
-   - Reply with "Starting module..."
-   - Be ready to begin specialized guidance
+When responding:
+- Ask one question at a time
+- Provide specific examples when relevant
+- Focus on practical implementation
+- Keep responses under 3-4 sentences when possible
+- Use bullet points for multiple steps
+- End with a clear next step or question
 
-2. If the user says they're unsure:
-   - Ask thoughtful, direct questions to learn their goals, interests, and situation
-   - Guide them toward one of the 4 recommended paths
-   - Keep replies short, motivating, and clear
-
-Always maintain a friendly, encouraging tone while being direct and practical.`;
+Your goal is to guide users through starting their online business journey, from ideation to launch.`;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function useOnboarding() {
-  const [messages, setMessages] = useState<OnboardingMessage[]>([{
-    text: INITIAL_MESSAGE,
-    isUser: false
-  }]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState<OnboardingMessage[]>([INITIAL_MESSAGE]);
   const [isComplete, setIsComplete] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleResponse = useCallback(async (text: string) => {
-    // Add user message to chat history
-    setMessages(prev => [...prev, { text, isUser: true }]);
-    setIsLoading(true);
+  const addMessage = (text: string, isUser: boolean) => {
+    setMessages(prev => [...prev, { text, isUser }]);
+  };
 
+  const handleResponse = async (userMessage: string) => {
     try {
+      setIsLoading(true);
+      
+      // Add user message immediately
+      addMessage(userMessage, true);
+
       // Convert messages to OpenAI format
       const chatHistory = messages.map(msg => ({
         role: msg.isUser ? 'user' as const : 'assistant' as const,
@@ -78,44 +80,44 @@ export function useOnboarding() {
       // Add the latest user message
       chatHistory.push({
         role: 'user' as const,
-        content: text
+        content: userMessage
       });
 
-      // Get GPT-4 response
-      const response = await openai.chat.completions.create({
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: import.meta.env.VITE_OPENAI_API_KEY
+      });
+
+      // Get AI response
+      const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: "system", content: SYSTEM_PROMPT },
           ...chatHistory
         ],
         temperature: 0.7,
+        max_tokens: 500
       });
 
-      const aiResponse = response.choices[0]?.message?.content || "I apologize, but I'm having trouble connecting right now. Please try again in a moment.";
+      const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I'm having trouble generating a response right now. Please try again.";
 
-      // Add AI response after a small delay
-      await delay(1000);
-      setMessages(prev => [...prev, { text: aiResponse, isUser: false }]);
+      // Add a small delay before showing the response
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Add AI response
+      addMessage(aiResponse, false);
 
       // Check if we should start a module
       if (aiResponse.includes("Starting module")) {
         setIsComplete(true);
       }
-
     } catch (error) {
       console.error('Error in chat:', error);
-      setMessages(prev => [...prev, {
-        text: "I apologize, but I'm having trouble connecting right now. Please try again in a moment.",
-        isUser: false
-      }]);
+      addMessage("I apologize, but I'm having trouble connecting right now. Please try again in a moment.", false);
     } finally {
       setIsLoading(false);
     }
-  }, [messages]);
-
-  const addMessage = useCallback((text: string, isUser: boolean) => {
-    setMessages(prev => [...prev, { text, isUser }]);
-  }, []);
+  };
 
   return {
     messages,
