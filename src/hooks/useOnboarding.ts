@@ -90,9 +90,13 @@ export function useOnboarding() {
         throw new Error('OpenAI API key is missing');
       }
 
+      console.log('Initializing OpenAI client with API key:', apiKey.substring(0, 5) + '...');
+      
       const openai = new OpenAI({
         apiKey: apiKey
       });
+
+      console.log('Sending request to OpenAI with messages:', chatHistory);
 
       // Get AI response
       const completion = await openai.chat.completions.create({
@@ -104,6 +108,8 @@ export function useOnboarding() {
         temperature: 0.7,
         max_tokens: 500
       });
+
+      console.log('Received response from OpenAI:', completion);
 
       const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I'm having trouble generating a response right now. Please try again.";
 
@@ -117,9 +123,26 @@ export function useOnboarding() {
       if (aiResponse.includes("Starting module")) {
         setIsComplete(true);
       }
-    } catch (error) {
-      console.error('Error in chat:', error);
-      addMessage("I apologize, but I'm having trouble connecting right now. Please try again in a moment.", false);
+    } catch (error: any) {
+      console.error('Detailed error in chat:', {
+        message: error.message,
+        type: error.type,
+        code: error.code,
+        status: error.status,
+        response: error.response
+      });
+      
+      let errorMessage = "I apologize, but I'm having trouble connecting right now. ";
+      if (error.response?.status === 401) {
+        errorMessage += "Please check your API key configuration.";
+      } else if (error.response?.status === 429) {
+        errorMessage += "The service is currently busy. Please try again in a moment.";
+      } else if (error.message?.includes('network')) {
+        errorMessage += "Please check your internet connection.";
+      }
+      errorMessage += " Please try again in a moment.";
+      
+      addMessage(errorMessage, false);
     } finally {
       setIsLoading(false);
     }
