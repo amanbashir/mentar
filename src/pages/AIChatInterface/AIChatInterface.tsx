@@ -32,9 +32,6 @@ function AIChatInterface() {
 
   return (
     <div className="chat-container">
-      <div className="logo-container">
-        <h1 className="logo">MentarAI</h1>
-      </div>
       <div className="messages-container">
         {messages.map((message, index) => (
           <div key={index} className={`message ${message.isUser ? 'user-message' : 'ai-message'}`}>
