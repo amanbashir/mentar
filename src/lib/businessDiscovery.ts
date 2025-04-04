@@ -1,3 +1,5 @@
+import { findTopModels } from './scoreCalculator';
+
 export type BusinessModel = 'eCommerce' | 'Copywriting' | 'SMMA' | 'High Ticket Sales' | 'SaaS';
 
 export interface UserAnswers {
@@ -112,28 +114,16 @@ export function calculateRecommendation(userAnswers: UserAnswers): BusinessRecom
     const category = scoreMatrix[question as keyof typeof scoreMatrix];
     if (category && category[answer as keyof typeof category]) {
       const answerScores = category[answer as keyof typeof category];
-      Object.entries(answerScores).forEach(([model, score]) => {
-        scores[model as keyof ScoreBreakdown] += score;
+      type ModelKey = keyof typeof answerScores;
+      Object.entries(answerScores).forEach(([model, value]) => {
+        const modelKey = model as ModelKey;
+        const score = value as number;
+        scores[modelKey as keyof ScoreBreakdown] += score;
       });
     }
   });
 
-  // Find highest score
-  const maxScore = Math.max(...Object.values(scores));
-  
-  // Get all models with the highest score
-  const topModels = Object.entries(scores)
-    .filter(([_, score]) => score === maxScore)
-    .map(([model, _]) => {
-      switch(model) {
-        case 'ecom': return 'eCommerce';
-        case 'copy': return 'Copywriting';
-        case 'smma': return 'SMMA';
-        case 'sales': return 'High Ticket Sales';
-        case 'saas': return 'SaaS';
-        default: return 'eCommerce';
-      }
-    }) as BusinessModel[];
+  const topModels = findTopModels(scores);
 
   return {
     recommendedModel: topModels.length === 1 ? topModels[0] : topModels,
