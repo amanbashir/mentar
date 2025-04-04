@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
 
 interface UserProfile {
   fullName: string;
@@ -35,9 +35,11 @@ const INITIAL_MESSAGE: OnboardingMessage = {
   isUser: false
 };
 
-const SYSTEM_PROMPT = `You are Mentar, an AI business mentor. Do not introduce yourself again. Start from the message above. If the user knows what they want to build, reply with: 'Starting module...'. If they're unsure, ask direct questions to help them choose from: eCommerce, Digital Products, Freelancing, or Content Creation. Keep replies short and clear.`;
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Initialize Supabase client
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 export function useOnboarding() {
   const [messages, setMessages] = useState<OnboardingMessage[]>([INITIAL_MESSAGE]);
@@ -67,30 +69,16 @@ export function useOnboarding() {
         content: userMessage
       });
 
-      // Initialize OpenAI client
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        console.error('OpenAI API key is missing. Please check your environment variables.');
-        throw new Error('OpenAI API key is missing');
+      // Call the Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: { messages: chatHistory }
+      });
+
+      if (error) {
+        throw error;
       }
 
-      const openai = new OpenAI({
-        apiKey: apiKey,
-        dangerouslyAllowBrowser: true
-      });
-
-      // Get AI response
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...chatHistory
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      });
-
-      const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I'm having trouble generating a response right now. Please try again.";
+      const aiResponse = data.response || "I apologize, but I'm having trouble generating a response right now. Please try again.";
 
       // Add a small delay before showing the response
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -103,25 +91,8 @@ export function useOnboarding() {
         setIsComplete(true);
       }
     } catch (error: any) {
-      console.error('Detailed error in chat:', {
-        message: error.message,
-        type: error.type,
-        code: error.code,
-        status: error.status,
-        response: error.response
-      });
-      
-      let errorMessage = "I apologize, but I'm having trouble connecting right now. ";
-      if (error.response?.status === 401) {
-        errorMessage += "Please check your API key configuration.";
-      } else if (error.response?.status === 429) {
-        errorMessage += "The service is currently busy. Please try again in a moment.";
-      } else if (error.message?.includes('network')) {
-        errorMessage += "Please check your internet connection.";
-      }
-      errorMessage += " Please try again in a moment.";
-      
-      addMessage(errorMessage, false);
+      console.error('Error in chat:', error);
+      addMessage("I apologize, but I'm having trouble connecting right now. Please try again in a moment.", false);
     } finally {
       setIsLoading(false);
     }
