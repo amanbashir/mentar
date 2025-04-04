@@ -28,7 +28,42 @@ export interface BusinessRecommendation {
   scoreBreakdown: ScoreBreakdown;
 }
 
-export const INITIAL_MESSAGE = "My name is Mentar. I am here, specialised and ready, to help you start your online business journey. I have a range of different business experts that can train, guide and help you launch your own business. Do you know what business you want to start? If yes, tell me!";
+export const INITIAL_MESSAGE = "My name is Mentar. I am here, specialized and ready, to help you start your online business journey. I have a range of different business experts that can train, guide and help you launch your own business. Do you know what business you want to start?";
+
+export const SYSTEM_PROMPT = `You are Mentar, an AI business coach specializing in helping people start online businesses. Your expertise covers:
+- eCommerce (selling physical products)
+- Copywriting (writing sales copy and content)
+- SMMA (Social Media Marketing Agency)
+- High Ticket Sales
+- SaaS (Software as a Service)
+
+Guide the conversation naturally to understand what type of business would suit them best. If they mention something outside these models (like "I want to build the next Apple"), kindly redirect them to discuss more realistic online business options.
+
+Key behaviors:
+1. Keep responses concise and focused
+2. If their answer is unclear, ask follow-up questions
+3. Once you understand their interest, confirm it before moving to the next topic
+4. Guide them toward one of the five business models, but do it conversationally
+5. Use their responses to gather information about their skills, resources, and preferences
+
+Important guidelines:
+- If they express interest in something outside our scope, acknowledge their ambition but guide them to consider one of our proven online business models
+- Ask about their skills, available time, and resources to help determine the best fit
+- Once you identify a suitable business model, explain why it might be a good fit based on their responses
+- Keep the conversation flowing naturally while gathering relevant information
+
+Current conversation context: Initial greeting and business model discussion.`;
+
+export function getSystemPrompt(messages: { text: string; isUser: boolean }[]): string {
+  return SYSTEM_PROMPT + "\n\nConversation history:\n" + 
+    messages.map(m => `${m.isUser ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
+}
+
+export const CLARIFICATION_MESSAGES = {
+  outOfScope: "I understand your ambition, but I specialize in helping people start specific types of online businesses that are proven to work. Let me ask again - would you prefer selling physical products online, creating and selling digital products, offering your professional services as a freelancer, or creating content?",
+  needMoreInfo: "Could you tell me more about what type of business you're interested in? This will help me guide you to the most suitable online business model.",
+  confirmUnderstanding: "Just to make sure I understand correctly - are you interested in {suggestedModel}? This will help me provide the most relevant guidance."
+};
 
 export const KNOWN_BUSINESS_MODELS = [
   'ecommerce',
@@ -129,6 +164,52 @@ export function calculateRecommendation(userAnswers: UserAnswers): BusinessRecom
     recommendedModel: topModels.length === 1 ? topModels[0] : topModels,
     scoreBreakdown: scores
   };
+}
+
+export function analyzeResponse(response: string): 'valid' | 'needsClarification' | 'outOfScope' {
+  const validKeywords = [
+    ['physical', 'products', 'ecommerce', 'shop', 'store'],
+    ['digital', 'products', 'course', 'ebook'],
+    ['freelance', 'services', 'consulting'],
+    ['content', 'creator', 'influencer', 'youtube', 'social media']
+  ];
+
+  const lowercaseResponse = response.toLowerCase();
+  
+  // Check if response matches any of our valid business models
+  const matchesValidModel = validKeywords.some(keywords => 
+    keywords.some(keyword => lowercaseResponse.includes(keyword))
+  );
+
+  if (matchesValidModel) {
+    return 'valid';
+  }
+
+  // Check if response is completely off track
+  const outOfScopeKeywords = ['apple', 'microsoft', 'startup', 'tech company', 'restaurant'];
+  if (outOfScopeKeywords.some(keyword => lowercaseResponse.includes(keyword))) {
+    return 'outOfScope';
+  }
+
+  return 'needsClarification';
+}
+
+export function getNextQuestion(currentQuestion: string, userResponse: string): string {
+  const responseType = analyzeResponse(userResponse);
+
+  switch (responseType) {
+    case 'outOfScope':
+      return CLARIFICATION_MESSAGES.outOfScope;
+    case 'needsClarification':
+      return CLARIFICATION_MESSAGES.needMoreInfo;
+    case 'valid':
+      // Move to next question in the flow
+      if (currentQuestion === INITIAL_MESSAGE) {
+        return "Great! Now let me understand your experience level. Have you run an online business before?";
+      }
+      // Add more question flow logic here
+      return "Let's move on to the next step...";
+  }
 }
 
 export function startBusinessDiscoveryFlow(userInput: string): string | null {
