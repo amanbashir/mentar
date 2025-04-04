@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { INITIAL_MESSAGE, getSystemPrompt } from '../lib/businessDiscovery';
 import OpenAI from 'openai';
+import type { ChatCompletionMessageParam, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam } from 'openai/resources/chat/completions';
 import './AIChatInterface.css';
 
 interface Message {
@@ -33,16 +34,22 @@ export default function AIChatInterface() {
       const updatedMessages = [...messages, { text: userMessage, isUser: true }];
       setMessages(updatedMessages);
 
+      // Convert messages to OpenAI format
+      const systemMessage: ChatCompletionSystemMessageParam = {
+        role: "system",
+        content: getSystemPrompt(updatedMessages)
+      };
+
+      const chatMessages: (ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam)[] = 
+        updatedMessages.map(m => ({
+          role: m.isUser ? "user" : "assistant",
+          content: m.text
+        }));
+
       // Get AI response
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
-        messages: [
-          { role: "system", content: getSystemPrompt(updatedMessages) },
-          ...updatedMessages.map(m => ({
-            role: m.isUser ? "user" : "assistant",
-            content: m.text
-          }))
-        ],
+        messages: [systemMessage, ...chatMessages],
         temperature: 0.7,
         max_tokens: 150
       });
