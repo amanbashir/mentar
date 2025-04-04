@@ -4,7 +4,18 @@ import OpenAI from 'https://esm.sh/openai@4.28.0'
 
 const SYSTEM_PROMPT = `You are Mentar, an AI business mentor. Do not introduce yourself again. Start from the message above. If the user knows what they want to build, reply with: 'Starting module...'. If they're unsure, ask direct questions to help them choose from: eCommerce, Digital Products, Freelancing, or Content Creation. Keep replies short and clear.`;
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://development--mentar.netlify.app',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     // Get the request body
     const { messages } = await req.json()
@@ -27,19 +38,20 @@ serve(async (req) => {
 
     const aiResponse = completion.choices[0]?.message?.content
 
-    // Return the response
+    // Return the response with CORS headers
     return new Response(
       JSON.stringify({ response: aiResponse }),
       {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
     )
   } catch (error) {
+    // Return error response with CORS headers
     return new Response(
       JSON.stringify({ error: error.message }),
       {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       },
     )
