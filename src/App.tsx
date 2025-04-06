@@ -54,7 +54,7 @@ function App() {
           isAuthenticated ? <Navigate to="/chat" replace /> : <Register />
         } />
         <Route path="/onboarding" element={
-          isAuthenticated ? <Navigate to="/chat" replace /> : <Onboarding />
+          isAuthenticated ? <Onboarding /> : <Navigate to="/login" replace />
         } />
         <Route path="/dashboard" element={
           isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />

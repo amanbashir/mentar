@@ -3,39 +3,28 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import './Onboarding.css';
 
+interface Project {
+  id: string;
+  user_id: string;
+  business_type: string;
+  created_at: string;
+}
+
 const Onboarding = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkAuthAndUserData();
+    checkAuth();
   }, []);
 
-  const checkAuthAndUserData = async () => {
+  const checkAuth = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         console.log('No session found, redirecting to login');
         navigate('/login');
-        return;
-      }
-
-      const { data: userData, error: userDataError } = await supabase
-        .from('userData')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (userDataError) {
-        console.error('Error fetching user data:', userDataError);
-        navigate('/login');
-        return;
-      }
-
-      if (userData?.business_type) {
-        // If user already selected a business type, redirect to dashboard
-        navigate('/dashboard');
         return;
       }
 
@@ -55,18 +44,34 @@ const Onboarding = () => {
         return;
       }
 
-      const { error } = await supabase
-        .from('userData')
-        .update({ business_type: businessType })
-        .eq('user_id', session.user.id);
+      // Create a new project entry in the projects table
+      const { data: newProject, error: projectError } = await supabase
+        .from('projects')
+        .insert([
+          {
+            user_id: session.user.id,
+            business_type: businessType,
+            created_at: new Date().toISOString()
+          }
+        ])
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Error updating business type:', error);
+      if (projectError) {
+        console.error('Error creating new project:', projectError);
         return;
       }
 
-      // Navigate to chat with business type
-      navigate('/chat', { state: { businessType } });
+      // Navigate to chat with the new project info
+      navigate('/chat', { 
+        state: { 
+          project: {
+            id: newProject.id,
+            business_type: businessType,
+            created_at: newProject.created_at
+          }
+        } 
+      });
     } catch (error) {
       console.error('Error:', error);
     }

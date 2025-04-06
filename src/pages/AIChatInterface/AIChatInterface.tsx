@@ -3,10 +3,23 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import './AIChatInterface.css';
 
+interface Project {
+  id: string;
+  business_type: string;
+  created_at: string;
+}
+
+interface Message {
+  id: string;
+  content: string;
+  is_user: boolean;
+  created_at: string;
+}
+
 function AIChatInterface() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<{ text: string; isUser: boolean }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -14,6 +27,8 @@ function AIChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [initialMessage, setInitialMessage] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
   useEffect(() => {
     // Check if we have a business type from onboarding
@@ -22,11 +37,32 @@ function AIChatInterface() {
     if (businessTypeFromState) {
       setBusinessType(businessTypeFromState);
       setInitialMessage(`You've chosen ${businessTypeFromState}.`);
+      // Refresh projects list when returning from onboarding
+      fetchUserProjects();
     } else {
       // Check if user already has a business type in the database
       checkUserBusinessType();
     }
   }, [location.state]);
+
+  useEffect(() => {
+    // Handle new project from onboarding
+    const newProject = location.state?.project;
+    if (newProject) {
+      setCurrentProject(newProject);
+      fetchUserProjects();
+      fetchProjectMessages(newProject.id);
+      // Clear the location state to prevent re-setting on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    // Load messages when current project changes
+    if (currentProject) {
+      fetchProjectMessages(currentProject.id);
+    }
+  }, [currentProject?.id]);
 
   useEffect(() => {
     // Handle clicking outside of dropdown to close it
@@ -76,33 +112,121 @@ function AIChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    fetchUserProjects();
+  }, []);
+
+  const fetchUserProjects = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      const { data: projects, error } = await supabase
+        .from('projects')
+        .select('id, business_type, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      if (projects && projects.length > 0) {
+        console.log('Fetched projects:', projects);
+        setProjects(projects);
+        // Only set current project if none is selected
+        if (!currentProject) {
+          setCurrentProject(projects[0]);
+        }
+      } else {
+        setProjects([]);
+        setCurrentProject(null);
+        // Only redirect to onboarding if we're not already there
+        if (location.pathname !== '/onboarding') {
+          navigate('/onboarding');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchProjectMessages = async (projectId: string) => {
+    try {
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      
+      if (messages) {
+        setMessages(messages);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
+  const saveMessage = async (content: string, isUser: boolean) => {
+    if (!currentProject) return;
+
+    try {
+      const { data: message, error } = await supabase
+        .from('messages')
+        .insert([
+          {
+            project_id: currentProject.id,
+            content,
+            is_user: isUser,
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (message) {
+        setMessages(prev => [...prev, message]);
+      }
+    } catch (error) {
+      console.error('Error saving message:', error);
+    }
+  };
+
+  const handleProjectSwitch = (project: Project) => {
+    setCurrentProject(project);
+    setShowDropdown(false);
+  };
+
+  const handleNewProject = () => {
+    setShowDropdown(false);
+    // Use replace to prevent back navigation issues
+    navigate('/onboarding', { replace: true });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || !currentProject) return;
 
-    const userMessage = inputMessage;
+    const userMessage = inputMessage.trim();
     setInputMessage('');
     setIsLoading(true);
 
     try {
-      // Add user message to chat
-      setMessages(prev => [...prev, { text: userMessage, isUser: true }]);
+      // Save user message
+      await saveMessage(userMessage, true);
 
-      // TODO: Implement actual chat functionality
-      // For now, just echo back a simple response
-      setTimeout(() => {
-        setMessages(prev => [...prev, { 
-          text: "Thank you for your message. I'm here to help you with your business journey.", 
-          isUser: false 
-        }]);
-        setIsLoading(false);
-      }, 1000);
+      // TODO: Get AI response
+      const aiResponse = "Thank you for your message. I'm here to help you with your business journey.";
+      
+      // Save AI response
+      await saveMessage(aiResponse, false);
     } catch (error) {
       console.error('Error in chat:', error);
-      setMessages(prev => [...prev, { 
-        text: "I apologize, but I'm having trouble connecting right now. Please try again in a moment.", 
-        isUser: false 
-      }]);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -116,64 +240,177 @@ function AIChatInterface() {
     }
   };
 
+  const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent project switching when clicking delete
+    
+    // Use a more reliable approach for confirmation
+    const confirmDelete = window.confirm('Are you sure you want to delete this project and all its messages? This action cannot be undone.');
+    
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      console.log('Starting project deletion process for project ID:', projectId);
+      
+      // Get the current user to verify ownership
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('Current user ID:', user.id);
+      
+      // First, delete all messages for this project
+      console.log('Deleting messages for project:', projectId);
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('project_id', projectId);
+
+      if (messagesError) {
+        console.error('Error deleting messages:', messagesError);
+        throw messagesError;
+      }
+      
+      console.log('Messages deleted successfully');
+
+      // Then, delete the project
+      console.log('Deleting project:', projectId);
+      const { error: projectError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (projectError) {
+        console.error('Error deleting project:', projectError);
+        throw projectError;
+      }
+      
+      console.log('Project deleted successfully');
+
+      // Update local state
+      const updatedProjects = projects.filter(p => p.id !== projectId);
+      setProjects(updatedProjects);
+      
+      // If the deleted project was the current one, switch to the most recent project
+      if (currentProject?.id === projectId) {
+        if (updatedProjects.length > 0) {
+          setCurrentProject(updatedProjects[0]);
+          setMessages([]);
+        } else {
+          setCurrentProject(null);
+          setMessages([]);
+          // Redirect to onboarding if all projects are deleted
+          navigate('/onboarding', { replace: true });
+        }
+      }
+    } catch (error: any) {
+      console.error('Error deleting project:', error);
+      alert(`Failed to delete project: ${error.message || 'Unknown error'}`);
+    }
+  };
+
   return (
     <div className="page-container">
-      <div className="logo-container" ref={dropdownRef}>
-        <div className="logo" onClick={() => setShowDropdown(!showDropdown)}>
-          <img src="/logo-black.png" alt="Mentar" />
-        </div>
-        {showDropdown && (
-          <div className="dropdown-menu">
-            <button className="dropdown-item">
-              {businessType || 'No project selected'}
-            </button>
-            <button className="dropdown-item" onClick={() => navigate('/settings')}>
-              Settings
-            </button>
-            <button className="dropdown-item" onClick={handleLogout}>
-              Log out
-            </button>
+      {currentProject ? (
+        <>
+          <div className="top-bar">
+            <div className="logo-container" ref={dropdownRef}>
+              <div className="logo" onClick={() => setShowDropdown(!showDropdown)}>
+                <img src="/logo-black.png" alt="Mentar" />
+              </div>
+              {showDropdown && (
+                <div className="dropdown-menu">
+                  {projects.map((project) => (
+                    <div
+                      key={project.id}
+                      className={`dropdown-item ${currentProject?.id === project.id ? 'active' : ''}`}
+                      onClick={() => handleProjectSwitch(project)}
+                    >
+                      <div className="project-item">
+                        <span className="project-name">{project.business_type}</span>
+                        <span 
+                          className="delete-project"
+                          onClick={(e) => handleDeleteProject(project.id, e)}
+                          title="Delete project"
+                        >
+                          ✕
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="dropdown-divider"></div>
+                  <div 
+                    className="dropdown-item new-project"
+                    onClick={handleNewProject}
+                  >
+                    + New Project
+                  </div>
+                  <div className="dropdown-divider"></div>
+                  <div 
+                    className="dropdown-item"
+                    onClick={() => navigate('/settings')}
+                  >
+                    Settings
+                  </div>
+                  <div 
+                    className="dropdown-item"
+                    onClick={handleLogout}
+                  >
+                    Log out
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-      <div className="chat-container">
-        <div className="messages-container">
-          {initialMessage && (
-            <div className="message ai-message">
-              <div className="message-content">
-                {initialMessage}
-              </div>
+          <div className="chat-container">
+            <div className="messages-container">
+              {initialMessage && (
+                <div className="message bot">
+                  <div className="message-content">
+                    {initialMessage}
+                  </div>
+                </div>
+              )}
+              {messages.map((message, index) => (
+                <div key={message.id || index} className={`message ${message.is_user ? 'user' : 'bot'}`}>
+                  <div className="message-content">
+                    {message.content}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="message bot">
+                  <div className="message-content">
+                    <div className="typing-indicator">...</div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
-          )}
-          {messages.map((message, index) => (
-            <div key={index} className={`message ${message.isUser ? 'user-message' : 'ai-message'}`}>
-              <div className="message-content">
-                {message.text}
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="message ai-message">
-              <div className="typing-indicator">...</div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+            <form onSubmit={handleSubmit} className="input-container">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Enter response here.."
+                className="message-input"
+                disabled={isLoading}
+                autoFocus
+              />
+              <button type="submit" className="send-button" disabled={isLoading}>
+                <span className="arrow-up">↑</span>
+              </button>
+            </form>
+          </div>
+        </>
+      ) : (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading your projects...</p>
         </div>
-        <form onSubmit={handleSubmit} className="input-container">
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Enter response here.."
-            className="message-input"
-            disabled={isLoading}
-            autoFocus
-          />
-          <button type="submit" className="send-button" disabled={isLoading}>
-            <span className="arrow-up">↑</span>
-          </button>
-        </form>
-      </div>
+      )}
     </div>
   );
 }

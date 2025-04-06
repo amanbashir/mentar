@@ -49,39 +49,92 @@
   position: absolute;
   top: calc(100px + 5px);
   right: 30px;
-  background-color: rgba(32, 32, 32, 0.95);
+  background: rgba(32, 32, 32, 0.95);
   backdrop-filter: blur(12px);
-  border-radius: 16px;
+  border-radius: 20px;
   width: 135px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
 }
 
 .dropdown-item {
-  width: 100%;
   padding: 11px 16px;
-  text-align: left;
-  background: none;
-  border: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: white;
   font-size: 14px;
-  font-weight: 400;
-  color: #fff;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  letter-spacing: -0.01em;
-}
-
-.dropdown-item:first-child {
-  text-transform: lowercase;
-}
-
-.dropdown-item:not(:last-child) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .dropdown-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.active {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 500;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 0;
+}
+
+.dropdown-item.new-project {
+  color: #fff;
+  font-weight: 500;
+}
+
+.dropdown-item.new-project:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Add styles for Settings and Logout */
+.dropdown-item:last-child {
+  color: #FF453A;
+}
+
+.dropdown-item:last-child:hover {
+  background: rgba(255, 69, 58, 0.15);
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.project-name {
+  flex-grow: 1;
+}
+
+.delete-project {
+  opacity: 0;
+  color: #FF453A;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+}
+
+.project-item:hover .delete-project {
+  opacity: 1;
+}
+
+.delete-project:hover {
+  background: rgba(255, 69, 58, 0.15);
 }
 
 .messages-container {
@@ -109,7 +162,7 @@
   font-weight: 400;
   line-height: 1.6;
   background: none;
-  font-size: 16px;
+  font-size: 18px;
   display: flex;
 }
 
@@ -119,7 +172,7 @@
   letter-spacing: -0.01em;
 }
 
-.ai-message {
+.message.bot {
   color: rgba(255, 255, 255, 0.9);
   align-self: flex-start;
   margin-right: auto;
@@ -128,13 +181,20 @@
   display: flex;
 }
 
-.user-message {
+.message.user {
   color: #0A84FF !important;
+  font-weight: 600;
   align-self: flex-end;
   margin-left: auto;
   width: 100%;
   justify-content: flex-end;
   display: flex;
+}
+
+.typing-indicator {
+  display: inline-block;
+  padding: 0 3px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .input-container {
@@ -200,12 +260,6 @@
   transform: translateY(-1px);
 }
 
-.typing-indicator {
-  display: inline-block;
-  padding: 0 3px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
 .typing-indicator::after {
   content: '...';
   animation: dots 2s steps(4, end) infinite;
@@ -216,4 +270,29 @@
   40% { content: '.'; }
   60% { content: '..'; }
   80% { content: '...'; }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: #333;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #2B87FF;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 } 
