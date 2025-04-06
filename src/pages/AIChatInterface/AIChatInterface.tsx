@@ -16,6 +16,12 @@ interface Message {
   created_at: string;
 }
 
+interface PopupMessage {
+  id: string;
+  content: string;
+  isUser: boolean;
+}
+
 function AIChatInterface() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,6 +35,12 @@ function AIChatInterface() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
+  const [isPopupLoading, setIsPopupLoading] = useState(false);
+  const popupMessagesEndRef = useRef<HTMLDivElement>(null);
+  const [popupMessages, setPopupMessages] = useState<PopupMessage[]>([]);
 
   useEffect(() => {
     // Check if we have a business type from onboarding
@@ -219,13 +231,46 @@ function AIChatInterface() {
       // Save user message
       await saveMessage(userMessage, true);
 
-      // TODO: Get AI response
-      const aiResponse = "Thank you for your message. I'm here to help you with your business journey.";
+      // Get AI response
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4-turbo-preview",
+          messages: [
+            {
+              role: "system",
+              content: "You are Mentar, a highly capable AI coach focused on helping users achieve their life and business goals. You provide clear, actionable advice while maintaining a professional and supportive tone. Your responses should be direct, practical, and tailored to the user's specific situation."
+            },
+            ...messages.map(msg => ({
+              role: msg.is_user ? "user" : "assistant",
+              content: msg.content
+            })),
+            {
+              role: "user",
+              content: userMessage
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
       
       // Save AI response
       await saveMessage(aiResponse, false);
     } catch (error) {
       console.error('Error in chat:', error);
+      await saveMessage("I apologize, but I encountered an error. Please try again.", false);
     } finally {
       setIsLoading(false);
     }
@@ -311,6 +356,111 @@ function AIChatInterface() {
     }
   };
 
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`; // Max height of 200px
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputMessage(e.target.value);
+    adjustTextareaHeight();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as any);
+    }
+  };
+
+  const toggleChatPopup = () => {
+    setIsChatPopupOpen(!isChatPopupOpen);
+    if (isChatPopupOpen) {
+      setPopupMessages([]);
+      setPopupMessage('');
+    }
+  };
+
+  const scrollToBottom = () => {
+    popupMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handlePopupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!popupMessage.trim() || isPopupLoading) return;
+
+    const userMessage = popupMessage.trim();
+    setPopupMessage('');
+    setIsPopupLoading(true);
+
+    // Add user message to temporary state
+    const userPopupMessage = {
+      id: Date.now().toString(),
+      content: userMessage,
+      isUser: true
+    };
+    setPopupMessages(prev => [...prev, userPopupMessage]);
+
+    try {
+      // Get AI response using the same endpoint as the main chat
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4-turbo-preview",
+          messages: [
+            {
+              role: "system",
+              content: "You are Mentar, a highly capable AI coach focused on helping users achieve their life and business goals. You provide clear, actionable advice while maintaining a professional and supportive tone. Your responses should be direct, practical, and tailored to the user's specific situation."
+            },
+            ...popupMessages.map(msg => ({
+              role: msg.isUser ? "user" : "assistant",
+              content: msg.content
+            })),
+            {
+              role: "user",
+              content: userMessage
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      const aiMessage = {
+        id: (Date.now() + 1).toString(),
+        content: data.choices[0].message.content,
+        isUser: false
+      };
+      setPopupMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error in popup chat:', error);
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        content: "I apologize, but I encountered an error. Please try again.",
+        isUser: false
+      };
+      setPopupMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsPopupLoading(false);
+    }
+  };
+
   return (
     <div className="page-container">
       {currentProject ? (
@@ -390,19 +540,24 @@ function AIChatInterface() {
               <div ref={messagesEndRef} />
             </div>
             <form onSubmit={handleSubmit} className="input-container">
-              <input
-                type="text"
+              <textarea
+                ref={textareaRef}
                 value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
                 placeholder="Enter response here.."
                 className="message-input"
                 disabled={isLoading}
+                rows={1}
                 autoFocus
               />
               <button type="submit" className="send-button" disabled={isLoading}>
                 <span className="arrow-up">↑</span>
               </button>
             </form>
+            <button className="speak-to-mentar" onClick={toggleChatPopup}>
+              Speak to Mentar
+            </button>
           </div>
         </>
       ) : (
@@ -411,8 +566,45 @@ function AIChatInterface() {
           <p>Loading your projects...</p>
         </div>
       )}
+
+      <div className={`chat-popup ${isChatPopupOpen ? 'open' : ''}`}>
+        <div className="chat-popup-header">
+          <img src="/logo-black.png" alt="Mentar" />
+          <button className="close-button" onClick={toggleChatPopup}>X</button>
+        </div>
+        <div className="chat-popup-content">
+          {popupMessages.length === 0 && (
+            <div className="message bot">
+              How can I help?
+            </div>
+          )}
+          {popupMessages.map((message) => (
+            <div key={message.id} className={`message ${message.isUser ? 'user' : 'bot'}`}>
+              {message.content}
+            </div>
+          ))}
+          {isPopupLoading && (
+            <div className="message bot">
+              <div className="typing-indicator">...</div>
+            </div>
+          )}
+          <div ref={popupMessagesEndRef} />
+        </div>
+        <form onSubmit={handlePopupSubmit} className="chat-popup-input">
+          <input
+            type="text"
+            value={popupMessage}
+            onChange={(e) => setPopupMessage(e.target.value)}
+            placeholder="Enter chat here.."
+            disabled={isPopupLoading}
+          />
+          <button type="submit" disabled={isPopupLoading || !popupMessage.trim()}>
+            <span className="arrow-up">↑</span>
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
 
-export default AIChatInterface; 
+export default AIChatInterface;

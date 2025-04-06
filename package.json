@@ -12,6 +12,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.49.3",
     "lucide-react": "^0.487.0",
     "openai": "^4.91.1",
