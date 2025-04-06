@@ -1,57 +1,197 @@
-.register-container {
-  width: 100vw;
+.sign-up {
+  width: 100%;
   height: 100vh;
-  background: #000000;
+  background-color: #000;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-.welcome-text {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 20px;
-  margin: 16px 0;
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 80px;
 }
 
-.register-form {
+.logo {
+  width: 60px;
+  height: 60px;
+  display: block;
+}
+
+.title {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 67px;
+  font-weight: 400;
+  color: #FFFFFF;
+  margin: 0;
+  letter-spacing: -0.4px;
+}
+
+.form-container {
+  width: 100%;
+  max-width: 400px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 100%;
-  max-width: 400px;
-  padding: 0 20px;
 }
 
-.register-form input {
-  padding: 16px;
-  border-radius: 8px;
-  border: none;
-  background: white;
-  font-size: 16px;
+.input-group {
   width: 100%;
-  color: black;
 }
 
-.register-form button {
-  padding: 16px;
+.input-box {
+  width: 100%;
+  height: 48px;
+  background-color: #fff;
   border-radius: 8px;
+  overflow: hidden;
+}
+
+.input-box.gray {
+  background-color: #d9d9d9;
+}
+
+.input-field {
+  width: 100%;
+  height: 100%;
   border: none;
-  background: #333333;
-  color: white;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
   font-size: 16px;
+  color: #000;
+  padding: 0 16px;
+}
+
+.input-field::placeholder {
+  color: #000;
+}
+
+.input-field:focus {
+  outline: none;
+}
+
+.submit-button {
+  width: 100%;
+  height: 48px;
+  background-color: #2b87ff;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
-  width: 100%;
+  margin-top: 8px;
+  transition: opacity 0.2s ease;
 }
 
-.register-form button:hover {
-  background: #444444;
+.submit-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.return-link {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  text-decoration: none;
+  text-align: center;
+  margin-top: 16px;
+  display: block;
+  transition: color 0.2s ease;
+}
+
+.return-link:hover {
+  color: #fff;
 }
 
 .error-message {
   color: #ff4444;
   text-align: center;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
+  margin-top: 8px;
+}
+
+.subtitle {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 16px;
+  color: #727272;
+  position: fixed;
+  bottom: 10px;
+  text-align: center;
+  width: 100%;
+  padding-bottom: 10px;
+}
+
+.verification-message {
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  color: #fff;
+  margin-bottom: 80px;
+}
+
+.verification-message h2 {
+  font-family: 'Inter', sans-serif;
+  font-size: 32px;
+  font-weight: 500;
+  margin-bottom: 24px;
+}
+
+.verification-message p {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.verification-message .resend-note {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 32px;
+}
+
+@media (max-width: 991px) {
+  .title {
+    font-size: 70px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sign-up {
+    padding: 16px;
+  }
+
+  .logo-container {
+    margin-bottom: 32px;
+  }
+
+  .form-container {
+    margin-bottom: 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  .logo {
+    width: 140px;
+    height: 140px;
+    margin-top: 100px;
+  }
+
+  .title {
+    font-size: 50px;
+  }
+
+  .subtitle {
+    position: relative;
+    bottom: auto;
+    margin-top: 60px;
+  }
 } 

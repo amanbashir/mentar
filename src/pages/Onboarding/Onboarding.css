@@ -1,0 +1,181 @@
+.onboarding {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #000;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 42px;
+  box-sizing: border-box;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.logo {
+  position: absolute;
+  top: 42px;
+  right: 42px;
+  width: 48px;
+  height: 48px;
+  background-color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: brightness(0); /* This will make the white logo black */
+}
+
+.header {
+  text-align: center;
+  margin-top: 80px;
+  margin-bottom: 60px;
+}
+
+.header h1 {
+  font-size: 64px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  margin: 0;
+  color: #fff;
+}
+
+.header p {
+  font-size: 24px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  margin: 24px 0 0 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 32px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 380px;
+}
+
+.card:hover {
+  transform: translateY(-8px);
+}
+
+.card h2 {
+  font-size: 32px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: #000;
+  margin: 32px 0;
+  text-align: center;
+}
+
+.card-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  object-position: top;
+  margin-top: auto;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 80px;
+  margin-bottom: 40px;
+}
+
+.footer p {
+  font-size: 21px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mentar-link {
+  color: #2B87FF;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.mentar-link:hover {
+  opacity: 0.8;
+}
+
+.card.coming-soon {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@media (max-width: 1440px) {
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .onboarding {
+    padding: 20px;
+  }
+
+  .logo {
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .header {
+    margin-top: 60px;
+    margin-bottom: 40px;
+  }
+
+  .header h1 {
+    font-size: 36px;
+  }
+
+  .header p {
+    font-size: 20px;
+    margin-top: 16px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 0;
+  }
+
+  .card h2 {
+    font-size: 28px;
+    margin: 16px 0;
+  }
+
+  .footer {
+    margin-top: 60px;
+    margin-bottom: 30px;
+  }
+
+  .footer p {
+    font-size: 18px;
+  }
+} 

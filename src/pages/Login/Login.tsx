@@ -50,7 +50,7 @@ export default function Login() {
     <div className="login-container">
       <div className="main-content">
         <div className="logo-section">
-          <img src="/logo-white.png" alt="Mentar Logo" className="logo" />
+          <img src="/logo-white.png" alt="Mentar" className="logo" />
           <h1 className="logo-title">Mentar</h1>
         </div>
 
