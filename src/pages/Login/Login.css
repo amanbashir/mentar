@@ -1,31 +1,69 @@
 .login-container {
   width: 100vw;
   height: 100vh;
-  background: #000000;
+  background-color: #000;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo-container {
+  position: absolute;
+  top: 42px;
+  right: 42px;
+  z-index: 10;
+}
+
+.logo {
+  width: 180px;
+  height: 180px;
+  background-color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.logo:hover {
+  transform: scale(1.02);
+}
+
+.logo img {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+}
+
+.main-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 20px;
+  max-width: 400px;
+  width: 100%;
+  padding: 0 20px;
 }
 
 .logo-section {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 16px;
-  margin-bottom: 80px;
 }
 
-.logo {
-  width: 60px;
-  height: 60px;
-  display: block;
+.logo-main {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .logo-title {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 67px;
-  font-weight: 400;
-  color: #FFFFFF;
+  color: #fff;
+  font-size: 48px;
+  font-weight: 700;
   margin: 0;
 }
 
@@ -93,13 +131,6 @@
   font-size: 14px;
   text-align: center;
   margin-top: -8px;
-}
-
-.main-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 80px;
 }
 
 .register-text {
