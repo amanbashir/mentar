@@ -48,9 +48,14 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      <div className="logo-container">
+        <div className="logo">
+          <img src="/logo-black.png" alt="Mentar" />
+        </div>
+      </div>
       <div className="main-content">
         <div className="logo-section">
-          <img src="/logo-white.png" alt="Mentar" className="logo" />
+          <img src="/logo-white.png" alt="Mentar" className="logo-main" />
           <h1 className="logo-title">Mentar</h1>
         </div>
 

@@ -9,9 +9,11 @@ function AIChatInterface() {
   const [messages, setMessages] = useState<{ text: string; isUser: boolean }[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [businessType, setBusinessType] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [initialMessage, setInitialMessage] = useState('');
-  const [businessType, setBusinessType] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check if we have a business type from onboarding
@@ -25,6 +27,18 @@ function AIChatInterface() {
       checkUserBusinessType();
     }
   }, [location.state]);
+
+  useEffect(() => {
+    // Handle clicking outside of dropdown to close it
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const checkUserBusinessType = async () => {
     try {
@@ -93,44 +107,73 @@ function AIChatInterface() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   return (
-    <div className="chat-container">
-      <div className="messages-container">
-        {initialMessage && (
-          <div className="message ai-message">
-            <div className="message-content">
-              {initialMessage}
-            </div>
+    <div className="page-container">
+      <div className="logo-container" ref={dropdownRef}>
+        <div className="logo" onClick={() => setShowDropdown(!showDropdown)}>
+          <img src="/logo-black.png" alt="Mentar" />
+        </div>
+        {showDropdown && (
+          <div className="dropdown-menu">
+            <button className="dropdown-item">
+              {businessType || 'No project selected'}
+            </button>
+            <button className="dropdown-item" onClick={() => navigate('/settings')}>
+              Settings
+            </button>
+            <button className="dropdown-item" onClick={handleLogout}>
+              Log out
+            </button>
           </div>
         )}
-        {messages.map((message, index) => (
-          <div key={index} className={`message ${message.isUser ? 'user-message' : 'ai-message'}`}>
-            <div className="message-content">
-              {message.text}
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="message ai-message">
-            <div className="typing-indicator">...</div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSubmit} className="input-container">
-        <input
-          type="text"
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          placeholder="Enter response here.."
-          className="message-input"
-          disabled={isLoading}
-          autoFocus
-        />
-        <button type="submit" className="send-button" disabled={isLoading}>
-          <span className="arrow-up">↑</span>
-        </button>
-      </form>
+      <div className="chat-container">
+        <div className="messages-container">
+          {initialMessage && (
+            <div className="message ai-message">
+              <div className="message-content">
+                {initialMessage}
+              </div>
+            </div>
+          )}
+          {messages.map((message, index) => (
+            <div key={index} className={`message ${message.isUser ? 'user-message' : 'ai-message'}`}>
+              <div className="message-content">
+                {message.text}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="message ai-message">
+              <div className="typing-indicator">...</div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+        <form onSubmit={handleSubmit} className="input-container">
+          <input
+            type="text"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder="Enter response here.."
+            className="message-input"
+            disabled={isLoading}
+            autoFocus
+          />
+          <button type="submit" className="send-button" disabled={isLoading}>
+            <span className="arrow-up">↑</span>
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

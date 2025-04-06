@@ -79,7 +79,7 @@ const Onboarding = () => {
   return (
     <div className="onboarding">
       <div className="logo">
-        <img src="/logo-white.png" alt="Mentar" />
+        <img src="/logo-black.png" alt="Mentar" />
       </div>
       <div className="header">
         <h1>Welcome to your Future.</h1>

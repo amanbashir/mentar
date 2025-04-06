@@ -121,82 +121,89 @@ const Register = () => {
   };
 
   return (
-    <div className="sign-up">
+    <div className="register-container">
       <div className="logo-container">
-        <img src="/logo-white.png" alt="Mentar" className="logo" />
-        <h1 className="title">Mentar</h1>
-      </div>
-      {showVerificationMessage ? (
-        <div className="verification-message">
-          <h2>Check your email</h2>
-          <p>We've sent a verification link to {registeredEmail}.</p>
-          <p>Click the link in the email to verify your account and continue to onboarding.</p>
-          <p className="resend-note">The verification email may take a few minutes to arrive. Check your spam folder if you don't see it.</p>
+        <div className="logo">
+          <img src="/logo-black.png" alt="Mentar" />
         </div>
-      ) : (
-        <form className="form-container" onSubmit={handleSubmit}>
-          <div className="input-group">
-            <div className="input-box">
-              <input
-                type="text"
-                name="fullName"
-                placeholder="Full Name"
-                value={formData.fullName}
-                onChange={handleChange}
-                className="input-field"
-                required
-              />
-            </div>
+      </div>
+      <div className="main-content">
+        <div className="logo-section">
+          <img src="/logo-white.png" alt="Mentar" className="logo-main" />
+          <h1 className="logo-title">Mentar</h1>
+        </div>
+        {showVerificationMessage ? (
+          <div className="verification-message">
+            <h2>Check your email</h2>
+            <p>We've sent a verification link to {registeredEmail}.</p>
+            <p>Click the link in the email to verify your account and continue to onboarding.</p>
+            <p className="resend-note">The verification email may take a few minutes to arrive. Check your spam folder if you don't see it.</p>
           </div>
-          <div className="input-group">
-            <div className="input-box">
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={handleChange}
-                className="input-field"
-                required
-              />
+        ) : (
+          <form className="form-container" onSubmit={handleSubmit}>
+            <div className="input-group">
+              <div className="input-box">
+                <input
+                  type="text"
+                  name="fullName"
+                  placeholder="Full Name"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                />
+              </div>
             </div>
-          </div>
-          <div className="input-group">
-            <div className="input-box">
-              <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-                className="input-field"
-                required
-                minLength={6}
-              />
+            <div className="input-group">
+              <div className="input-box">
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                />
+              </div>
             </div>
-          </div>
-          <div className="input-group">
-            <div className="input-box gray">
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm Password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="input-field"
-                required
-                minLength={6}
-              />
+            <div className="input-group">
+              <div className="input-box">
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                  minLength={6}
+                />
+              </div>
             </div>
-          </div>
-          <button type="submit" className="submit-button" disabled={loading}>
-            {loading ? 'Creating Account...' : 'Create Free Account'}
-          </button>
-          {error && <p className="error-message">{error}</p>}
-          <Link to="/" className="return-link">Return to Sign In</Link>
-        </form>
-      )}
-      <p className="subtitle">Powerful guidance made accessible.</p>
+            <div className="input-group">
+              <div className="input-box gray">
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                  minLength={6}
+                />
+              </div>
+            </div>
+            <button type="submit" className="submit-button" disabled={loading}>
+              {loading ? 'Creating Account...' : 'Create Free Account'}
+            </button>
+            {error && <p className="error-message">{error}</p>}
+            <Link to="/" className="return-link">Return to Sign In</Link>
+          </form>
+        )}
+        <p className="subtitle">Powerful guidance made accessible.</p>
+      </div>
     </div>
   );
 };

@@ -23,13 +23,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8px;
 }
 
 .logo img {
   width: 32px;
   height: 32px;
   object-fit: contain;
-  filter: brightness(0); /* This will make the white logo black */
 }
 
 .header {
