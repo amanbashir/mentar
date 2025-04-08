@@ -70,7 +70,8 @@ export const KNOWN_BUSINESS_MODELS = [
   'smma',
   'saas',
   'copywriting',
-  'high ticket sales'
+  'high ticket sales',
+  'upgrade'
 ];
 
 export const questions: string[] = [

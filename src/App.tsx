@@ -6,6 +6,8 @@ import Register from './pages/Register/Register';
 import Dashboard from './pages/Dashboard/Dashboard';
 import AIChatInterface from './pages/AIChatInterface/AIChatInterface';
 import Onboarding from './pages/Onboarding/Onboarding';
+import Settings from './pages/Settings/Settings';
+import './App.css';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -62,6 +64,7 @@ function App() {
         <Route path="/chat" element={
           isAuthenticated ? <AIChatInterface /> : <Navigate to="/login" replace />
         } />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </Router>
   );

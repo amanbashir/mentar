@@ -6,7 +6,7 @@ import './Register.css';
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    fullName: '',
+    firstName: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -46,7 +46,7 @@ const Register = () => {
           {
             user_id: userId,
             email: formData.email,
-            full_name: formData.fullName,
+            first_name: formData.firstName,
             created_at: new Date().toISOString()
           }
         ])
@@ -82,7 +82,7 @@ const Register = () => {
         password: formData.password,
         options: {
           data: {
-            full_name: formData.fullName,
+            first_name: formData.firstName,
           },
           emailRedirectTo: `${window.location.origin}/onboarding`
         }
@@ -96,11 +96,11 @@ const Register = () => {
         throw new Error('No user data received from registration');
       }
 
-      // 2. Create initial userData record
-      const { error: userDataError } = await createUserData(authData.user.id);
+      // 2. Create initial profile record
+      const { error: profileError } = await createUserData(authData.user.id);
 
-      if (userDataError) {
-        throw userDataError;
+      if (profileError) {
+        throw profileError;
       }
 
       // 3. Show verification message and store email
@@ -122,87 +122,80 @@ const Register = () => {
 
   return (
     <div className="register-container">
-      <div className="logo-container">
-        <div className="logo">
-          <img src="/logo-black.png" alt="Mentar" />
+      <div className="register-box">
+        <div className="logo-container">
+          <img src="/logo.png" alt="Mentar AI Logo" className="logo" />
         </div>
-      </div>
-      <div className="main-content">
-        <div className="logo-section">
-          <img src="/logo-white.png" alt="Mentar" className="logo-main" />
-          <h1 className="logo-title">Mentar</h1>
-        </div>
-        {showVerificationMessage ? (
+        <h1>Create Account</h1>
+        {error && <div className="error-message">{error}</div>}
+        {showVerificationMessage && (
           <div className="verification-message">
-            <h2>Check your email</h2>
-            <p>We've sent a verification link to {registeredEmail}.</p>
-            <p>Click the link in the email to verify your account and continue to onboarding.</p>
-            <p className="resend-note">The verification email may take a few minutes to arrive. Check your spam folder if you don't see it.</p>
+            <p>Registration successful! Please check your email to verify your account.</p>
+            <p>We've sent a verification link to {registeredEmail}</p>
           </div>
-        ) : (
-          <form className="form-container" onSubmit={handleSubmit}>
-            <div className="input-group">
-              <div className="input-box">
-                <input
-                  type="text"
-                  name="fullName"
-                  placeholder="Full Name"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  className="input-field"
-                  required
-                />
-              </div>
-            </div>
-            <div className="input-group">
-              <div className="input-box">
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="input-field"
-                  required
-                />
-              </div>
-            </div>
-            <div className="input-group">
-              <div className="input-box">
-                <input
-                  type="password"
-                  name="password"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="input-field"
-                  required
-                  minLength={6}
-                />
-              </div>
-            </div>
-            <div className="input-group">
-              <div className="input-box gray">
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  placeholder="Confirm Password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="input-field"
-                  required
-                  minLength={6}
-                />
-              </div>
-            </div>
-            <button type="submit" className="submit-button" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Create Free Account'}
-            </button>
-            {error && <p className="error-message">{error}</p>}
-            <Link to="/" className="return-link">Return to Sign In</Link>
-          </form>
         )}
-        <p className="subtitle">Powerful guidance made accessible.</p>
+        <form className="form-container" onSubmit={handleSubmit}>
+          <div className="input-group">
+            <div className="input-box">
+              <input
+                type="text"
+                name="firstName"
+                placeholder="First Name"
+                value={formData.firstName}
+                onChange={handleChange}
+                className="input-field"
+                required
+              />
+            </div>
+          </div>
+          <div className="input-group">
+            <div className="input-box">
+              <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={formData.email}
+                onChange={handleChange}
+                className="input-field"
+                required
+              />
+            </div>
+          </div>
+          <div className="input-group">
+            <div className="input-box">
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                className="input-field"
+                required
+                minLength={6}
+              />
+            </div>
+          </div>
+          <div className="input-group">
+            <div className="input-box gray">
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="input-field"
+                required
+                minLength={6}
+              />
+            </div>
+          </div>
+          <button type="submit" className="submit-button" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Create Account'}
+          </button>
+        </form>
+        <div className="login-link">
+          Already have an account? <Link to="/login">Log in</Link>
+        </div>
       </div>
     </div>
   );

@@ -99,7 +99,7 @@ function AIChatInterface() {
 
       const { data: userData, error } = await supabase
         .from('userData')
-        .select('business_type')
+        .select('business_type, first_name')
         .eq('user_id', session.user.id)
         .single();
 
@@ -110,7 +110,7 @@ function AIChatInterface() {
 
       if (userData?.business_type) {
         setBusinessType(userData.business_type);
-        setInitialMessage(`You've chosen ${userData.business_type}.`);
+        setInitialMessage(`Hello ${userData.first_name || ''}, you've chosen ${userData.business_type}.`);
       } else {
         setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");
       }
@@ -498,6 +498,12 @@ function AIChatInterface() {
                     + New Project
                   </div>
                   <div className="dropdown-divider"></div>
+                  <div 
+                    className="dropdown-item"
+                    onClick={() => navigate('/upgrade')}
+                  >
+                    Upgrade
+                  </div>
                   <div 
                     className="dropdown-item"
                     onClick={() => navigate('/settings')}

@@ -70,9 +70,9 @@ export class MentarService {
 
   private static async updateUserProfile(userId: string, updates: Partial<UserProfile>) {
     const { error } = await supabase
-      .from('profiles')
+      .from('userData')
       .update(updates)
-      .eq('id', userId);
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error updating profile:', error);
