@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 // Use relative paths for Netlify functions
 const API_URL = process.env.NODE_ENV === 'production' 
   ? '' // In production, use relative paths
-  : 'http://localhost:3001';
+  : 'http://localhost:8888'; // Use Netlify dev server port
 
 export interface CheckoutSession {
   id: string;
@@ -23,8 +23,16 @@ export const createCheckoutSession = async (
       throw new Error('User not authenticated');
     }
 
+    console.log('Creating checkout session with:', {
+      priceId,
+      userId: session.user.id,
+      userEmail: session.user.email,
+      successUrl,
+      cancelUrl,
+    });
+
     // Create a checkout session on your backend
-    const response = await fetch(`${API_URL}/api/create-checkout-session`, {
+    const response = await fetch(`${API_URL}/.netlify/functions/create-checkout-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,8 +47,14 @@ export const createCheckoutSession = async (
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to create checkout session');
+      const errorText = await response.text();
+      console.error('Checkout session error response:', errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(errorData.message || 'Failed to create checkout session');
+      } catch (e) {
+        throw new Error(`Failed to create checkout session: ${errorText}`);
+      }
     }
 
     return await response.json();
@@ -60,9 +74,10 @@ export const getSubscriptionStatus = async (): Promise<string> => {
     }
 
     // Fetch subscription status from your backend
-    const response = await fetch(`${API_URL}/api/subscription-status?userId=${session.user.id}`);
+    const response = await fetch(`${API_URL}/.netlify/functions/subscription-status?userId=${session.user.id}`);
 
     if (!response.ok) {
+      console.error('Error fetching subscription status:', await response.text());
       return 'none';
     }
 
