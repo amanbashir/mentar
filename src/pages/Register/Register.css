@@ -67,102 +67,54 @@
   margin: 0;
 }
 
-.title {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 67px;
-  font-weight: 400;
-  color: #FFFFFF;
-  margin: 0;
-  letter-spacing: -0.4px;
-}
-
-.form-container {
-  width: 100%;
-  max-width: 400px;
+.register-form {
+  width: 360px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  align-items: center;
 }
 
-.input-group {
+.register-input {
   width: 100%;
-}
-
-.input-box {
-  width: 100%;
-  height: 48px;
-  background-color: #fff;
+  height: 44px;
+  background: #FFFFFF;
   border-radius: 8px;
-  overflow: hidden;
-}
-
-.input-box.gray {
-  background-color: #d9d9d9;
-}
-
-.input-field {
-  width: 100%;
-  height: 100%;
   border: none;
-  background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  color: #000;
   padding: 0 16px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 16px;
+  color: #000000;
 }
 
-.input-field::placeholder {
-  color: #000;
+.register-input::placeholder {
+  color: #000000;
+  opacity: 0.7;
 }
 
-.input-field:focus {
-  outline: none;
-}
-
-.submit-button {
+.register-button {
   width: 100%;
-  height: 48px;
-  background-color: #2b87ff;
+  height: 44px;
+  background: #2B87FF;
   border: none;
   border-radius: 8px;
-  color: #fff;
-  font-family: 'Inter', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
   font-weight: 500;
+  color: #FFFFFF;
   cursor: pointer;
-  margin-top: 8px;
-  transition: opacity 0.2s ease;
 }
 
-.submit-button:disabled {
+.register-button:hover {
+  background: #2472d8;
+}
+
+.register-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.return-link {
-  color: rgba(255, 255, 255, 0.7);
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  text-decoration: none;
-  text-align: center;
-  margin-top: 16px;
-  display: block;
-  transition: color 0.2s ease;
-}
-
-.return-link:hover {
-  color: #fff;
-}
-
-.error-message {
-  color: #ff4444;
-  text-align: center;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  margin-top: 8px;
-}
-
-.subtitle {
+.tagline {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
   color: #727272;
@@ -171,6 +123,23 @@
   text-align: center;
   width: 100%;
   padding-bottom: 10px;
+}
+
+.error-message {
+  color: #ff4444;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  text-align: center;
+  margin-top: -8px;
+}
+
+.login-text {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  color: #727272;
+  text-align: center;
+  margin-top: 10px;
+  text-decoration: none;
 }
 
 .verification-message {
@@ -203,22 +172,17 @@
 }
 
 @media (max-width: 991px) {
-  .title {
+  .register-content {
+    max-width: 90%;
+  }
+
+  .logo-title {
     font-size: 70px;
   }
-}
 
-@media (max-width: 768px) {
-  .sign-up {
-    padding: 16px;
-  }
-
-  .logo-container {
-    margin-bottom: 32px;
-  }
-
-  .form-container {
-    margin-bottom: 32px;
+  .register-button {
+    width: 100%;
+    max-width: 370px;
   }
 }
 
@@ -229,11 +193,16 @@
     margin-top: 100px;
   }
 
-  .title {
+  .logo-title {
     font-size: 50px;
   }
 
-  .subtitle {
+  .register-input {
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .tagline {
     position: relative;
     bottom: auto;
     margin-top: 60px;
