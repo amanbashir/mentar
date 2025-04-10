@@ -46,15 +46,35 @@ function AIChatInterface() {
     // Check if we have a business type from onboarding
     const businessTypeFromState = location.state?.businessType;
     
-    if (businessTypeFromState) {
-      setBusinessType(businessTypeFromState);
-      setInitialMessage(`You've chosen ${businessTypeFromState}.`);
-      // Refresh projects list when returning from onboarding
-      fetchUserProjects();
-    } else {
-      // Check if user already has a business type in the database
-      checkUserBusinessType();
-    }
+    const initializeBusinessType = async () => {
+      if (businessTypeFromState) {
+        setBusinessType(businessTypeFromState);
+        // Get user's first name
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: userData } = await supabase
+            .from('userData')
+            .select('first_name')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          setInitialMessage(`Hi ${userData?.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
+
+What's your current budget for this business?`);
+        } else {
+          setInitialMessage(`Hi, great choice! Let's confirm if this is a good fit for you and your goals.
+
+What's your current budget for this business?`);
+        }
+        // Refresh projects list when returning from onboarding
+        fetchUserProjects();
+      } else {
+        // Check if user already has a business type in the database
+        checkUserBusinessType();
+      }
+    };
+
+    initializeBusinessType();
   }, [location.state]);
 
   useEffect(() => {
@@ -110,7 +130,13 @@ function AIChatInterface() {
 
       if (userData?.business_type) {
         setBusinessType(userData.business_type);
-        setInitialMessage(`Hello ${userData.first_name || ''}, you've chosen ${userData.business_type}.`);
+        if (userData.business_type.toLowerCase() === 'ecommerce') {
+          setInitialMessage(`Hi ${userData.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
+
+What's your current budget for this business?`);
+        } else {
+          setInitialMessage(`Hello ${userData.first_name || ''}, you've chosen ${userData.business_type}.`);
+        }
       } else {
         setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");
       }
