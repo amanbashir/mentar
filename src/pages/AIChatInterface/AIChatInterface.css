@@ -165,18 +165,21 @@
   background: none;
   font-size: 20px;
   display: flex;
+  flex-direction: column;
 }
 
 .message.user {
   color: #0A84FF;
   align-self: flex-end;
   margin-left: auto;
+  text-align: right;
 }
 
 .message.ai {
   color: white;
   align-self: flex-start;
   margin-right: auto;
+  text-align: left;
 }
 
 .message strong {
