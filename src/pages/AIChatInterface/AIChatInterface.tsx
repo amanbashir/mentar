@@ -281,9 +281,7 @@ What's your current budget for this business?`);
             }
           ],
           temperature: 0.7,
-          max_tokens: 500,
-          businessType: currentProject.business_type,
-          isDiscoveryMode: false
+          max_tokens: 500
         })
       });
 
@@ -449,8 +447,7 @@ What's your current budget for this business?`);
             }
           ],
           temperature: 0.7,
-          max_tokens: 500,
-          isDiscoveryMode: true
+          max_tokens: 500
         })
       });
 
