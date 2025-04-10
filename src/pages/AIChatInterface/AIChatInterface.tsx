@@ -270,7 +270,7 @@ What's your current budget for this business?`);
           messages: [
             {
               role: "system",
-              content: currentProject?.business_type === 'Ecommerce' 
+              content: currentProject?.business_type.toLowerCase() === 'ecommerce' 
                 ? ecomSystemPrompt 
                 : `You are Mentar, a highly capable AI coach focused on helping users achieve their life and business goals. You provide clear, actionable advice while maintaining a professional and supportive tone. Your responses should be direct, practical, and tailored to the user's specific situation.
 
@@ -442,7 +442,7 @@ If the user asks about other business types, acknowledge their interest but gent
           messages: [
             {
               role: "system",
-              content: currentProject?.business_type === 'Ecommerce' 
+              content: currentProject?.business_type.toLowerCase() === 'ecommerce' 
                 ? ecomSystemPrompt 
                 : `You are Mentar, a highly capable AI coach focused on helping users achieve their life and business goals. You provide clear, actionable advice while maintaining a professional and supportive tone. Your responses should be direct, practical, and tailored to the user's specific situation.
 

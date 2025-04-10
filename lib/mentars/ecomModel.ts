@@ -788,3 +788,12 @@ Test more when you're winning — not when you're desperate.
 
 
 `;
+
+export const ecomModelConfig = {
+  id: 'ecommerce',
+  name: 'Eli the eCom Builder',
+  specialty: 'EU dropshipping and general stores',
+  systemPrompt,
+  tone: 'Professional and direct',
+  teachingStyle: 'Step-by-step guidance with clear examples'
+};
