@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import ReactMarkdown from 'react-markdown';
 import './AIChatInterface.css';
 import { systemPrompt as ecomSystemPrompt } from '../../../lib/mentars/ecomModel';
 
@@ -545,16 +546,16 @@ What's your current budget for this business?`);
                 </div>
               )}
               {messages.map((message, index) => (
-                <div key={message.id || index} className={`message ${message.is_user ? 'user' : 'bot'}`}>
-                  <div className="message-content">
-                    {message.content}
-                  </div>
+                <div key={index} className={`message ${message.is_user ? 'user' : 'ai'}`}>
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
               ))}
               {isLoading && (
-                <div className="message bot">
-                  <div className="message-content">
-                    <div className="typing-indicator">...</div>
+                <div className="message ai">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                   </div>
                 </div>
               )}
@@ -599,16 +600,22 @@ What's your current budget for this business?`);
               How can I help?
             </div>
           )}
-          {popupMessages.map((message) => (
-            <div key={message.id} className={`message ${message.isUser ? 'user' : 'bot'}`}>
-              {message.content}
-            </div>
-          ))}
-          {isPopupLoading && (
-            <div className="message bot">
-              <div className="typing-indicator">...</div>
-            </div>
-          )}
+          <div className="popup-messages-container">
+            {popupMessages.map((message, index) => (
+              <div key={index} className={`message ${message.isUser ? 'user' : 'ai'}`}>
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
+            ))}
+            {isPopupLoading && (
+              <div className="message ai">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            )}
+          </div>
           <div ref={popupMessagesEndRef} />
         </div>
         <form onSubmit={handlePopupSubmit} className="chat-popup-input">

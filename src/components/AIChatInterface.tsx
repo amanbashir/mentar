@@ -3,6 +3,7 @@ import { INITIAL_MESSAGE } from '../lib/businessDiscovery';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam } from 'openai/resources/chat/completions';
 import { systemPrompt as ecomSystemPrompt } from '../../lib/mentars/ecomModel';
+import ReactMarkdown from 'react-markdown';
 import './AIChatInterface.css';
 
 interface Message {
@@ -75,7 +76,7 @@ export default function AIChatInterface() {
       <div className="messages-container">
         {messages.map((message, index) => (
           <div key={index} className={`message ${message.isUser ? 'user' : 'ai'}`}>
-            {message.text}
+            <ReactMarkdown>{message.text}</ReactMarkdown>
           </div>
         ))}
         {isLoading && (
