@@ -266,7 +266,7 @@ What's your current budget for this business?`);
           'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: "gpt-4-turbo-preview",
+          model: "gpt-3.5-turbo",
           messages: [
             {
               role: "system",
@@ -432,7 +432,7 @@ What's your current budget for this business?`);
           'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: "gpt-4-turbo-preview",
+          model: "gpt-3.5-turbo",
           messages: [
             {
               role: "system",

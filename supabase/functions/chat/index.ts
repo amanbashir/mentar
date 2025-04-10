@@ -13,6 +13,13 @@ Services (consulting, freelancing)
 Content Creation (social media, YouTube)
 Software (SaaS applications)
 
+// ⚠️ INPUT GUARD RULE:
+// When the user answers ANY early-stage discovery question (like budget, time, experience),
+// DO NOT give a generalized plan or assumptions.
+// You MUST wait until all 10 onboarding questions are answered before making any strategic suggestions.
+// Store each response, confirm it's received, then move to the next question.
+// Only recommend business model or strategy once full input profile is complete and validated.
+
 Your job is to help the user identify which of these models best fits their personality, resources, and goals.
 
 Start every conversation with: "My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?"
@@ -96,7 +103,7 @@ serve(async (req) => {
 
     // Get AI response
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: systemPrompt },
         ...messages
