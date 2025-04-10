@@ -165,6 +165,8 @@
   background: none;
   font-size: 20px;
   display: flex;
+  flex-direction: column;
+  text-align: left;
 }
 
 .message-content {
