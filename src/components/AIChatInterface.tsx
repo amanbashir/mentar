@@ -44,7 +44,7 @@ export default function AIChatInterface() {
       };
 
       const chatMessages: (ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam)[] = 
-        updatedMessages.map(m => ({
+        updatedMessages.slice(1).map(m => ({
           role: m.isUser ? "user" : "assistant",
           content: m.text
         }));
