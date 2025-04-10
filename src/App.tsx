@@ -12,6 +12,7 @@ import './App.css';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -19,9 +20,11 @@ function App() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setIsAuthenticated(!!session);
+        setUser(session?.user || null);
       } catch (error) {
         console.error('Error checking authentication:', error);
         setIsAuthenticated(false);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -31,7 +34,9 @@ function App() {
 
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('App auth state change:', event, session);
       setIsAuthenticated(!!session);
+      setUser(session?.user || null);
     });
 
     return () => {
@@ -53,7 +58,7 @@ function App() {
           isAuthenticated ? <Navigate to="/chat" replace /> : <Login />
         } />
         <Route path="/register" element={
-          isAuthenticated ? <Navigate to="/chat" replace /> : <Register />
+          isAuthenticated ? <Navigate to="/onboarding" replace /> : <Register />
         } />
         <Route path="/onboarding" element={
           isAuthenticated ? <Onboarding /> : <Navigate to="/login" replace />
@@ -64,7 +69,9 @@ function App() {
         <Route path="/chat" element={
           isAuthenticated ? <AIChatInterface /> : <Navigate to="/login" replace />
         } />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/settings" element={
+          isAuthenticated ? <Settings /> : <Navigate to="/login" replace />
+        } />
       </Routes>
     </Router>
   );

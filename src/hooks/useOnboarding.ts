@@ -138,7 +138,10 @@ export function useOnboarding() {
       if (!session) throw new Error('No session found');
 
       const { data, error } = await supabase.functions.invoke('chat', {
-        body: { messages: [...messages, { text: userMessage, isUser: true }] }
+        body: { 
+          messages: [...messages, { text: userMessage, isUser: true }],
+          isDiscoveryMode: true
+        }
       });
 
       if (error) throw error;
@@ -200,8 +203,7 @@ export function useOnboarding() {
 
 // Helper functions
 function determineMentorType(profile: UserProfileDB): string {
-  // For now, always return ecommerce, but we can add logic here later
-  return 'ecommerce';
+  return profile.business_type || '';
 }
 
 function getMentorIntro(mentorType: string): string {
@@ -213,9 +215,5 @@ function getMentorIntro(mentorType: string): string {
 }
 
 function getMentorWelcome(mentorType: string, userName: string): string {
-  const welcomes = {
-    ecommerce: `Hi ${userName}, I'm Eli! I've reviewed your profile and I'm excited to help you build your dropshipping business. I specialize in EU market strategies and have helped many entrepreneurs like you succeed in this space. Let's start by discussing your first steps into ecommerce. What specific questions do you have about starting a general store?`
-    // Add more welcome messages as we expand
-  };
-  return welcomes[mentorType as keyof typeof welcomes];
+  return `Hi ${userName}! I'm excited to help you build your ${mentorType} business. Let's start by discussing your goals and what specific questions you have about getting started.`;
 } 

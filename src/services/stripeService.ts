@@ -5,6 +5,9 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? '' // In production, use relative paths
   : 'http://localhost:8888'; // Use Netlify dev server port
 
+// Mock data for local development
+const MOCK_SUBSCRIPTION_STATUS = 'none';
+
 export interface CheckoutSession {
   id: string;
   url: string;
@@ -30,6 +33,15 @@ export const createCheckoutSession = async (
       successUrl,
       cancelUrl,
     });
+
+    // For local development, return a mock checkout session
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using mock checkout session for local development');
+      return {
+        id: 'mock_session_id',
+        url: 'https://stripe.com/docs/testing#cards',
+      };
+    }
 
     // Create a checkout session on your backend
     const response = await fetch(`${API_URL}/.netlify/functions/create-checkout-session`, {
@@ -71,6 +83,12 @@ export const getSubscriptionStatus = async (): Promise<string> => {
     
     if (!session?.user) {
       return 'none';
+    }
+
+    // For local development, return a mock subscription status
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using mock subscription status for local development');
+      return MOCK_SUBSCRIPTION_STATUS;
     }
 
     // Fetch subscription status from your backend

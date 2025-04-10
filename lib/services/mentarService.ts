@@ -1,5 +1,5 @@
 import { UserProfile, ChatMessage, MentorConfig } from '@/types/mentar';
-import { eliConfig } from '../mentars/eli';
+import { ecomModelConfig } from '../mentars/ecomModel';
 import { supabase } from '../supabaseClient';
 
 export class MentarService {
@@ -81,7 +81,7 @@ export class MentarService {
 
   private static selectMentor(businessType?: string): MentorConfig {
     // Add more mentor selections as they're created
-    return eliConfig; // Default to Eli for now
+    return ecomModelConfig; // Default to ecommerce model for now
   }
 
   private static buildSystemPrompt(mentor: MentorConfig, userProfile: UserProfile): string {

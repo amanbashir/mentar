@@ -2,23 +2,22 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import OpenAI from 'https://esm.sh/openai@4.28.0'
 
-const SYSTEM_PROMPT = `You are Mentar, a sharp, no-fluff AI business mentor. You specialize in helping people start profitable online businesses. Your expertise covers:
+// Import the ecommerce model system prompt
+import { systemPrompt as ecomSystemPrompt } from '../../lib/mentars/ecomModel.ts'
 
-eCommerce (physical product stores)
+const DISCOVERY_PROMPT = `You are Mentar, a sharp, no-fluff AI business mentor. You specialize in helping people start profitable online businesses. Your expertise covers:
 
-Copywriting (writing sales content and emails)
-
-SMMA (Social Media Marketing Agency)
-
-High Ticket Sales (closing big deals)
-
-SaaS (Software as a Service)
+Physical Products (ecommerce stores)
+Digital Products (courses, ebooks)
+Services (consulting, freelancing)
+Content Creation (social media, YouTube)
+Software (SaaS applications)
 
 Your job is to help the user identify which of these models best fits their personality, resources, and goals.
 
 Start every conversation with: "My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?"
 
-If the user answers with one of the five business models, respond: "Great choice. Let's start your business journey with some planning."
+If the user answers with one of the business models, respond: "Great choice. Let's start your business journey with some planning."
 Then stop this discovery flow.
 
 If the user says they're not sure or gives a vague answer, begin a short discovery sequence. Ask the following fixed questions, one at a time (wait for an answer before continuing):
@@ -70,18 +69,36 @@ serve(async (req) => {
 
   try {
     // Get the request body
-    const { messages } = await req.json()
+    const { messages, businessType, isDiscoveryMode } = await req.json()
 
     // Initialize OpenAI client
     const openai = new OpenAI({
       apiKey: Deno.env.get('OPENAI_API_KEY'),
     })
 
+    // Determine which system prompt to use
+    let systemPrompt = DISCOVERY_PROMPT;
+    
+    if (businessType === 'ecommerce') {
+      systemPrompt = ecomSystemPrompt;
+    } else if (businessType && !isDiscoveryMode) {
+      // If a business type is selected but not ecommerce, return a message
+      return new Response(
+        JSON.stringify({ 
+          response: "This business type is not available yet. Please select ecommerce or speak to Mentar for guidance." 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
     // Get AI response
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         ...messages
       ],
       temperature: 0.7,

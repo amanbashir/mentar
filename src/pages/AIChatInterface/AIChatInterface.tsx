@@ -255,7 +255,9 @@ function AIChatInterface() {
             }
           ],
           temperature: 0.7,
-          max_tokens: 500
+          max_tokens: 500,
+          businessType: currentProject.business_type,
+          isDiscoveryMode: false
         })
       });
 
@@ -296,43 +298,31 @@ function AIChatInterface() {
     }
 
     try {
-      console.log('Starting project deletion process for project ID:', projectId);
-      
       // Get the current user to verify ownership
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
-      
-      console.log('Current user ID:', user.id);
-      
+
       // First, delete all messages for this project
-      console.log('Deleting messages for project:', projectId);
       const { error: messagesError } = await supabase
         .from('messages')
         .delete()
         .eq('project_id', projectId);
 
       if (messagesError) {
-        console.error('Error deleting messages:', messagesError);
         throw messagesError;
       }
-      
-      console.log('Messages deleted successfully');
 
       // Then, delete the project
-      console.log('Deleting project:', projectId);
       const { error: projectError } = await supabase
         .from('projects')
         .delete()
         .eq('id', projectId);
 
       if (projectError) {
-        console.error('Error deleting project:', projectError);
         throw projectError;
       }
-      
-      console.log('Project deleted successfully');
 
       // Update local state
       const updatedProjects = projects.filter(p => p.id !== projectId);
@@ -352,7 +342,7 @@ function AIChatInterface() {
       }
     } catch (error: any) {
       console.error('Error deleting project:', error);
-      alert(`Failed to delete project: ${error.message || 'Unknown error'}`);
+      alert(`Failed to delete project: ${error.message}`);
     }
   };
 
@@ -433,7 +423,8 @@ function AIChatInterface() {
             }
           ],
           temperature: 0.7,
-          max_tokens: 500
+          max_tokens: 500,
+          isDiscoveryMode: true
         })
       });
 

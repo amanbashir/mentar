@@ -10,8 +10,8 @@ export async function startMentorChat(
   userProfile: UserProfile
 ): Promise<string> {
   // Check if ecommerce mentor is selected
-  if (userProfile.selectedMentor !== 'ecommerce') {
-    return "Mentor chat not available until you choose eCommerce as your skill focus.";
+  if (!userProfile.selectedMentor) {
+    return "Please select a business type to start chatting with your mentor.";
   }
 
   try {
@@ -41,7 +41,6 @@ export async function startMentorChat(
 }
 
 // Type guard for mentor types
-export function isValidMentorType(mentor: string): mentor is 'ecommerce' {
-  return mentor === 'ecommerce';
-  // Easy to extend with more mentor types
+export function isValidMentorType(mentor: string): boolean {
+  return ['ecommerce', 'saas', 'copywriting', 'media buying'].includes(mentor);
 } 

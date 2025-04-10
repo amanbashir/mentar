@@ -17,10 +17,21 @@ const Register = () => {
   const [registeredEmail, setRegisteredEmail] = useState('');
 
   useEffect(() => {
+    // Check if user is already authenticated
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/onboarding');
+      }
+    };
+    
+    checkSession();
+
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth event:', event, 'Session:', session);
-      if (event === 'SIGNED_IN' && session?.user?.email === registeredEmail) {
+      
+      if (event === 'SIGNED_IN') {
         // User has verified their email and is signed in
         navigate('/onboarding');
       }
@@ -29,7 +40,7 @@ const Register = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [registeredEmail, navigate]);
+  }, [navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
