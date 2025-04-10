@@ -163,8 +163,14 @@
   font-weight: 400;
   line-height: 1.6;
   background: none;
-  font-size: 18px;
+  font-size: 20px;
   display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.message strong {
+  font-weight: bold;
 }
 
 .message-content {
