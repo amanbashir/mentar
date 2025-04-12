@@ -89,7 +89,7 @@ serve(async (req) => {
     
     if (businessType && !isDiscoveryMode) {
       // Use the business-specific prompt when a business type is selected
-      systemPrompt = buildPrompt('stage_0', 'budget');
+      systemPrompt = buildPrompt('stage_0', 'budget', businessType as BusinessType);
     }
 
     // Get AI response

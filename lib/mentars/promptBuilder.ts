@@ -67,8 +67,8 @@ export const stepPrompts: Record<string, string> = {
   businessReason: "Why did you choose this business model?"
 };
 
-export const buildPrompt = (stage: string, step: string): string => {
-  const model = (userProfile.selectedModel || 'ecommerce') as BusinessType;
+export const buildPrompt = (stage: string, step: string, businessType?: BusinessType): string => {
+  const model = businessType || (userProfile.selectedModel || 'ecommerce') as BusinessType;
   const strategy = strategyMap[model];
   
   if (!strategy) {
