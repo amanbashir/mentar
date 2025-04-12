@@ -123,7 +123,7 @@ function AIChatInterface() {
     assistance_needed: null,
     goalIncome: null
   });
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     // Check if we have a business type from onboarding
@@ -887,36 +887,16 @@ What's your current budget for this business?`);
       The user's goal is ${currentProject.goal || 'not set yet'}.`;
       
       // Add instructions to collect missing user data if any
-      let dataCollectionInstructions = '';
-      if (missingFields && missingFields.length > 0) {
-        dataCollectionInstructions = `
-        Please try to collect the following missing user information in your response:
-        ${missingFields.join(', ')}
-        
-        Extract this information naturally from the conversation without explicitly asking for it.
-        If you can't determine a value, don't make one up.
-        `;
-      }
+      const dataCollectionInstructions = `
+When collecting user information, ask these questions one at a time in this order:
+1. What's your target monthly income goal?
+2. How many hours per week can you commit to this business?
+3. What relevant skills or experience do you have?
+4. What are your main interests or hobbies?
+5. How do you prefer to learn (videos, reading, hands-on)?
+6. When would you like to launch your business?
 
-      // Add instructions for sequential questions
-      const sequentialQuestionInstructions = `
-      You are in a conversation with the user. Based on their last message, determine which question to ask next.
-      
-      The questions should be asked in this order:
-      1. What's your current budget for this business? (e.g., $1000, $5000, etc.)
-      2. How many hours per week can you commit to building this business?
-      3. What's your main goal with this business? (e.g., replace current income, build a side hustle, etc.)
-      4. What's your dream monthly income from this business? (e.g., $5000, $10000, etc.)
-      5. What relevant skills or experience do you already have?
-      6. What are your main interests or passions that could align with this business?
-      7. What's your preferred learning style? (e.g., hands-on practice, reading, video tutorials, etc.)
-      8. What's your vision for this business in the next 6 months?
-      9. What potential challenges or blockers do you foresee?
-      10. What specific areas do you need the most help with?
-      
-      After the user answers a question, ask the next one in sequence. If they've answered all questions, 
-      provide a summary of their responses and start giving them actionable advice for their business.
-      `;
+IMPORTANT: Only ask ONE question at a time and wait for the user's response before asking the next question. Never list multiple questions or ask about vision, challenges, or areas needing help.`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -929,7 +909,7 @@ What's your current budget for this business?`);
           messages: [
             {
               role: "system",
-              content: `${systemPrompt}\n\n${businessTypeContext}\n\n${dataCollectionInstructions}\n\n${sequentialQuestionInstructions}`
+              content: `${systemPrompt}\n\n${businessTypeContext}\n\n${dataCollectionInstructions}`
             },
             ...messages.map(msg => ({
               role: msg.is_user ? "user" : "assistant",
@@ -966,7 +946,12 @@ What's your current budget for this business?`);
       await saveMessage("I apologize, but I encountered an error. Please try again.", false);
     } finally {
       setIsLoading(false);
-      inputRef.current?.focus();
+      // Ensure the input field is focused after the AI response
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
     }
   };
 
@@ -1101,16 +1086,16 @@ What's your current budget for this business?`);
       The user's goal is ${currentProject.goal || 'not set yet'}.`;
       
       // Add instructions to collect missing user data if any
-      let dataCollectionInstructions = '';
-      if (missingFields && missingFields.length > 0) {
-        dataCollectionInstructions = `
-        Please try to collect the following missing user information in your response:
-        ${missingFields.join(', ')}
-        
-        Extract this information naturally from the conversation without explicitly asking for it.
-        If you can't determine a value, don't make one up.
-        `;
-      }
+      const dataCollectionInstructions = `
+When collecting user information, ask these questions one at a time in this order:
+1. What's your target monthly income goal?
+2. How many hours per week can you commit to this business?
+3. What relevant skills or experience do you have?
+4. What are your main interests or hobbies?
+5. How do you prefer to learn (videos, reading, hands-on)?
+6. When would you like to launch your business?
+
+IMPORTANT: Only ask ONE question at a time and wait for the user's response before asking the next question. Never list multiple questions or ask about vision, challenges, or areas needing help.`;
 
       // Get AI response using the same endpoint as the main chat
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1166,6 +1151,13 @@ What's your current budget for this business?`);
       setPopupMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsPopupLoading(false);
+      // Focus the popup input field after the AI response
+      setTimeout(() => {
+        const popupInput = document.querySelector('.chat-popup-input input') as HTMLInputElement;
+        if (popupInput) {
+          popupInput.focus();
+        }
+      }, 100);
     }
   };
 
@@ -1597,15 +1589,18 @@ What's your current budget for this business?`);
             <div ref={messagesEndRef} />
           </div>
           <form onSubmit={handleSubmit} className="input-container">
-            <input
+            <textarea
               ref={inputRef}
-              type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Enter response here.."
+              className="message-input"
               disabled={isLoading}
+              rows={1}
+              autoFocus
             />
-            <button type="submit" disabled={isLoading || !inputMessage.trim()}>
+            <button type="submit" className="send-button" disabled={isLoading || !inputMessage.trim()}>
               <span className="arrow-up">↑</span>
             </button>
           </form>
