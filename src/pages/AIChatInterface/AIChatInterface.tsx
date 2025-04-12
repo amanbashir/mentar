@@ -147,20 +147,9 @@ function AIChatInterface() {
               businessTypeLower === 'agency' || 
               businessTypeLower === 'software' ||
               businessTypeLower === 'copywriting') {
-            setInitialMessage(`Hi ${userData?.first_name || 'there'}! I'm excited to help you build your ${businessType} business. Let me ask you a few questions to better understand your needs:
-
-1. What's your target monthly income goal?
-2. How many hours per week can you commit to this business?
-3. What relevant skills or experience do you have?
-4. What are your main interests or hobbies?
-5. How do you prefer to learn (videos, reading, hands-on)?
-6. When would you like to launch your business?
-
-Please answer these questions one at a time, and I'll help guide you through the process.`);
+            setInitialMessage(`Hi ${userData?.first_name || 'there'}! I'm excited to help you build your ${businessType} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
           } else {
-            setInitialMessage(`Hello ${userData?.first_name || ''}, you've chosen ${businessTypeFromState}. Let's begin your journey to success.
-
-What's your main goal with this business? This will help me provide the most relevant guidance for your specific needs.`);
+            setInitialMessage(`Hello ${userData?.first_name || 'there'}! I'm excited to help you build your ${businessTypeFromState} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
           }
         } else {
           setInitialMessage(`Hi, great choice! Let's confirm if this is a good fit for you and your goals.
@@ -244,27 +233,9 @@ What's your current budget for this business?`);
         const properBusinessType = businessTypeMap[businessTypeLower] || userData.business_type;
         
         if (properBusinessType) {
-          setInitialMessage(`Hi ${userData.first_name || 'there'}! I'm excited to help you build your ${properBusinessType} business. Let me ask you a few questions to better understand your needs:
-
-1. What's your target monthly income goal?
-2. How many hours per week can you commit to this business?
-3. What relevant skills or experience do you have?
-4. What are your main interests or hobbies?
-5. How do you prefer to learn (videos, reading, hands-on)?
-6. When would you like to launch your business?
-
-Please answer these questions one at a time, and I'll help guide you through the process.`);
+          setInitialMessage(`Hi ${userData.first_name || 'there'}! I'm excited to help you build your ${properBusinessType} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
         } else {
-          setInitialMessage(`Hello ${userData.first_name || 'there'}! I'm excited to help you build your ${userData.business_type} business. Let me ask you a few questions to better understand your needs:
-
-1. What's your target monthly income goal?
-2. How many hours per week can you commit to this business?
-3. What relevant skills or experience do you have?
-4. What are your main interests or hobbies?
-5. How do you prefer to learn (videos, reading, hands-on)?
-6. When would you like to launch your business?
-
-Please answer these questions one at a time, and I'll help guide you through the process.`);
+          setInitialMessage(`Hello ${userData.first_name || 'there'}! I'm excited to help you build your ${userData.business_type} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
         }
       } else {
         setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");
