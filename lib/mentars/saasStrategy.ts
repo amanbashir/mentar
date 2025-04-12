@@ -1,102 +1,194 @@
 export const saasStrategy = {
   stage_1: {
-    objective: "Define a real-world problem that can be solved with a simple software tool.",
+    objective: "Define and validate a real-world problem with a software solution",
     checklist: [
-      "Target industry selected (e.g. fitness, real estate, DTC brands)",
-      "Problem identified (urgent + repetitive)",
-      "Potential solution brainstormed",
-      "3 competitors identified (feature gap analyzed)",
-      "No-code MVP path considered"
+      "Target industry selected with specific niche",
+      "Problem documented with real examples",
+      "Solution mapped with core features",
+      "Competitor analysis completed",
+      "MVP development path chosen"
     ],
     aiSupport: [
-      "Use GPT to write a customer pain survey for niche validation",
-      "Generate a list of 10 real-world problems in your industry",
-      "Ask GPT to summarize 3 competitors and extract gaps",
-      "Write a positioning statement based on your offer"
-    ]
+      "Generate customer pain point survey with exact questions",
+      "Create competitor analysis template with specific metrics",
+      "Write positioning statement with market research",
+      "Build feature prioritization matrix"
+    ],
+    resources: {
+      tools: [
+        "Google Trends for market research",
+        "SimilarWeb for competitor analysis",
+        "Typeform for surveys",
+        "Notion for documentation"
+      ],
+      templates: [
+        "Customer survey template",
+        "Competitor analysis spreadsheet",
+        "Feature prioritization matrix",
+        "Problem-solution canvas"
+      ]
+    }
   },
   stage_2: {
-    objective: "Map the MVP and plan development with speed and customer feedback in mind.",
+    objective: "Build and launch MVP with customer validation",
     checklist: [
-      "MVP feature list defined (must-have only)",
-      "Wireframes or mockups created (Figma, Whimsical)",
-      "No-code tool or dev team chosen",
-      "Beta landing page live with email capture",
-      "Initial waitlist of 25–50 people"
+      "MVP features documented and prioritized",
+      "UI/UX designs completed",
+      "Development environment set up",
+      "Landing page launched",
+      "Beta users onboarded"
     ],
     aiSupport: [
-      "Use GPT to prioritize MVP features based on your solution",
-      "Generate copy for beta landing page (hero, CTA, proof)",
-      "Create waitlist pop-up copy",
-      "Draft onboarding email sequence for beta users"
-    ]
+      "Generate technical requirements document",
+      "Create user onboarding flow",
+      "Write beta testing instructions",
+      "Build feedback collection system"
+    ],
+    resources: {
+      tools: [
+        "Figma for UI/UX design",
+        "GitHub for version control",
+        "Vercel for deployment",
+        "Stripe for payments"
+      ],
+      templates: [
+        "Technical spec document",
+        "User onboarding guide",
+        "Beta testing checklist",
+        "Feedback form template"
+      ]
+    }
   },
   stage_3: {
-    objective: "Launch beta, gather feedback, and prove product-market fit.",
+    objective: "Launch beta and gather user feedback",
     checklist: [
-      "Beta cohort onboarded",
-      "Feedback loop (form or live chat) active",
-      "1–2 paying users with clear use case",
-      "Testimonial or quote captured",
-      "Initial usage tracked (daily active users, churn, etc.)"
+      "Beta users onboarded with clear instructions",
+      "Feedback system implemented",
+      "Usage analytics set up",
+      "First paying customers acquired",
+      "Testimonials collected"
     ],
     aiSupport: [
-      "Use GPT to write feedback form questions",
-      "Create beta survey email templates",
-      "Summarize user feedback into improvement priorities",
-      "Write outreach email for testimonial or review"
-    ]
+      "Create beta testing documentation",
+      "Generate user feedback templates",
+      "Write customer success emails",
+      "Build testimonial collection system"
+    ],
+    resources: {
+      tools: [
+        "Mixpanel for analytics",
+        "Intercom for user communication",
+        "Calendly for demos",
+        "Loom for video tutorials"
+      ],
+      templates: [
+        "Beta testing guide",
+        "Feedback collection form",
+        "Customer success email sequence",
+        "Testimonial request template"
+      ]
+    }
   },
   stage_4: {
-    objective: "Build a sales funnel and scale acquisition via organic + paid.",
+    objective: "Build sales funnel and scale acquisition",
     checklist: [
-      "Positioning refined (based on beta feedback)",
-      "Main site copy = problem > solution > proof > CTA",
-      "Cold outreach sequences built (email or DMs)",
-      "Content engine started (blog, Twitter, SEO)",
-      "Meta or LinkedIn ads testing pain-point driven UGC"
+      "Positioning refined with customer feedback",
+      "Sales website optimized",
+      "Outreach sequences implemented",
+      "Content marketing started",
+      "Paid advertising launched"
     ],
     aiSupport: [
-      "Use GPT to rewrite your homepage copy based on positioning",
-      "Generate 3–5 cold email flows targeting your niche",
-      "Draft blog outlines or SEO content from features list",
-      "Write ad copy for UGC or pain-driven video scripts"
-    ]
+      "Generate sales page copy",
+      "Create outreach email sequences",
+      "Write blog content calendar",
+      "Build ad campaign templates"
+    ],
+    resources: {
+      tools: [
+        "Webflow for website",
+        "Lemlist for outreach",
+        "WordPress for blog",
+        "Meta Ads Manager"
+      ],
+      templates: [
+        "Sales page structure",
+        "Cold email sequences",
+        "Blog post templates",
+        "Ad campaign briefs"
+      ]
+    }
   },
   stage_5: {
-    objective: "Systemize onboarding, support, and usage to reduce churn.",
+    objective: "Systemize operations and reduce churn",
     checklist: [
-      "Live chat + help docs added",
-      "Onboarding flow mapped (email, product tours)",
-      "Churn trigger emails set (inactivity, drop-off)",
-      "Monthly update + usage report",
-      "Support SOP built"
+      "Support system implemented",
+      "Onboarding automated",
+      "Churn prevention system built",
+      "Usage reporting automated",
+      "Support documentation created"
     ],
     aiSupport: [
-      "Use GPT to draft help doc structure and FAQ",
-      "Write onboarding emails explaining core features",
-      "Create reactivation emails for churn risk users",
-      "Build a product update email template"
-    ]
+      "Create support documentation",
+      "Generate onboarding emails",
+      "Write churn prevention scripts",
+      "Build usage report templates"
+    ],
+    resources: {
+      tools: [
+        "Zendesk for support",
+        "Customer.io for automation",
+        "Amplitude for analytics",
+        "Notion for documentation"
+      ],
+      templates: [
+        "Support SOP document",
+        "Onboarding email sequence",
+        "Churn prevention playbook",
+        "Usage report template"
+      ]
+    }
   },
   scaling: {
-    objective: "Grow to consistent MRR while keeping churn under control.",
+    objective: "Scale operations and revenue",
     levers: [
       "Affiliate program launched",
-      "B2B outbound sales rep hired",
-      "Tiered pricing tested",
-      "Segmented onboarding flows",
-      "CS team added with SLA-based support"
+      "Sales team hired and trained",
+      "Pricing strategy optimized",
+      "Customer success team built",
+      "Support operations scaled"
     ],
     delegation: {
-      phase1: ["Support Operator", "Growth Marketer", "Dev Lead"],
-      phase2: ["AE / Closer", "Community Manager", "Lifecycle Email Specialist"]
+      phase1: [
+        "Customer Support Specialist",
+        "Growth Marketing Manager",
+        "Technical Lead"
+      ],
+      phase2: [
+        "Sales Development Rep",
+        "Customer Success Manager",
+        "Marketing Operations Specialist"
+      ]
     },
     aiSupport: [
-      "Use GPT to generate onboarding paths by customer segment",
-      "Write outbound scripts for sales closers",
-      "Draft partner pitch email or affiliate page copy",
-      "Help write job posts for support and marketing hires"
-    ]
+      "Create job descriptions",
+      "Generate training materials",
+      "Write sales playbooks",
+      "Build operational documentation"
+    ],
+    resources: {
+      tools: [
+        "LinkedIn Recruiter",
+        "Salesforce CRM",
+        "HubSpot for marketing",
+        "Asana for project management"
+      ],
+      templates: [
+        "Job description templates",
+        "Training documentation",
+        "Sales playbook",
+        "Operations manual"
+      ]
+    }
   }
 };
