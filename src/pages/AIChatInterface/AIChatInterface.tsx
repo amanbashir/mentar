@@ -123,6 +123,7 @@ function AIChatInterface() {
     assistance_needed: null,
     goalIncome: null
   });
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Check if we have a business type from onboarding
@@ -146,9 +147,16 @@ function AIChatInterface() {
               businessTypeLower === 'agency' || 
               businessTypeLower === 'software' ||
               businessTypeLower === 'copywriting') {
-            setInitialMessage(`Hi ${userData?.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
+            setInitialMessage(`Hi ${userData?.first_name || 'there'}! I'm excited to help you build your ${businessType} business. Let me ask you a few questions to better understand your needs:
 
-To help me understand your starting point, please enter your current budget for this business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
+1. What's your target monthly income goal?
+2. How many hours per week can you commit to this business?
+3. What relevant skills or experience do you have?
+4. What are your main interests or hobbies?
+5. How do you prefer to learn (videos, reading, hands-on)?
+6. When would you like to launch your business?
+
+Please answer these questions one at a time, and I'll help guide you through the process.`);
           } else {
             setInitialMessage(`Hello ${userData?.first_name || ''}, you've chosen ${businessTypeFromState}. Let's begin your journey to success.
 
@@ -236,13 +244,27 @@ What's your current budget for this business?`);
         const properBusinessType = businessTypeMap[businessTypeLower] || userData.business_type;
         
         if (properBusinessType) {
-          setInitialMessage(`Hi ${userData.first_name || ''}, I'm excited to help you build your ${properBusinessType} business! Let's gather some information to create your personalized action plan.
+          setInitialMessage(`Hi ${userData.first_name || 'there'}! I'm excited to help you build your ${properBusinessType} business. Let me ask you a few questions to better understand your needs:
 
-First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`);
+1. What's your target monthly income goal?
+2. How many hours per week can you commit to this business?
+3. What relevant skills or experience do you have?
+4. What are your main interests or hobbies?
+5. How do you prefer to learn (videos, reading, hands-on)?
+6. When would you like to launch your business?
+
+Please answer these questions one at a time, and I'll help guide you through the process.`);
         } else {
-          setInitialMessage(`Hello ${userData.first_name || ''}, I'm excited to help you build your ${userData.business_type} business! Let's gather some information to create your personalized action plan.
+          setInitialMessage(`Hello ${userData.first_name || 'there'}! I'm excited to help you build your ${userData.business_type} business. Let me ask you a few questions to better understand your needs:
 
-First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`);
+1. What's your target monthly income goal?
+2. How many hours per week can you commit to this business?
+3. What relevant skills or experience do you have?
+4. What are your main interests or hobbies?
+5. How do you prefer to learn (videos, reading, hands-on)?
+6. When would you like to launch your business?
+
+Please answer these questions one at a time, and I'll help guide you through the process.`);
         }
       } else {
         setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");
@@ -948,7 +970,9 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
             }
           ],
           temperature: 0.7,
-          max_tokens: 500
+          max_tokens: 100,
+          presence_penalty: 0.6,
+          frequency_penalty: 0.6
         })
       });
 
@@ -971,6 +995,7 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
       await saveMessage("I apologize, but I encountered an error. Please try again.", false);
     } finally {
       setIsLoading(false);
+      inputRef.current?.focus();
     }
   };
 
@@ -1140,7 +1165,9 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
             }
           ],
           temperature: 0.7,
-          max_tokens: 500
+          max_tokens: 100,
+          presence_penalty: 0.6,
+          frequency_penalty: 0.6
         })
       });
 
@@ -1599,18 +1626,15 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
             <div ref={messagesEndRef} />
           </div>
           <form onSubmit={handleSubmit} className="input-container">
-            <textarea
-              ref={textareaRef}
+            <input
+              ref={inputRef}
+              type="text"
               value={inputMessage}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
+              onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Enter response here.."
-              className="message-input"
               disabled={isLoading}
-              rows={1}
-              autoFocus
             />
-            <button type="submit" className="send-button" disabled={isLoading}>
+            <button type="submit" disabled={isLoading || !inputMessage.trim()}>
               <span className="arrow-up">↑</span>
             </button>
           </form>
