@@ -120,11 +120,14 @@ export const buildPrompt = (stage: string, step: string): string => {
   return `
 ${systemPrompt}
 
+IMPORTANT CONTEXT:
+🎯 Selected Business Type: ${model.toUpperCase()}
+This user has already chosen their business type. If they provide a number in their first message, it represents their budget for this ${model} business.
+
 🧠 Current Business Model: ${model.toUpperCase()}
 📍 Stage: ${stage}, Step: ${step}
 🎯 Stage Objective: ${stageInfo.objective || "N/A"}
 🔧 AI Support Recommendations: ${aiSupportText}
-
 
 ✅ User Inputs So Far:
 ${answered || "No responses yet."}
