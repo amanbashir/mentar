@@ -96,7 +96,7 @@ serve(async (req) => {
         const firstMessage = messages[0].content;
         if (/^\d+$/.test(firstMessage.trim())) {
           // If the first message is a number, it's a budget input
-          messages[0].content = `For my ${businessType} business, my budget is ${firstMessage}`;
+          messages[0].content = `For my ${businessType} business, my budget is ${firstMessage}. I have already selected ${businessType} as my business type.`;
         }
       }
     }
