@@ -108,8 +108,7 @@ serve(async (req) => {
         { role: "system", content: systemPrompt },
         ...messages
       ],
-      temperature: 0.7,
-      max_tokens: 500
+      temperature: 0.7
     })
 
     const aiResponse = completion.choices[0]?.message?.content

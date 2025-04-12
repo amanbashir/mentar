@@ -24,8 +24,7 @@ export default async function handler(req: any, res: any) {
           content: msg.content
         }))
       ],
-      temperature: 0.7,
-      max_tokens: 500,
+      temperature: 0.7
     });
 
     const reply = completion.choices[0].message.content;

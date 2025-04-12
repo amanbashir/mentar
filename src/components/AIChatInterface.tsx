@@ -54,8 +54,7 @@ export default function AIChatInterface() {
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [systemMessage, ...chatMessages],
-        temperature: 0.7,
-        max_tokens: 150
+        temperature: 0.7
       });
 
       const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I couldn't generate a response. Please try again.";

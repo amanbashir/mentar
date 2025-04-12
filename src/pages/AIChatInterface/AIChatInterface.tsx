@@ -921,7 +921,6 @@ IMPORTANT: Only ask ONE question at a time and wait for the user's response befo
             }
           ],
           temperature: 0.7,
-          max_tokens: 100,
           presence_penalty: 0.6,
           frequency_penalty: 0.6
         })
@@ -1121,7 +1120,6 @@ IMPORTANT: Only ask ONE question at a time and wait for the user's response befo
             }
           ],
           temperature: 0.7,
-          max_tokens: 100,
           presence_penalty: 0.6,
           frequency_penalty: 0.6
         })
