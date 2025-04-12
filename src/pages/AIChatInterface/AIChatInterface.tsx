@@ -236,55 +236,11 @@ What's your current budget for this business?`);
         if (properBusinessType) {
           setInitialMessage(`Hi ${userData.first_name || ''}, I'm excited to help you build your ${properBusinessType} business! Let's gather some information to create your personalized action plan.
 
-Please answer these questions one by one:
-
-1. What's your current budget for this business? (e.g., $1000, $5000, etc.)
-
-2. How many hours per week can you commit to building this business?
-
-3. What's your main goal with this business? (e.g., replace current income, build a side hustle, etc.)
-
-4. What's your dream monthly income from this business? (e.g., $5000, $10000, etc.)
-
-5. What relevant skills or experience do you already have?
-
-6. What are your main interests or passions that could align with this business?
-
-7. What's your preferred learning style? (e.g., hands-on practice, reading, video tutorials, etc.)
-
-8. What's your vision for this business in the next 6 months?
-
-9. What potential challenges or blockers do you foresee?
-
-10. What specific areas do you need the most help with?
-
-Please provide your answers, and I'll help create a tailored plan for your success.`);
+First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`);
         } else {
           setInitialMessage(`Hello ${userData.first_name || ''}, I'm excited to help you build your ${userData.business_type} business! Let's gather some information to create your personalized action plan.
 
-Please answer these questions one by one:
-
-1. What's your current budget for this business? (e.g., $1000, $5000, etc.)
-
-2. How many hours per week can you commit to building this business?
-
-3. What's your main goal with this business? (e.g., replace current income, build a side hustle, etc.)
-
-4. What's your dream monthly income from this business? (e.g., $5000, $10000, etc.)
-
-5. What relevant skills or experience do you already have?
-
-6. What are your main interests or passions that could align with this business?
-
-7. What's your preferred learning style? (e.g., hands-on practice, reading, video tutorials, etc.)
-
-8. What's your vision for this business in the next 6 months?
-
-9. What potential challenges or blockers do you foresee?
-
-10. What specific areas do you need the most help with?
-
-Please provide your answers, and I'll help create a tailored plan for your success.`);
+First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`);
         }
       } else {
         setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");
@@ -818,7 +774,7 @@ Please provide your answers, and I'll help create a tailored plan for your succe
     }
   };
 
-  // Modify the handleSubmit function to include user data extraction
+  // Modify the handleSubmit function to handle the sequential questions
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading || !currentProject) return;
@@ -850,6 +806,26 @@ Please provide your answers, and I'll help create a tailored plan for your succe
         `;
       }
 
+      // Add instructions for sequential questions
+      const sequentialQuestionInstructions = `
+      You are in a conversation with the user. Based on their last message, determine which question to ask next.
+      
+      The questions should be asked in this order:
+      1. What's your current budget for this business? (e.g., $1000, $5000, etc.)
+      2. How many hours per week can you commit to building this business?
+      3. What's your main goal with this business? (e.g., replace current income, build a side hustle, etc.)
+      4. What's your dream monthly income from this business? (e.g., $5000, $10000, etc.)
+      5. What relevant skills or experience do you already have?
+      6. What are your main interests or passions that could align with this business?
+      7. What's your preferred learning style? (e.g., hands-on practice, reading, video tutorials, etc.)
+      8. What's your vision for this business in the next 6 months?
+      9. What potential challenges or blockers do you foresee?
+      10. What specific areas do you need the most help with?
+      
+      After the user answers a question, ask the next one in sequence. If they've answered all questions, 
+      provide a summary of their responses and start giving them actionable advice for their business.
+      `;
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -861,7 +837,7 @@ Please provide your answers, and I'll help create a tailored plan for your succe
           messages: [
             {
               role: "system",
-              content: `${systemPrompt}\n\n${businessTypeContext}\n\n${dataCollectionInstructions}`
+              content: `${systemPrompt}\n\n${businessTypeContext}\n\n${dataCollectionInstructions}\n\n${sequentialQuestionInstructions}`
             },
             ...messages.map(msg => ({
               role: msg.is_user ? "user" : "assistant",
