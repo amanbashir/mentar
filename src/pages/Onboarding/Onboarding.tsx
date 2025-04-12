@@ -115,11 +115,11 @@ const Onboarding = () => {
             className="card-image"
           />
         </div>
-        <div className="card coming-soon">
-          <h2>Coming soon</h2>
+        <div className="card" onClick={() => handleBusinessTypeSelect('copywriting')}>
+          <h2>Copywriting</h2>
           <img 
             src="/specialists/boy-with-vr.png" 
-            alt="Coming Soon Specialist" 
+            alt="Copywriting Specialist" 
             className="card-image"
           />
         </div>
