@@ -14,3 +14,8 @@ node_modules
 # DS_Store
 .DS_Store
 **/.DS_Store 
+
+# iCloud sync files
+*.icloud
+.icloud
+**/*.icloud 
