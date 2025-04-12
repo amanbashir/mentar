@@ -125,14 +125,13 @@ ${systemPrompt}
 🎯 Stage Objective: ${stageInfo.objective || "N/A"}
 🔧 AI Support Recommendations: ${aiSupportText}
 
-
 ✅ User Inputs So Far:
 ${answered || "No responses yet."}
 
 📌 Stage Checklist:
 ${formattedChecklist}
 
-Prompt the user to solve the current step. Use a high-context, workshop-style question. Help them think and decide — do not move on until confirmed.
+IMPORTANT: The user has already selected their business type (${model.toUpperCase()}). Do not ask about business type again. Focus on helping them with the current step.
 
 Prompt: ${stepPrompt}
 `;
