@@ -4,17 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import ReactMarkdown from 'react-markdown';
 import './AIChatInterface.css';
 import { systemPrompt } from '../../../lib/mentars/systemPrompt';
-import { buildPrompt } from '../../../lib/mentars/promptBuilder';
-
-interface Project {
-  id: string;
-  business_type: string;
-  created_at: string;
-  progress: number;
-  goal: string;
-  budget: string;
-  launch_date: string;
-}
+import { buildPrompt, UserData, updateProjectOutputs, updateProjectNotes, markStageCompleted, updateCurrentStep } from '../../../lib/mentars/promptBuilder';
 
 interface BusinessOverview {
   setup: string;
@@ -54,7 +44,35 @@ interface ModuleTask {
   order: number;
 }
 
-function AIChatInterface() {
+interface Project {
+  id: string;
+  user_id: string;
+  name: string;
+  project_name: string;
+  selected_model: string;
+  current_stage: string;
+  current_step: string;
+  budget: number;
+  goal: string;
+  launch_date: string;
+  progress: number;
+  outputs: Record<string, any>;
+  notes: Record<string, any>;
+  tasks_in_progress: string[];
+  completed_stages: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+// Add type for required fields
+type RequiredFields = {
+  budget: string;
+  time: string;
+  experience: string;
+  goal_income: string;
+};
+
+const AIChatInterface: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -91,15 +109,46 @@ function AIChatInterface() {
   const [moduleTasks, setModuleTasks] = useState<ModuleTask[]>([]);
   const [isEditingLaunchDate, setIsEditingLaunchDate] = useState(false);
   const [tempLaunchDate, setTempLaunchDate] = useState('');
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [showProjectSummary, setShowProjectSummary] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isCollectingUserData, setIsCollectingUserData] = useState(false);
+  const [currentDataPrompt, setCurrentDataPrompt] = useState<string | null>(null);
+  const [pendingDataFields, setPendingDataFields] = useState<string[]>([]);
 
+  // Initialize component
   useEffect(() => {
-    // Check if we have a business type from onboarding
+    const initializeComponent = async () => {
+      try {
+        setIsInitializing(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          navigate('/login');
+          return;
+        }
+
+        await fetchUserProjects();
+        setIsAuthChecked(true);
+      } catch (err) {
+        console.error('Error initializing component:', err);
+        setError('Failed to initialize the application. Please try refreshing the page.');
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    initializeComponent();
+  }, []);
+
+  // Handle business type from onboarding
+  useEffect(() => {
     const businessTypeFromState = location.state?.businessType;
     
     const initializeBusinessType = async () => {
       if (businessTypeFromState) {
         setBusinessType(businessTypeFromState);
-        // Get user's first name
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const { data: userData } = await supabase
@@ -122,15 +171,9 @@ To help me understand your starting point, please enter your current budget for 
 
 What's your main goal with this business? This will help me provide the most relevant guidance for your specific needs.`);
           }
-        } else {
-          setInitialMessage(`Hi, great choice! Let's confirm if this is a good fit for you and your goals.
-
-What's your current budget for this business?`);
         }
-        // Refresh projects list when returning from onboarding
         fetchUserProjects();
       } else {
-        // Check if user already has a business type in the database
         checkUserBusinessType();
       }
     };
@@ -138,27 +181,26 @@ What's your current budget for this business?`);
     initializeBusinessType();
   }, [location.state]);
 
+  // Handle new project from onboarding
   useEffect(() => {
-    // Handle new project from onboarding
     const newProject = location.state?.project;
     if (newProject) {
       setCurrentProject(newProject);
       fetchUserProjects();
       fetchProjectMessages(newProject.id);
-      // Clear the location state to prevent re-setting on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
+  // Load messages when current project changes
   useEffect(() => {
-    // Load messages when current project changes
     if (currentProject) {
       fetchProjectMessages(currentProject.id);
     }
   }, [currentProject?.id]);
 
+  // Handle clicking outside of dropdown
   useEffect(() => {
-    // Handle clicking outside of dropdown to close it
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
@@ -168,6 +210,23 @@ What's your current budget for this business?`);
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Scroll messages to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Check user data on mount
+  useEffect(() => {
+    checkAndCollectUserData();
+  }, []);
+
+  // Fetch module tasks when current project changes
+  useEffect(() => {
+    if (currentProject) {
+      fetchModuleTasks();
+    }
+  }, [currentProject]);
 
   const checkUserBusinessType = async () => {
     try {
@@ -221,34 +280,6 @@ What's your main goal with this business? This will help me provide the most rel
     }
   };
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        console.log('Checking auth...');
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          console.log('No session found, redirecting to login');
-          navigate('/login');
-          return;
-        }
-
-        console.log('Session found:', session.user.id);
-        setIsAuthChecked(true);
-        fetchUserProjects();
-      } catch (error) {
-        console.error('Error checking auth:', error);
-        navigate('/login');
-      }
-    };
-    
-    checkAuth();
-  }, []);
-
   const fetchUserProjects = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -267,6 +298,7 @@ What's your main goal with this business? This will help me provide the most rel
 
       if (error) {
         console.error('Error fetching projects:', error);
+        setError('Failed to fetch projects. Please try again.');
         return;
       }
 
@@ -293,6 +325,7 @@ What's your main goal with this business? This will help me provide the most rel
       }
     } catch (error) {
       console.error('Error in fetchUserProjects:', error);
+      setError('Failed to fetch projects. Please try again.');
       setProjects([]);
       setCurrentProject(null);
     }
@@ -342,16 +375,88 @@ What's your main goal with this business? This will help me provide the most rel
     }
   };
 
-  const handleProjectSwitch = (project: Project) => {
-    console.log('Switching to project:', project);
-    setCurrentProject(project);
-    setShowDropdown(false);
+  const fetchUserData = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      if (data) setUserData(data);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
   };
 
-  const handleNewProject = () => {
-    setShowDropdown(false);
-    // Use replace to prevent back navigation issues
-    navigate('/onboarding', { replace: true });
+  const handleProjectSwitch = async (project: Project) => {
+    try {
+      setCurrentProject(project);
+      setShowDropdown(false);
+      
+      // Fetch user data for the project
+      await fetchUserData(project.user_id);
+      
+      // Fetch module tasks for the project
+      await fetchModuleTasks();
+      
+      // Clear messages when switching projects
+      setMessages([]);
+      
+      // Set initial message based on project stage
+      if (project.current_stage === 'setup') {
+        setInitialMessage(`Welcome to your ${project.selected_model} project! Let's get started by setting up your business.`);
+      } else {
+        setInitialMessage(`Welcome back to your ${project.selected_model} project! You're currently in the ${project.current_stage} stage.`);
+      }
+    } catch (error) {
+      console.error('Error switching projects:', error);
+    }
+  };
+
+  const handleNewProject = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/login');
+        return;
+      }
+
+      const newProject = {
+        user_id: session.user.id,
+        name: '',
+        project_name: '',
+        selected_model: 'ecommerce',
+        current_stage: 'setup',
+        current_step: 'initial',
+        completed_stages: [],
+        outputs: {},
+        notes: {},
+        tasks_in_progress: [],
+        budget: 0,
+        goal: '',
+        launch_date: '',
+        progress: 0
+      };
+
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([newProject])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setProjects([data, ...projects]);
+        setCurrentProject(data);
+      }
+
+      setShowDropdown(false);
+    } catch (error) {
+      console.error('Error creating new project:', error);
+    }
   };
 
   const handleSettings = () => {
@@ -408,6 +513,60 @@ What's your main goal with this business? This will help me provide the most rel
     }
   };
 
+  // Function to extract business overview from AI responses
+  const extractBusinessOverview = (aiResponse: string) => {
+    if (!currentProject) return;
+
+    // Look for setup information
+    const setupRegex = /(?:setup|start|begin|launch|establish) (.*?)(?:\.|\n|$)/i;
+    const setupMatch = aiResponse.match(setupRegex);
+    if (setupMatch && !businessOverview.setup) {
+      updateBusinessOverview('setup', setupMatch[1].trim());
+    }
+
+    // Look for financial information
+    const financialsRegex = /(?:financial|budget|cost|investment|spending) (.*?)(?:\.|\n|$)/i;
+    const financialsMatch = aiResponse.match(financialsRegex);
+    if (financialsMatch && !businessOverview.financials) {
+      updateBusinessOverview('financials', financialsMatch[1].trim());
+    }
+
+    // Look for timeline information
+    const timelineRegex = /(?:timeline|schedule|plan|deadline|milestone) (.*?)(?:\.|\n|$)/i;
+    const timelineMatch = aiResponse.match(timelineRegex);
+    if (timelineMatch && !businessOverview.timeline) {
+      updateBusinessOverview('timeline', timelineMatch[1].trim());
+    }
+
+    // Look for earnings information
+    const earningsRegex = /(?:earnings|revenue|income|profit|sales) (.*?)(?:\.|\n|$)/i;
+    const earningsMatch = aiResponse.match(earningsRegex);
+    if (earningsMatch && !businessOverview.earnings) {
+      updateBusinessOverview('earnings', earningsMatch[1].trim());
+    }
+
+    // Look for dreams/goals information
+    const dreamsRegex = /(?:dream|goal|vision|aspiration|ambition) (.*?)(?:\.|\n|$)/i;
+    const dreamsMatch = aiResponse.match(dreamsRegex);
+    if (dreamsMatch && !businessOverview.dreams) {
+      updateBusinessOverview('dreams', dreamsMatch[1].trim());
+    }
+
+    // Look for alignment information
+    const alignmentRegex = /(?:alignment|fit|match|compatibility|suitability) (.*?)(?:\.|\n|$)/i;
+    const alignmentMatch = aiResponse.match(alignmentRegex);
+    if (alignmentMatch && !businessOverview.alignment) {
+      updateBusinessOverview('alignment', alignmentMatch[1].trim());
+    }
+
+    // Look for readiness information
+    const readinessRegex = /(?:readiness|preparedness|capability|ability|skill) (.*?)(?:\.|\n|$)/i;
+    const readinessMatch = aiResponse.match(readinessRegex);
+    if (readinessMatch && !businessOverview.readiness) {
+      updateBusinessOverview('readiness', readinessMatch[1].trim());
+    }
+  };
+
   // Function to extract budget and goal from AI responses
   const extractBudgetAndGoal = (aiResponse: string) => {
     if (!currentProject) return;
@@ -416,7 +575,7 @@ What's your main goal with this business? This will help me provide the most rel
     const budgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
     const budgetMatch = aiResponse.match(budgetRegex);
     
-    if (budgetMatch && !currentProject.budget) {
+    if (budgetMatch) {
       const budget = budgetMatch[0].replace(/\s*dollars?|USD/i, '');
       handleBudgetEdit(budget);
     }
@@ -425,13 +584,26 @@ What's your main goal with this business? This will help me provide the most rel
     const goalRegex = /(?:your goal is|main goal is|goal to|aiming to|want to) (.*?)(?:\.|\n|$)/i;
     const goalMatch = aiResponse.match(goalRegex);
     
-    if (goalMatch && !currentProject.goal) {
+    if (goalMatch) {
       const goal = goalMatch[1].trim();
       handleGoalEdit(goal);
     }
 
+    // Look for launch date mentions
+    const launchDateRegex = /(?:launch date|release date|go live|start date) (?:is|will be|set to|scheduled for) (.*?)(?:\.|\n|$)/i;
+    const launchDateMatch = aiResponse.match(launchDateRegex);
+    
+    if (launchDateMatch) {
+      const dateStr = launchDateMatch[1].trim();
+      // Try to parse the date string
+      const parsedDate = new Date(dateStr);
+      if (!isNaN(parsedDate.getTime())) {
+        handleLaunchDateEdit(parsedDate.toISOString().split('T')[0]);
+      }
+    }
+
     // Ensure the response is business type-specific
-    if (currentProject.business_type === 'ecommerce' && 
+    if (currentProject.selected_model === 'ecommerce' && 
         (aiResponse.toLowerCase().includes('copywriting') || 
          aiResponse.toLowerCase().includes('software') || 
          aiResponse.toLowerCase().includes('agency'))) {
@@ -442,7 +614,7 @@ What's your main goal with this business? This will help me provide the most rel
       return correctedResponse;
     }
     
-    if (currentProject.business_type === 'copywriting' && 
+    if (currentProject.selected_model === 'copywriting' && 
         (aiResponse.toLowerCase().includes('ecommerce') || 
          aiResponse.toLowerCase().includes('software') || 
          aiResponse.toLowerCase().includes('agency'))) {
@@ -452,7 +624,7 @@ What's your main goal with this business? This will help me provide the most rel
       return correctedResponse;
     }
     
-    if (currentProject.business_type === 'agency' && 
+    if (currentProject.selected_model === 'agency' && 
         (aiResponse.toLowerCase().includes('ecommerce') || 
          aiResponse.toLowerCase().includes('copywriting') || 
          aiResponse.toLowerCase().includes('software'))) {
@@ -462,7 +634,7 @@ What's your main goal with this business? This will help me provide the most rel
       return correctedResponse;
     }
     
-    if (currentProject.business_type === 'software' && 
+    if (currentProject.selected_model === 'software' && 
         (aiResponse.toLowerCase().includes('ecommerce') || 
          aiResponse.toLowerCase().includes('copywriting') || 
          aiResponse.toLowerCase().includes('agency'))) {
@@ -473,7 +645,7 @@ What's your main goal with this business? This will help me provide the most rel
     }
   };
 
-  // Update the handleSubmit function to include budget and goal extraction
+  // Update the handleSubmit function to use the new prompt builder and save outputs
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading || !currentProject) return;
@@ -485,10 +657,14 @@ What's your main goal with this business? This will help me provide the most rel
     try {
       await saveMessage(userMessage, true);
 
-      // Build the system prompt with business type context
-      const businessTypeContext = `You are helping the user build a ${currentProject.business_type} business. 
-      The user's budget is ${currentProject.budget || 'not set yet'}. 
-      The user's goal is ${currentProject.goal || 'not set yet'}.`;
+      // Get the current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
+      // Build the prompt using the new function
+      const prompt = await buildPrompt(session.user.id, currentProject.id);
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -501,7 +677,7 @@ What's your main goal with this business? This will help me provide the most rel
           messages: [
             {
               role: "system",
-              content: `${systemPrompt}\n\n${businessTypeContext}`
+              content: prompt
             },
             ...messages.map(msg => ({
               role: msg.is_user ? "user" : "assistant",
@@ -526,12 +702,107 @@ What's your main goal with this business? This will help me provide the most rel
       
       await saveMessage(aiResponse, false);
       await extractAndSaveTasks(aiResponse);
-      extractBudgetAndGoal(aiResponse);
+      
+      // Extract and save outputs from the AI response
+      await extractAndSaveOutputs(aiResponse);
+      
+      // Extract and save notes from the AI response
+      await extractAndSaveNotes(aiResponse);
     } catch (error) {
       console.error('Error in chat:', error);
       await saveMessage("I apologize, but I encountered an error. Please try again.", false);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to extract and save outputs from AI response
+  const extractAndSaveOutputs = async (aiResponse: string) => {
+    if (!currentProject) return;
+
+    try {
+      // Get the current outputs
+      const currentOutputs = currentProject.outputs || {};
+      
+      // Extract outputs based on the current step
+      const step = currentProject.current_step;
+      
+      // Look for specific patterns in the AI response that indicate outputs
+      // This is a simplified example - you would need to customize this based on your specific needs
+      if (step === 'budget' && !currentOutputs.budget) {
+        const budgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
+        const budgetMatch = aiResponse.match(budgetRegex);
+        if (budgetMatch) {
+          currentOutputs.budget = budgetMatch[0].replace(/\s*dollars?|USD/i, '');
+        }
+      } else if (step === 'goalIncome' && !currentOutputs.goalIncome) {
+        const goalRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD) per month/gi;
+        const goalMatch = aiResponse.match(goalRegex);
+        if (goalMatch) {
+          currentOutputs.goalIncome = goalMatch[0].replace(/\s*dollars?|USD per month/i, '');
+        }
+      } else if (step === 'businessReason' && !currentOutputs.businessReason) {
+        const reasonRegex = /(?:because|reason|chose|selected|interested in) (.*?)(?:\.|\n|$)/i;
+        const reasonMatch = aiResponse.match(reasonRegex);
+        if (reasonMatch) {
+          currentOutputs.businessReason = reasonMatch[1].trim();
+        }
+      }
+      
+      // If we have new outputs, update the project
+      if (Object.keys(currentOutputs).length > 0) {
+        await updateProjectOutputs(currentProject.id, currentOutputs);
+        
+        // Update the local state
+        setCurrentProject({
+          ...currentProject,
+          outputs: currentOutputs
+        });
+      }
+    } catch (error) {
+      console.error('Error in extractAndSaveOutputs:', error);
+    }
+  };
+
+  // Function to extract and save notes from AI response
+  const extractAndSaveNotes = async (aiResponse: string) => {
+    if (!currentProject) return;
+
+    try {
+      // Get the current notes
+      const currentNotes = currentProject.notes || {};
+      
+      // Extract notes based on the current step
+      const step = currentProject.current_step;
+      
+      // Look for specific patterns in the AI response that indicate notes
+      // This is a simplified example - you would need to customize this based on your specific needs
+      if (step === 'budget' && !currentNotes.budgetReasoning) {
+        const reasoningRegex = /(?:because|reason|consider|think|believe) (.*?)(?:\.|\n|$)/i;
+        const reasoningMatch = aiResponse.match(reasoningRegex);
+        if (reasoningMatch) {
+          currentNotes.budgetReasoning = reasoningMatch[1].trim();
+        }
+      } else if (step === 'goalIncome' && !currentNotes.goalReasoning) {
+        const reasoningRegex = /(?:because|reason|consider|think|believe) (.*?)(?:\.|\n|$)/i;
+        const reasoningMatch = aiResponse.match(reasoningRegex);
+        if (reasoningMatch) {
+          currentNotes.goalReasoning = reasoningMatch[1].trim();
+        }
+      }
+      
+      // If we have new notes, update the project
+      if (Object.keys(currentNotes).length > 0) {
+        await updateProjectNotes(currentProject.id, currentNotes);
+        
+        // Update the local state
+        setCurrentProject({
+          ...currentProject,
+          notes: currentNotes
+        });
+      }
+    } catch (error) {
+      console.error('Error in extractAndSaveNotes:', error);
     }
   };
 
@@ -657,9 +928,9 @@ What's your main goal with this business? This will help me provide the most rel
 
     try {
       // Build the system prompt with business type context
-      const businessTypeContext = `You are helping the user build a ${currentProject.business_type} business. 
-      The user's budget is ${currentProject.budget || 'not set yet'}. 
-      The user's goal is ${currentProject.goal || 'not set yet'}.`;
+      const businessTypeContext = `You are helping the user build a ${currentProject.selected_model} business. 
+      The user's budget is ${currentProject.outputs?.budget || 'not set yet'}. 
+      The user's goal is ${currentProject.outputs?.goalIncome || 'not set yet'}.`;
 
       // Get AI response using the same endpoint as the main chat
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -718,12 +989,12 @@ What's your main goal with this business? This will help me provide the most rel
     try {
       const { error } = await supabase
         .from('projects')
-        .update({ goal: newGoal })
+        .update({ outputs: { ...currentProject.outputs, goalIncome: newGoal } })
         .eq('id', currentProject.id);
 
       if (error) throw error;
       
-      setCurrentProject({ ...currentProject, goal: newGoal });
+      setCurrentProject({ ...currentProject, outputs: { ...currentProject.outputs, goalIncome: newGoal } });
       setIsEditingGoal(false);
     } catch (error) {
       console.error('Error updating goal:', error);
@@ -735,12 +1006,12 @@ What's your main goal with this business? This will help me provide the most rel
     try {
       const { error } = await supabase
         .from('projects')
-        .update({ budget: newBudget })
+        .update({ outputs: { ...currentProject.outputs, budget: newBudget } })
         .eq('id', currentProject.id);
 
       if (error) throw error;
       
-      setCurrentProject({ ...currentProject, budget: newBudget });
+      setCurrentProject({ ...currentProject, outputs: { ...currentProject.outputs, budget: newBudget } });
       setIsEditingBudget(false);
     } catch (error) {
       console.error('Error updating budget:', error);
@@ -752,12 +1023,12 @@ What's your main goal with this business? This will help me provide the most rel
     try {
       const { error } = await supabase
         .from('projects')
-        .update({ launch_date: newDate })
+        .update({ outputs: { ...currentProject.outputs, launchDate: newDate } })
         .eq('id', currentProject.id);
 
       if (error) throw error;
       
-      setCurrentProject({ ...currentProject, launch_date: newDate });
+      setCurrentProject({ ...currentProject, outputs: { ...currentProject.outputs, launchDate: newDate } });
       setIsEditingLaunchDate(false);
     } catch (error) {
       console.error('Error updating launch date:', error);
@@ -784,12 +1055,14 @@ What's your main goal with this business? This will help me provide the most rel
   // Add effect to log when projects or dropdown state changes
   useEffect(() => {
     console.log('Projects updated:', projects);
+    console.log('Current project:', currentProject);
     console.log('Dropdown state:', showDropdown);
-  }, [projects, showDropdown]);
+  }, [projects, currentProject, showDropdown]);
 
   // Update the dropdown toggle handler
   const toggleDropdown = () => {
     console.log('Toggling dropdown. Current state:', !showDropdown);
+    console.log('Available projects:', projects);
     setShowDropdown(!showDropdown);
   };
 
@@ -816,13 +1089,6 @@ What's your main goal with this business? This will help me provide the most rel
       console.error('Error in fetchModuleTasks:', error);
     }
   };
-
-  // Add effect to fetch tasks when current project changes
-  useEffect(() => {
-    if (currentProject) {
-      fetchModuleTasks();
-    }
-  }, [currentProject]);
 
   // Function to handle task completion
   const handleTaskCompletion = async (taskId: string, completed: boolean) => {
@@ -873,13 +1139,217 @@ What's your main goal with this business? This will help me provide the most rel
     return { days, hours };
   };
 
+  // Update the checkAndCollectUserData function
+  const checkAndCollectUserData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: userData, error } = await supabase
+        .from('userData')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user data:', error);
+        return;
+      }
+
+      // Check if we have all required data
+      const hasAllData = userData?.budget && userData?.time && userData?.experience && userData?.goal_income;
+
+      if (!hasAllData) {
+        setIsCollectingUserData(true);
+        // Let the AI handle the data collection through the chat
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "system",
+                content: `You are helping collect user data for their business project. The user needs to provide information about their budget, time commitment, experience level, and income goals. Ask for this information one at a time in a conversational way. Start with the first missing piece of information.`
+              },
+              {
+                role: "user",
+                content: "Please help me collect the necessary information for my business project."
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 500
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get AI response');
+        }
+
+        const data = await response.json();
+        const aiResponse = data.choices[0].message.content;
+        setCurrentDataPrompt(aiResponse);
+      }
+    } catch (error) {
+      console.error('Error in checkAndCollectUserData:', error);
+    }
+  };
+
+  // Update the handleUserDataSubmission function
+  const handleUserDataSubmission = async (value: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !currentDataPrompt) return;
+
+      // Get AI's analysis of the user's response
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: `Analyze the user's response and determine which piece of information it contains (budget, time, experience, or goal_income). Return a JSON object with the field name and value. If the response doesn't contain any of these, return null.`
+            },
+            {
+              role: "user",
+              content: value
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      const analysis = JSON.parse(data.choices[0].message.content);
+
+      if (analysis) {
+        // Update the user data in the database
+        const { error } = await supabase
+          .from('userData')
+          .update({ [analysis.field]: analysis.value })
+          .eq('user_id', session.user.id);
+
+        if (error) {
+          console.error('Error updating user data:', error);
+          return;
+        }
+
+        // Update local state
+        setUserData(prev => prev ? { ...prev, [analysis.field]: analysis.value } : null);
+
+        // Get the next question from the AI
+        const nextResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "system",
+                content: `The user has provided their ${analysis.field}. Ask for the next piece of information needed (budget, time, experience, or goal_income) in a conversational way.`
+              },
+              {
+                role: "user",
+                content: value
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 500
+          })
+        });
+
+        if (!nextResponse.ok) {
+          throw new Error('Failed to get AI response');
+        }
+
+        const nextData = await nextResponse.json();
+        const nextQuestion = nextData.choices[0].message.content;
+        setCurrentDataPrompt(nextQuestion);
+      }
+    } catch (error) {
+      console.error('Error in handleUserDataSubmission:', error);
+    }
+  };
+
   return (
     <div className="page-container">
       {/* Business Overview Panel */}
       {currentProject && (
         <div className="business-overview">
-          <h2>Business Summary</h2>
+          <h2>Business Overview</h2>
           <div className="overview-content">
+            <div className="project-info-section">
+              <h3>Project Info</h3>
+              <div className="info-item">
+                <strong>Project Name:</strong> {currentProject?.project_name || 'Unnamed Project'}
+              </div>
+              <div className="info-item">
+                <strong>Business Model:</strong> {currentProject?.selected_model?.toUpperCase() || 'Not Set'}
+              </div>
+              <div className="info-item">
+                <strong>Current Stage:</strong> {currentProject?.current_stage || 'Not Set'}
+              </div>
+              <div className="info-item">
+                <strong>Current Step:</strong> {currentProject?.current_step || 'Not Set'}
+              </div>
+            </div>
+
+            {userData && (
+              <div className="user-info-section">
+                <h3>User Info</h3>
+                <div className="info-item">
+                  <strong>Budget:</strong> {userData.budget || 'Not set'}
+                </div>
+                <div className="info-item">
+                  <strong>Time:</strong> {userData.time || 'Not set'}
+                </div>
+                <div className="info-item">
+                  <strong>Experience:</strong> {userData.experience || 'Not set'}
+                </div>
+                <div className="info-item">
+                  <strong>Goal Income:</strong> {userData.goal_income || 'Not set'}
+                </div>
+              </div>
+            )}
+
+            {currentProject?.outputs && Object.keys(currentProject.outputs).length > 0 && (
+              <div className="outputs-section">
+                <h3>Outputs</h3>
+                {Object.entries(currentProject.outputs).map(([key, value]) => (
+                  <div key={key} className="output-item">
+                    <strong>{key}:</strong> {typeof value === 'object' ? JSON.stringify(value) : value}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {currentProject?.completed_stages && currentProject.completed_stages.length > 0 && (
+              <div className="completed-stages-section">
+                <h3>Completed Stages</h3>
+                <ul className="completed-stages-list">
+                  {currentProject.completed_stages.map((stage, index) => (
+                    <li key={index}>{stage}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {businessOverview.setup && (
               <div className="overview-item">
                 <strong>Setup:</strong> {businessOverview.setup}
@@ -926,7 +1396,7 @@ What's your main goal with this business? This will help me provide the most rel
         </div>
         {showDropdown && (
           <div className="dropdown-menu" ref={dropdownRef}>
-            {projects.length > 0 ? (
+            {projects && projects.length > 0 ? (
               <>
                 {projects.map((project) => (
                   <div
@@ -935,7 +1405,7 @@ What's your main goal with this business? This will help me provide the most rel
                     onClick={() => handleProjectSwitch(project)}
                   >
                     <div className="project-item">
-                      <span className="project-name">{project.business_type}</span>
+                      <span className="project-name">{project.project_name || project.selected_model || 'Unnamed Project'}</span>
                       <span
                         className="delete-project"
                         onClick={(e) => handleDeleteProject(project.id, e)}
@@ -1007,11 +1477,11 @@ What's your main goal with this business? This will help me provide the most rel
               <div
                 className="budget-display"
                 onClick={() => {
-                  setTempBudget(currentProject?.budget || '');
+                  setTempBudget(currentProject?.outputs?.budget || '');
                   setIsEditingBudget(true);
                 }}
               >
-                {currentProject?.budget || 'Click to set budget'}
+                {currentProject?.outputs?.budget || 'Click to set budget'}
               </div>
             )}
           </div>
@@ -1021,10 +1491,10 @@ What's your main goal with this business? This will help me provide the most rel
             <div className="progress-bar">
               <div
                 className="progress-fill"
-                style={{ width: `${currentProject?.progress || 0}%` }}
+                style={{ width: `${(currentProject?.completed_stages?.length || 0) * 20}%` }}
               ></div>
             </div>
-            <div className="progress-text">{currentProject?.progress || 0}% Complete</div>
+            <div className="progress-text">{Math.min((currentProject?.completed_stages?.length || 0) * 20, 100)}% Complete</div>
           </div>
 
           <div className="goal-container">
@@ -1048,25 +1518,25 @@ What's your main goal with this business? This will help me provide the most rel
               <div
                 className="goal-display"
                 onClick={() => {
-                  setTempGoal(currentProject?.goal || '');
+                  setTempGoal(currentProject?.outputs?.goalIncome || '');
                   setIsEditingGoal(true);
                 }}
               >
-                {currentProject?.goal || 'Click to set goal'}
+                {currentProject?.outputs?.goalIncome || 'Click to set goal'}
               </div>
             )}
           </div>
 
           <div className="launch-date-container">
             <h2>Launch Date</h2>
-            {currentProject?.launch_date ? (
+            {currentProject?.outputs?.launchDate ? (
               <>
                 <div className="launch-date-display">
-                  {new Date(currentProject.launch_date).toLocaleDateString()}
+                  {new Date(currentProject.outputs.launchDate).toLocaleDateString()}
                 </div>
                 <div className="countdown-timer">
                   {(() => {
-                    const { days, hours } = calculateTimeRemaining(currentProject.launch_date);
+                    const { days, hours } = calculateTimeRemaining(currentProject.outputs.launchDate);
                     return (
                       <>
                         <div className="countdown-item">
@@ -1129,21 +1599,37 @@ What's your main goal with this business? This will help me provide the most rel
                 </div>
               </div>
             )}
+            {isCollectingUserData && currentDataPrompt && (
+              <div className="message bot">
+                <div className="message-content">
+                  <h3>Quick Question</h3>
+                  <p>{currentDataPrompt}</p>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
-          <form onSubmit={handleSubmit} className="input-container">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (isCollectingUserData && currentDataPrompt) {
+              handleUserDataSubmission(inputMessage.trim());
+              setInputMessage('');
+            } else {
+              handleSubmit(e);
+            }
+          }} className="input-container">
             <textarea
               ref={textareaRef}
               value={inputMessage}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Enter response here.."
+              placeholder={isCollectingUserData ? "Enter your answer..." : "Enter response here.."}
               className="message-input"
               disabled={isLoading}
               rows={1}
               autoFocus
             />
-            <button type="submit" className="send-button" disabled={isLoading}>
+            <button type="submit" className="send-button" disabled={isLoading || !inputMessage.trim()}>
               <span className="arrow-up">↑</span>
             </button>
           </form>
@@ -1198,6 +1684,6 @@ What's your main goal with this business? This will help me provide the most rel
       </div>
     </div>
   );
-}
+};
 
 export default AIChatInterface;
