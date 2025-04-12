@@ -89,7 +89,16 @@ serve(async (req) => {
     
     if (businessType && !isDiscoveryMode) {
       // Use the business-specific prompt when a business type is selected
-      systemPrompt = buildPrompt('stage_0', 'budget', businessType as BusinessType);
+      systemPrompt = buildPrompt('stage_0', 'budget', businessType);
+      
+      // Add business type context to the first message if it's a budget input
+      if (messages.length > 0 && messages[0].role === 'user') {
+        const firstMessage = messages[0].content;
+        if (/^\d+$/.test(firstMessage.trim())) {
+          // If the first message is a number, it's a budget input
+          messages[0].content = `For my ${businessType} business, my budget is ${firstMessage}`;
+        }
+      }
     }
 
     // Get AI response
