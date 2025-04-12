@@ -70,20 +70,31 @@ export const stepPrompts: Record<string, string> = {
 export const buildPrompt = (stage: string, step: string): string => {
   const model = (userProfile.selectedModel || 'ecommerce') as BusinessType;
   const strategy = strategyMap[model];
-  const stageInfo = strategy[stage];
+  
+  if (!strategy) {
+    console.error(`No strategy found for model: ${model}`);
+    return systemPrompt;
+  }
 
-  const aiSupportText = stageInfo?.aiSupport?.map((a: string) => `🧠 ${a}`).join("\\n") || "";
+  const stageInfo = strategy[stage];
+  
+  if (!stageInfo) {
+    console.error(`No stage info found for stage: ${stage}`);
+    return systemPrompt;
+  }
+
+  const aiSupportText = stageInfo.aiSupport?.map((a: string) => `🧠 ${a}`).join("\n") || "";
   
   // Handle different stage types
   let checklist: string[] = [];
   if (stage === 'scaling') {
-    checklist = (stageInfo as ScalingStageInfo).levers;
+    checklist = (stageInfo as ScalingStageInfo).levers || [];
   } else if ('outreachChecklist' in stageInfo) {
-    checklist = (stageInfo as OutreachStageInfo).outreachChecklist;
+    checklist = (stageInfo as OutreachStageInfo).outreachChecklist || [];
   } else if ('clientDeliverySteps' in stageInfo) {
-    checklist = (stageInfo as DeliveryStageInfo).clientDeliverySteps;
+    checklist = (stageInfo as DeliveryStageInfo).clientDeliverySteps || [];
   } else if ('dailySystems' in stageInfo) {
-    checklist = (stageInfo as SystemsStageInfo).dailySystems;
+    checklist = (stageInfo as SystemsStageInfo).dailySystems || [];
   } else {
     const regularStage = stageInfo as RegularStageInfo;
     checklist = regularStage.checklist ||
@@ -111,7 +122,7 @@ ${systemPrompt}
 
 🧠 Current Business Model: ${model.toUpperCase()}
 📍 Stage: ${stage}, Step: ${step}
-🎯 Stage Objective: ${stageInfo?.objective || "N/A"}
+🎯 Stage Objective: ${stageInfo.objective || "N/A"}
 🔧 AI Support Recommendations: ${aiSupportText}
 
 
