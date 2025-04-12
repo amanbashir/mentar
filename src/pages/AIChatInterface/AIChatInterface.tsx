@@ -396,16 +396,20 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
     if (!currentProject) return;
 
     try {
-      // Look for task lists in the AI response
-      const taskRegex = /(?:^\d+\.\s+|\n\d+\.\s+)(.*?)(?=\n\d+\.|$)/gm;
+      // Enhanced regex to catch tasks in various formats
+      const taskRegex = /(?:^\d+\.\s+|\n\d+\.\s+|^[-•]\s+|\n[-•]\s+|^Task\s*\d*:\s+|\nTask\s*\d*:\s+)(.*?)(?=(?:\n\d+\.|\n[-•]|\nTask\s*\d*:)|$)/gm;
       const matches = aiResponse.matchAll(taskRegex);
-      const tasks = Array.from(matches, m => m[1]?.trim()).filter(Boolean);
+      const tasks = Array.from(matches, m => m[1]?.trim())
+        .filter(Boolean)
+        .filter(task => task.length >= 3); // Filter out very short strings that might not be tasks
 
       if (tasks.length > 0) {
-        // Get current tasks count to determine order
+        console.log('Extracted tasks:', tasks);
+
+        // Get current tasks to determine order and check for duplicates
         const { data: existingTasks, error: countError } = await supabase
           .from('module_tasks')
-          .select('id')
+          .select('title, id')
           .eq('project_id', currentProject.id);
 
         if (countError) {
@@ -414,13 +418,22 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
         }
 
         const startOrder = (existingTasks?.length || 0) + 1;
+        const existingTitles = new Set(existingTasks?.map(t => t.title.toLowerCase()));
 
-        // Create new tasks
-        const tasksToInsert = tasks.map((title, index) => ({
+        // Filter out duplicate tasks and create new ones
+        const newTasks = tasks.filter(title => !existingTitles.has(title.toLowerCase()));
+        
+        if (newTasks.length === 0) {
+          console.log('No new unique tasks to add');
+          return;
+        }
+
+        const tasksToInsert = newTasks.map((title, index) => ({
           project_id: currentProject.id,
           title,
           completed: false,
-          order: startOrder + index
+          order: startOrder + index,
+          created_at: new Date().toISOString()
         }));
 
         const { error } = await supabase
@@ -1247,8 +1260,8 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
         .from('module_tasks')
         .select('*')
         .eq('project_id', currentProject.id)
-        .order('order', { ascending: true })
-        .limit(5);  // Only show 5 most recent tasks
+        .order('completed', { ascending: true })
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching module tasks:', error);
