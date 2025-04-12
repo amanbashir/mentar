@@ -137,3 +137,41 @@ Prompt the user to solve the current step. Use a high-context, workshop-style qu
 Prompt: ${stepPrompt}
 `;
 };
+
+// Add UserData type
+export interface UserData {
+  first_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  business_type: string | null;
+  goals: string | null;
+  resources: { capital: string | null; time_commitment: string | null } | null;
+  interests: string | null;
+  hobbies: string | null;
+  learning_style: string | null;
+  vision: string | null;
+  starting_point: { capital: number | null; timeAvailable: string | null; skills: string[] } | null;
+  blockers: string[] | null;
+  assistance_needed: string | null;
+}
+
+// Add project management functions
+export const updateProjectOutputs = async (outputs: any) => {
+  // Implementation will be added later
+  console.log('Updating project outputs:', outputs);
+};
+
+export const updateProjectNotes = async (notes: string) => {
+  // Implementation will be added later
+  console.log('Updating project notes:', notes);
+};
+
+export const markStageCompleted = async (stage: string) => {
+  // Implementation will be added later
+  console.log('Marking stage as completed:', stage);
+};
+
+export const updateCurrentStep = async (step: string) => {
+  // Implementation will be added later
+  console.log('Updating current step:', step);
+};

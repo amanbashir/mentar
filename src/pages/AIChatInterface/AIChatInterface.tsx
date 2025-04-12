@@ -647,7 +647,7 @@ What's your main goal with this business? This will help me provide the most rel
       }
 
       // Update local state
-      setUserData(prev => ({ ...prev, ...updates }));
+      setUserData((prev: typeof userData) => ({ ...prev, ...updates }));
     } catch (error) {
       console.error('Error in updateUserData:', error);
     }
