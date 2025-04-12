@@ -68,11 +68,16 @@ export const stepPrompts: Record<string, string> = {
 };
 
 export const buildPrompt = (stage: string, step: string, businessType?: BusinessType): string => {
-  const model = businessType || (userProfile.selectedModel || 'ecommerce') as BusinessType;
-  const strategy = strategyMap[model];
+  // Always use the provided businessType, no fallback
+  if (!businessType) {
+    console.error('No business type provided to buildPrompt');
+    return systemPrompt;
+  }
+
+  const strategy = strategyMap[businessType];
   
   if (!strategy) {
-    console.error(`No strategy found for model: ${model}`);
+    console.error(`No strategy found for model: ${businessType}`);
     return systemPrompt;
   }
 
@@ -110,27 +115,19 @@ export const buildPrompt = (stage: string, step: string, businessType?: Business
     ? checklist.map((c: string) => `• ${c}`).join("\n")
     : "• No checklist available for this step.";
 
-  const answered = Object.entries(userProfile)
-    .filter(([_, value]) => value !== null && value !== "")
-    .map(([key, value]) => `- ${key}: ${value}`)
-    .join("\n");
-
   const stepPrompt = stepPrompts[step] || `Let's explore the step: ${step}. Help the user complete it like a strategic workshop — clarify, guide, and confirm.`;
 
   return `
 ${systemPrompt}
 
 IMPORTANT CONTEXT:
-🎯 Selected Business Type: ${model.toUpperCase()}
-This user has already chosen their business type. If they provide a number in their first message, it represents their budget for this ${model} business.
+🎯 Selected Business Type: ${businessType.toUpperCase()}
+This user has already chosen their business type. If they provide a number in their first message, it represents their budget for this ${businessType} business.
 
-🧠 Current Business Model: ${model.toUpperCase()}
+🧠 Current Business Model: ${businessType.toUpperCase()}
 📍 Stage: ${stage}, Step: ${step}
 🎯 Stage Objective: ${stageInfo.objective || "N/A"}
 🔧 AI Support Recommendations: ${aiSupportText}
-
-✅ User Inputs So Far:
-${answered || "No responses yet."}
 
 📌 Stage Checklist:
 ${formattedChecklist}
