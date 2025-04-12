@@ -182,7 +182,6 @@ What's your current budget for this business?`);
         .from('userData')
         .select('business_type, first_name')
         .eq('user_id', session.user.id)
-
         .single();
 
       if (error) {
@@ -200,7 +199,7 @@ What's your current budget for this business?`);
             businessTypeLower === 'copywriting') {
           setInitialMessage(`Hi ${userData.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
 
-To help me understand your starting point, please enter your current budget for this business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
+To help me understand your starting point, please enter your current budget for your ${userData.business_type} business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
         } else {
           setInitialMessage(`Hello ${userData.first_name || ''}, you've chosen ${userData.business_type}. Let's begin your journey to success.
 
@@ -423,6 +422,53 @@ What's your main goal with this business? This will help me provide the most rel
       const goal = goalMatch[1].trim();
       handleGoalEdit(goal);
     }
+
+    // Ensure the response is business type-specific
+    if (currentProject.business_type === 'ecommerce' && aiResponse.toLowerCase().includes('copywriting')) {
+      // If the response mentions copywriting for an ecommerce business, trigger a correction
+      const correctedResponse = aiResponse.replace(
+        /copywriting business/g,
+        'ecommerce business'
+      ).replace(
+        /copywriter/g,
+        'online store owner'
+      );
+      return correctedResponse;
+    }
+    
+    // Add similar corrections for other business types
+    if (currentProject.business_type === 'copywriting' && aiResponse.toLowerCase().includes('ecommerce')) {
+      const correctedResponse = aiResponse.replace(
+        /ecommerce business/g,
+        'copywriting business'
+      ).replace(
+        /online store owner/g,
+        'copywriter'
+      );
+      return correctedResponse;
+    }
+    
+    if (currentProject.business_type === 'agency' && (aiResponse.toLowerCase().includes('ecommerce') || aiResponse.toLowerCase().includes('copywriting'))) {
+      const correctedResponse = aiResponse.replace(
+        /ecommerce business|copywriting business/g,
+        'agency business'
+      ).replace(
+        /online store owner|copywriter/g,
+        'agency owner'
+      );
+      return correctedResponse;
+    }
+    
+    if (currentProject.business_type === 'software' && (aiResponse.toLowerCase().includes('ecommerce') || aiResponse.toLowerCase().includes('copywriting') || aiResponse.toLowerCase().includes('agency'))) {
+      const correctedResponse = aiResponse.replace(
+        /ecommerce business|copywriting business|agency business/g,
+        'software business'
+      ).replace(
+        /online store owner|copywriter|agency owner/g,
+        'software founder'
+      );
+      return correctedResponse;
+    }
   };
 
   // Update the handleSubmit function to include budget and goal extraction
@@ -437,6 +483,11 @@ What's your main goal with this business? This will help me provide the most rel
     try {
       await saveMessage(userMessage, true);
 
+      // Build the system prompt with business type context
+      const businessTypeContext = `You are helping the user build a ${currentProject.business_type} business. 
+      The user's budget is ${currentProject.budget || 'not set yet'}. 
+      The user's goal is ${currentProject.goal || 'not set yet'}.`;
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -448,7 +499,7 @@ What's your main goal with this business? This will help me provide the most rel
           messages: [
             {
               role: "system",
-              content: buildPrompt('stage_0', 'budget')
+              content: `${systemPrompt}\n\n${businessTypeContext}`
             },
             ...messages.map(msg => ({
               role: msg.is_user ? "user" : "assistant",
@@ -588,7 +639,7 @@ What's your main goal with this business? This will help me provide the most rel
 
   const handlePopupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!popupMessage.trim() || isPopupLoading) return;
+    if (!popupMessage.trim() || isPopupLoading || !currentProject) return;
 
     const userMessage = popupMessage.trim();
     setPopupMessage('');
@@ -603,6 +654,11 @@ What's your main goal with this business? This will help me provide the most rel
     setPopupMessages(prev => [...prev, userPopupMessage]);
 
     try {
+      // Build the system prompt with business type context
+      const businessTypeContext = `You are helping the user build a ${currentProject.business_type} business. 
+      The user's budget is ${currentProject.budget || 'not set yet'}. 
+      The user's goal is ${currentProject.goal || 'not set yet'}.`;
+
       // Get AI response using the same endpoint as the main chat
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -615,7 +671,7 @@ What's your main goal with this business? This will help me provide the most rel
           messages: [
             {
               role: "system",
-              content: buildPrompt('stage_0', 'budget')
+              content: `${systemPrompt}\n\n${businessTypeContext}`
             },
             ...popupMessages.map(msg => ({
               role: msg.isUser ? "user" : "assistant",
