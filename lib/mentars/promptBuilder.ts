@@ -6,7 +6,7 @@ import { conversationFlow } from './conversationFlow';
 import { ecomStrategy } from './ecomStrategy';
 import { agencyStrategy } from './agencyStrategy';
 
-type BusinessType = 'ecommerce' | 'agency' | 'saas' | 'copywriting';
+export type BusinessType = 'ecommerce' | 'agency' | 'software' | 'copywriting';
 
 interface BaseStageInfo {
   objective: string;
@@ -52,7 +52,7 @@ interface Strategy {
 const strategyMap: Record<BusinessType, Strategy> = {
   ecommerce: ecomStrategy,
   agency: agencyStrategy,
-  saas: saasStrategy,
+  software: saasStrategy,
   copywriting: copywritingStrategy
 };
 
@@ -67,8 +67,8 @@ export const stepPrompts: Record<string, string> = {
   businessReason: "Why did you choose this business model?"
 };
 
-export const buildPrompt = (stage: string, step: string, businessType?: string): string => {
-  const model = (businessType || userProfile.selectedModel || 'ecommerce') as BusinessType;
+export const buildPrompt = (stage: string, step: string): string => {
+  const model = (userProfile.selectedModel || 'ecommerce') as BusinessType;
   const strategy = strategyMap[model];
   
   if (!strategy) {
@@ -125,13 +125,14 @@ ${systemPrompt}
 🎯 Stage Objective: ${stageInfo.objective || "N/A"}
 🔧 AI Support Recommendations: ${aiSupportText}
 
+
 ✅ User Inputs So Far:
 ${answered || "No responses yet."}
 
 📌 Stage Checklist:
 ${formattedChecklist}
 
-IMPORTANT: The user has already selected their business type (${model.toUpperCase()}). Do not ask about business type again. Focus on helping them with the current step.
+Prompt the user to solve the current step. Use a high-context, workshop-style question. Help them think and decide — do not move on until confirmed.
 
 Prompt: ${stepPrompt}
 `;

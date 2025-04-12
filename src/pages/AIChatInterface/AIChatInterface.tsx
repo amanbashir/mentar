@@ -65,7 +65,7 @@ function AIChatInterface() {
           
           if (businessTypeLower === 'ecommerce' || 
               businessTypeLower === 'agency' || 
-              businessTypeLower === 'saas' || 
+              businessTypeLower === 'software' ||
               businessTypeLower === 'copywriting') {
             setInitialMessage(`Hi ${userData?.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
 
@@ -149,7 +149,7 @@ What's your current budget for this business?`);
         
         if (businessTypeLower === 'ecommerce' || 
             businessTypeLower === 'agency' || 
-            businessTypeLower === 'saas' || 
+            businessTypeLower === 'software' ||
             businessTypeLower === 'copywriting') {
           setInitialMessage(`Hi ${userData.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
 

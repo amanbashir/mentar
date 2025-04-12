@@ -1,10 +1,10 @@
-import { UserProfile, ChatMessage, MentorConfig } from '@/types/mentar';
+import { UserProfile, ChatMessage, MentorConfig } from '../../types/mentar';
 import { systemPrompt } from '../mentars/systemPrompt';
 import { buildPrompt } from '../mentars/promptBuilder';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../lib/supabaseClient';
 
 export class MentarService {
-  private static readonly BUSINESS_TYPES = ['ecommerce', 'agency', 'saas', 'copywriting'];
+  private static readonly BUSINESS_TYPES = ['ecommerce', 'agency', 'software', 'copywriting'];
   
   static async startMentarChat(
     messages: ChatMessage[],
@@ -27,7 +27,7 @@ export class MentarService {
   }
 
   static async handleOnboarding(userInput: string, userProfile: UserProfile) {
-    const normalizedInput = userInput.toLowerCase();
+    let normalizedInput = userInput.toLowerCase();
     
     if (this.BUSINESS_TYPES.some(type => normalizedInput.includes(type))) {
       // User knows their business type
