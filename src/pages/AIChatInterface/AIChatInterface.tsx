@@ -106,6 +106,7 @@ function AIChatInterface() {
     starting_point: { capital: number | null; timeAvailable: string | null; skills: string[] } | null;
     blockers: string[] | null;
     assistance_needed: string | null;
+    goalIncome: string | null;
   }>({
     first_name: null,
     email: null,
@@ -119,7 +120,8 @@ function AIChatInterface() {
     vision: null,
     starting_point: null,
     blockers: null,
-    assistance_needed: null
+    assistance_needed: null,
+    goalIncome: null
   });
 
   useEffect(() => {
@@ -601,7 +603,8 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
         vision: null,
         starting_point: null,
         blockers: null,
-        assistance_needed: null
+        assistance_needed: null,
+        goalIncome: null
       });
 
       // Check for missing fields
@@ -655,30 +658,36 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
 
   // Add this function to extract user data from AI responses
   const extractUserData = (aiResponse: string) => {
+    console.log("Extracting user data from AI response:", aiResponse);
+    
     // Extract first name if not already set
     if (!userData.first_name) {
       const nameRegex = /(?:your name is|you are|you're|you are called|you go by) ([A-Za-z]+)/i;
       const nameMatch = aiResponse.match(nameRegex);
       if (nameMatch) {
+        console.log("Extracted first name:", nameMatch[1]);
         updateUserData({ first_name: nameMatch[1] });
       }
     }
 
     // Extract goals if not already set
     if (!userData.goals) {
-      const goalsRegex = /(?:your goal is|main goal is|goal to|aiming to|want to) (.*?)(?:\.|\n|$)/i;
+      const goalsRegex = /(?:your goal is|main goal is|goal to|aiming to|want to|you want to) (.*?)(?:\.|\n|$)/i;
       const goalsMatch = aiResponse.match(goalsRegex);
       if (goalsMatch) {
+        console.log("Extracted goals:", goalsMatch[1].trim());
         updateUserData({ goals: goalsMatch[1].trim() });
       }
     }
 
     // Extract budget/capital if not already set
     if (!userData.resources?.capital) {
+      // Look for budget mentions in the AI response
       const budgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
       const budgetMatch = aiResponse.match(budgetRegex);
       if (budgetMatch) {
         const budget = budgetMatch[0].replace(/\s*dollars?|USD/i, '');
+        console.log("Extracted budget:", budget);
         updateUserData({ 
           resources: { 
             capital: budget,
@@ -686,27 +695,98 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
           } 
         });
       }
+      
+      // Also check for budget in user's last message
+      if (messages.length > 0) {
+        const lastUserMessage = messages[messages.length - 1].content;
+        const userBudgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
+        const userBudgetMatch = lastUserMessage.match(userBudgetRegex);
+        if (userBudgetMatch) {
+          const budget = userBudgetMatch[0].replace(/\s*dollars?|USD/i, '');
+          console.log("Extracted budget from user message:", budget);
+          updateUserData({ 
+            resources: { 
+              capital: budget,
+              time_commitment: userData.resources?.time_commitment || null
+            } 
+          });
+        }
+      }
     }
 
     // Extract time commitment if not already set
     if (!userData.resources?.time_commitment) {
+      // Look for time commitment in the AI response
       const timeRegex = /(\d+)\s*(?:hours?|hrs?)\s*(?:per|a)\s*(?:week|day)/i;
       const timeMatch = aiResponse.match(timeRegex);
       if (timeMatch) {
+        const timeCommitment = `${timeMatch[1]} hours per week`;
+        console.log("Extracted time commitment:", timeCommitment);
         updateUserData({ 
           resources: { 
             capital: userData.resources?.capital || null,
-            time_commitment: `${timeMatch[1]} hours per week` 
+            time_commitment: timeCommitment
           } 
         });
+      }
+      
+      // Also check for time commitment in user's last message
+      if (messages.length > 0) {
+        const lastUserMessage = messages[messages.length - 1].content;
+        const userTimeRegex = /(\d+)\s*(?:hours?|hrs?)\s*(?:per|a)\s*(?:week|day)/i;
+        const userTimeMatch = lastUserMessage.match(userTimeRegex);
+        if (userTimeMatch) {
+          const timeCommitment = `${userTimeMatch[1]} hours per week`;
+          console.log("Extracted time commitment from user message:", timeCommitment);
+          updateUserData({ 
+            resources: { 
+              capital: userData.resources?.capital || null,
+              time_commitment: timeCommitment
+            } 
+          });
+        }
+      }
+    }
+
+    // Extract dream income if not already set
+    if (!userData.goalIncome) {
+      // Look for dream income in the AI response
+      const dreamIncomeRegex = /(?:dream|target|goal|desired|monthly|income|earnings|revenue) (?:of|is|about|around|approximately)?\s*\$?(\d+(?:,\d{3})*|\d+)\s*(?:per month|monthly|a month)/i;
+      const dreamIncomeMatch = aiResponse.match(dreamIncomeRegex);
+      if (dreamIncomeMatch) {
+        const dreamIncome = dreamIncomeMatch[1].replace(/,/g, '');
+        console.log("Extracted dream income:", dreamIncome);
+        updateUserData({ goalIncome: dreamIncome });
+      }
+      
+      // Also check for dream income in user's last message
+      if (messages.length > 0) {
+        const lastUserMessage = messages[messages.length - 1].content;
+        const userDreamIncomeRegex = /(?:dream|target|goal|desired|monthly|income|earnings|revenue) (?:of|is|about|around|approximately)?\s*\$?(\d+(?:,\d{3})*|\d+)\s*(?:per month|monthly|a month)/i;
+        const userDreamIncomeMatch = lastUserMessage.match(userDreamIncomeRegex);
+        if (userDreamIncomeMatch) {
+          const dreamIncome = userDreamIncomeMatch[1].replace(/,/g, '');
+          console.log("Extracted dream income from user message:", dreamIncome);
+          updateUserData({ goalIncome: dreamIncome });
+        }
+        
+        // Also check for direct number responses
+        const directNumberRegex = /\$?(\d+(?:,\d{3})*|\d+)\s*(?:per month|monthly|a month)/i;
+        const directNumberMatch = lastUserMessage.match(directNumberRegex);
+        if (directNumberMatch) {
+          const dreamIncome = directNumberMatch[1].replace(/,/g, '');
+          console.log("Extracted direct number as dream income:", dreamIncome);
+          updateUserData({ goalIncome: dreamIncome });
+        }
       }
     }
 
     // Extract interests if not already set
     if (!userData.interests) {
-      const interestsRegex = /(?:interested in|passionate about|fascinated by) (.*?)(?:\.|\n|$)/i;
+      const interestsRegex = /(?:interested in|passionate about|fascinated by|like|enjoy) (.*?)(?:\.|\n|$)/i;
       const interestsMatch = aiResponse.match(interestsRegex);
       if (interestsMatch) {
+        console.log("Extracted interests:", interestsMatch[1].trim());
         updateUserData({ interests: interestsMatch[1].trim() });
       }
     }
@@ -716,6 +796,7 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
       const hobbiesRegex = /(?:hobbies|hobby|activities|free time) (?:include|are|is) (.*?)(?:\.|\n|$)/i;
       const hobbiesMatch = aiResponse.match(hobbiesRegex);
       if (hobbiesMatch) {
+        console.log("Extracted hobbies:", hobbiesMatch[1].trim());
         updateUserData({ hobbies: hobbiesMatch[1].trim() });
       }
     }
@@ -725,6 +806,7 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
       const learningStyleRegex = /(?:learn|learning|study) (?:best|better|prefer) (?:by|through|via) (.*?)(?:\.|\n|$)/i;
       const learningStyleMatch = aiResponse.match(learningStyleRegex);
       if (learningStyleMatch) {
+        console.log("Extracted learning style:", learningStyleMatch[1].trim());
         updateUserData({ learning_style: learningStyleMatch[1].trim() });
       }
     }
@@ -734,6 +816,7 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
       const visionRegex = /(?:vision|dream|aspiration|ambition) (?:is|to) (.*?)(?:\.|\n|$)/i;
       const visionMatch = aiResponse.match(visionRegex);
       if (visionMatch) {
+        console.log("Extracted vision:", visionMatch[1].trim());
         updateUserData({ vision: visionMatch[1].trim() });
       }
     }
@@ -744,6 +827,7 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
       const skillsMatch = aiResponse.match(skillsRegex);
       if (skillsMatch) {
         const skills = skillsMatch[1].split(/,|\sand\s/).map(skill => skill.trim());
+        console.log("Extracted skills:", skills);
         updateUserData({ 
           starting_point: { 
             capital: userData.starting_point?.capital || null,
@@ -760,6 +844,7 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
       const blockersMatch = aiResponse.match(blockersRegex);
       if (blockersMatch) {
         const blockers = blockersMatch[1].split(/,|\sand\s/).map(blocker => blocker.trim());
+        console.log("Extracted blockers:", blockers);
         updateUserData({ blockers });
       }
     }
@@ -769,6 +854,7 @@ First, what's your current budget for this business? (e.g., $1000, $5000, etc.)`
       const assistanceRegex = /(?:need help with|assistance with|support with) (.*?)(?:\.|\n|$)/i;
       const assistanceMatch = aiResponse.match(assistanceRegex);
       if (assistanceMatch) {
+        console.log("Extracted assistance needed:", assistanceMatch[1].trim());
         updateUserData({ assistance_needed: assistanceMatch[1].trim() });
       }
     }
