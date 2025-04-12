@@ -234,13 +234,57 @@ What's your current budget for this business?`);
         const properBusinessType = businessTypeMap[businessTypeLower] || userData.business_type;
         
         if (properBusinessType) {
-          setInitialMessage(`Hi ${userData.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
+          setInitialMessage(`Hi ${userData.first_name || ''}, I'm excited to help you build your ${properBusinessType} business! Let's gather some information to create your personalized action plan.
 
-To help me understand your starting point, please enter your current budget for your ${properBusinessType} business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
+Please answer these questions one by one:
+
+1. What's your current budget for this business? (e.g., $1000, $5000, etc.)
+
+2. How many hours per week can you commit to building this business?
+
+3. What's your main goal with this business? (e.g., replace current income, build a side hustle, etc.)
+
+4. What's your dream monthly income from this business? (e.g., $5000, $10000, etc.)
+
+5. What relevant skills or experience do you already have?
+
+6. What are your main interests or passions that could align with this business?
+
+7. What's your preferred learning style? (e.g., hands-on practice, reading, video tutorials, etc.)
+
+8. What's your vision for this business in the next 6 months?
+
+9. What potential challenges or blockers do you foresee?
+
+10. What specific areas do you need the most help with?
+
+Please provide your answers, and I'll help create a tailored plan for your success.`);
         } else {
-          setInitialMessage(`Hello ${userData.first_name || ''}, you've chosen ${userData.business_type}. Let's begin your journey to success.
+          setInitialMessage(`Hello ${userData.first_name || ''}, I'm excited to help you build your ${userData.business_type} business! Let's gather some information to create your personalized action plan.
 
-What's your main goal with this business? This will help me provide the most relevant guidance for your specific needs.`);
+Please answer these questions one by one:
+
+1. What's your current budget for this business? (e.g., $1000, $5000, etc.)
+
+2. How many hours per week can you commit to building this business?
+
+3. What's your main goal with this business? (e.g., replace current income, build a side hustle, etc.)
+
+4. What's your dream monthly income from this business? (e.g., $5000, $10000, etc.)
+
+5. What relevant skills or experience do you already have?
+
+6. What are your main interests or passions that could align with this business?
+
+7. What's your preferred learning style? (e.g., hands-on practice, reading, video tutorials, etc.)
+
+8. What's your vision for this business in the next 6 months?
+
+9. What potential challenges or blockers do you foresee?
+
+10. What specific areas do you need the most help with?
+
+Please provide your answers, and I'll help create a tailored plan for your success.`);
         }
       } else {
         setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");

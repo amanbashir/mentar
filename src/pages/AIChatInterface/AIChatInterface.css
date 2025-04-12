@@ -64,9 +64,7 @@
 .overview-item {
   padding: 12px;
   margin-bottom: 8px;
-  background-color: #fff;
   border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   font-size: 16px;
   line-height: 1.5;
@@ -75,7 +73,11 @@
 
 .overview-item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.overview-item strong {
+  color: rgba(255, 255, 255, 1);
+  font-weight: 500;
 }
 
 /* Right sidebar panels */
