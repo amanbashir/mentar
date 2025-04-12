@@ -1,0 +1,714 @@
+.page-container {
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  position: relative;
+}
+
+/* Logo styling - restored to original position */
+.logo-container {
+  position: fixed;
+  top: 14px;
+  right: 24px;
+  width: 48px;
+  height: auto;
+  z-index: 1000;
+}
+
+.logo {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  background-color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.logo img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* Dark panels - positioned absolutely to not affect existing layout */
+.business-overview {
+  position: fixed;
+  left: 24px;
+  top: 24px;
+  width: 300px;
+  height: calc(100vh - 200px);
+  background: rgba(32, 32, 32, 0.3);
+  border-radius: 16px;
+  color: white;
+  padding: 24px;
+  z-index: 1;
+  overflow-y: auto;
+}
+
+.business-overview h2 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.overview-content {
+  margin-top: 24px;
+  opacity: 0.9;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.overview-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.overview-item:hover {
+  transform: translateY(-1px);
+}
+
+.overview-item strong {
+  color: rgba(255, 255, 255, 1);
+  font-weight: 500;
+}
+
+/* Right sidebar panels */
+.right-sidebar {
+  position: fixed;
+  right: 24px;
+  top: 96px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 1;
+}
+
+.todo-list-container {
+  background: rgba(32, 32, 32, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+  color: white;
+  height: 200px;
+}
+
+.todo-list-container h2 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.budget-container,
+.progress-container,
+.goal-container,
+.launch-date-container {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.budget-container h2,
+.progress-container h2,
+.goal-container h2,
+.launch-date-container h2 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #2B87FF;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #666;
+  text-align: right;
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100px + 5px);
+  right: 30px;
+  background: rgba(32, 32, 32, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  width: 135px;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.dropdown-item {
+  padding: 11px 16px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.active {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 500;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 0;
+}
+
+.dropdown-item.new-project {
+  color: #fff;
+  font-weight: 500;
+}
+
+.dropdown-item.new-project:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Add styles for Settings and Logout */
+.dropdown-item:last-child {
+  color: #FF453A;
+}
+
+.dropdown-item:last-child:hover {
+  background: rgba(255, 69, 58, 0.15);
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.project-name {
+  flex-grow: 1;
+  color: white;
+}
+
+.delete-project {
+  opacity: 0;
+  color: #FF453A;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+}
+
+.project-item:hover .delete-project {
+  opacity: 1;
+}
+
+.delete-project:hover {
+  background: rgba(255, 69, 58, 0.15);
+}
+
+.messages-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  margin-top: 60px;
+}
+
+/* WebKit browsers (Chrome, Safari) */
+.messages-container::-webkit-scrollbar {
+  display: none;
+}
+
+.message {
+  max-width: 600px;
+  padding: 0;
+  white-space: pre-wrap;
+  font-weight: 400;
+  line-height: 1.8;
+  background: none;
+  font-size: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.message.user {
+  color: #0A84FF;
+  align-self: flex-end;
+  margin-left: auto;
+  text-align: right;
+}
+
+.message.ai {
+  color: white;
+  align-self: flex-start;
+  margin-right: auto;
+  text-align: left;
+}
+
+.message strong {
+  font-weight: bold;
+}
+
+.message-content {
+  text-align: left;
+  max-width: 600px;
+  letter-spacing: -0.01em;
+}
+
+.typing-indicator {
+  display: inline-block;
+  padding: 0 3px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.input-container {
+  display: flex;
+  gap: 10px;
+  padding: 8px 20px;
+  background-color: rgba(51, 51, 51, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  margin: 0 auto;
+  width: 95%;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 760px;
+  align-items: center;
+}
+
+.message-input {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  padding: 8px 0;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  resize: none;
+  min-height: 24px;
+  max-height: 200px;
+  overflow-y: auto;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+}
+
+.message-input::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.message-input::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.message-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.message-input:focus {
+  outline: none;
+}
+
+.send-button {
+  background: white;
+  border: none;
+  color: black;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.send-button:hover {
+  transform: translateY(-1px);
+}
+
+.send-button:active {
+  transform: translateY(0);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.arrow-up {
+  font-size: 18px;
+  transform: translateY(-1px);
+}
+
+.typing-indicator::after {
+  content: '...';
+  animation: dots 2s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80% { content: '...'; }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+
+.loading-container p {
+  margin: 10px 0;
+  font-size: 16px;
+}
+
+.loading-message {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px !important;
+  max-width: 300px;
+  line-height: 1.4;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #2B87FF;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.launch-date-display {
+  padding: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+.launch-date-display:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.speak-to-mentar {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  width: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.speak-to-mentar:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chat-popup {
+  position: fixed;
+  top: 0;
+  right: -400px;
+  width: 400px;
+  height: 100vh;
+  background: white;
+  transition: right 0.3s ease;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-popup.open {
+  right: 0;
+}
+
+.chat-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.chat-popup-header img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.chat-popup-header .close-button {
+  background: rgba(128, 128, 128, 0.1);
+  border: none;
+  color: black;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-popup-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chat-popup-content .message.bot {
+  color: black;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.chat-popup-content .message.user {
+  color: #0A84FF;
+  font-size: 18px;
+  text-align: right;
+}
+
+/* Keep the initial "How can I help?" message larger */
+.chat-popup-content .message.bot:first-child:not(:only-child) {
+  font-size: 24px;
+}
+
+.chat-popup-input {
+  padding: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.chat-popup-input input {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  padding: 12px 16px;
+  color: black;
+  font-size: 16px;
+}
+
+.chat-popup-input input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.chat-popup-input input:focus {
+  outline: none;
+}
+
+.chat-popup-input button {
+  background: black;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-popup-input button .arrow-up {
+  color: white;
+  font-size: 18px;
+  transform: translateY(-1px);
+}
+
+/* Goal Section */
+.goal-container h2 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Todo List Styling */
+.todo-empty {
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  padding: 20px;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.todo-list {
+  padding: 10px;
+  margin-top: 16px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  transition: opacity 0.2s ease;
+}
+
+.todo-item:hover {
+  opacity: 0.9;
+}
+
+.todo-item input[type="checkbox"] {
+  margin-right: 12px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.todo-item .completed {
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Editable Fields */
+.editable-field {
+  width: 100%;
+  padding: 8px;
+}
+
+.editable-field input {
+  width: 100%;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+}
+
+.editable-field input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.goal-display,
+.budget-display {
+  padding: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+.goal-display:hover,
+.budget-display:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.launch-date-container {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  width: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 1;
+}
+
+.countdown-timer {
+  margin-top: 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  gap: 12px;
+}
+
+.countdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.countdown-value {
+  font-size: 18px;
+  font-weight: 500;
+  color: #2B87FF;
+}
+
+.countdown-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+} 
