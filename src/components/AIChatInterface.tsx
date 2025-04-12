@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { INITIAL_MESSAGE } from '../lib/businessDiscovery';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam } from 'openai/resources/chat/completions';
-import { systemPrompt as ecomSystemPrompt } from '../../lib/mentars/ecomModel';
+import { systemPrompt } from '../../lib/mentars/systemPrompt';
+import { buildPrompt } from '../../lib/mentars/promptBuilder';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './AIChatInterface.css';
@@ -40,7 +41,7 @@ export default function AIChatInterface() {
       // Convert messages to OpenAI format
       const systemMessage: ChatCompletionSystemMessageParam = {
         role: "system",
-        content: ecomSystemPrompt
+        content: buildPrompt('stage_0', 'budget')
       };
 
       const chatMessages: (ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam)[] = 

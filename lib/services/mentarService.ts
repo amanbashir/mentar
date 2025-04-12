@@ -1,20 +1,20 @@
 import { UserProfile, ChatMessage, MentorConfig } from '@/types/mentar';
-import { ecomModelConfig } from '../mentars/ecomModel';
+import { systemPrompt } from '../mentars/systemPrompt';
+import { buildPrompt } from '../mentars/promptBuilder';
 import { supabase } from '../supabaseClient';
 
 export class MentarService {
-  private static readonly BUSINESS_TYPES = ['ecommerce', 'saas', 'copywriting', 'media buying'];
+  private static readonly BUSINESS_TYPES = ['ecommerce', 'agency', 'saas', 'copywriting'];
   
   static async startMentarChat(
     messages: ChatMessage[],
     userProfile: UserProfile
   ): Promise<ChatMessage> {
-    const mentor = this.selectMentor(userProfile.businessType);
-    const systemPrompt = this.buildSystemPrompt(mentor, userProfile);
+    const systemPromptText = buildPrompt('stage_0', 'budget');
     
     // Add system prompt to messages
     const fullMessages = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: systemPromptText },
       ...messages
     ];
 
@@ -79,18 +79,12 @@ export class MentarService {
     }
   }
 
-  private static selectMentor(businessType?: string): MentorConfig {
-    // Add more mentor selections as they're created
-    return ecomModelConfig; // Default to ecommerce model for now
+  private static selectMentor(businessType?: string): string {
+    // Return the appropriate business type or default to ecommerce
+    return businessType || 'ecommerce';
   }
 
-  private static buildSystemPrompt(mentor: MentorConfig, userProfile: UserProfile): string {
-    return `${mentor.systemPrompt}
-
-Current User Context:
-- Business Type: ${userProfile.businessType || 'exploring options'}
-- Goal: ${userProfile.goal || 'not set'}
-- Vision: ${userProfile.vision || 'not set'}
-- Resources: ${JSON.stringify(userProfile.startingPoint || {})}`;
+  private static buildSystemPrompt(businessType: string, userProfile: UserProfile): string {
+    return buildPrompt('stage_0', 'budget');
   }
 } 

@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import ReactMarkdown from 'react-markdown';
 import './AIChatInterface.css';
-import { systemPrompt as ecomSystemPrompt } from '../../../lib/mentars/ecomModel';
+import { systemPrompt } from '../../../lib/mentars/systemPrompt';
+import { buildPrompt } from '../../../lib/mentars/promptBuilder';
 
 interface Project {
   id: string;
@@ -60,9 +61,18 @@ function AIChatInterface() {
             .eq('user_id', session.user.id)
             .single();
           
-          setInitialMessage(`Hi ${userData?.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
+          const businessTypeLower = businessTypeFromState.toLowerCase();
+          
+          if (businessTypeLower === 'ecommerce' || 
+              businessTypeLower === 'agency' || 
+              businessTypeLower === 'saas' || 
+              businessTypeLower === 'copywriting') {
+            setInitialMessage(`Hi ${userData?.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
 
 What's your current budget for this business?`);
+          } else {
+            setInitialMessage(`Hello ${userData?.first_name || ''}, you've chosen ${businessTypeFromState}.`);
+          }
         } else {
           setInitialMessage(`Hi, great choice! Let's confirm if this is a good fit for you and your goals.
 
@@ -132,7 +142,12 @@ What's your current budget for this business?`);
 
       if (userData?.business_type) {
         setBusinessType(userData.business_type);
-        if (userData.business_type.toLowerCase() === 'ecommerce') {
+        const businessTypeLower = userData.business_type.toLowerCase();
+        
+        if (businessTypeLower === 'ecommerce' || 
+            businessTypeLower === 'agency' || 
+            businessTypeLower === 'saas' || 
+            businessTypeLower === 'copywriting') {
           setInitialMessage(`Hi ${userData.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
 
 What's your current budget for this business?`);
@@ -271,7 +286,7 @@ What's your current budget for this business?`);
           messages: [
             {
               role: "system",
-              content: ecomSystemPrompt
+              content: buildPrompt('stage_0', 'budget')
             },
             ...messages.map(msg => ({
               role: msg.is_user ? "user" : "assistant",
@@ -437,7 +452,7 @@ What's your current budget for this business?`);
           messages: [
             {
               role: "system",
-              content: ecomSystemPrompt
+              content: buildPrompt('stage_0', 'budget')
             },
             ...popupMessages.map(msg => ({
               role: msg.isUser ? "user" : "assistant",

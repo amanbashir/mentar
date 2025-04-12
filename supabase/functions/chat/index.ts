@@ -2,8 +2,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import OpenAI from 'https://esm.sh/openai@4.28.0'
 
-// Import the ecommerce model system prompt
-import { systemPrompt as ecomSystemPrompt } from '../../lib/mentars/ecomModel.ts'
+// Import the system prompt
+import { systemPrompt } from '../../lib/mentars/systemPrompt.ts'
+import { buildPrompt } from '../../lib/mentars/promptBuilder.ts'
 
 const DISCOVERY_PROMPT = `You are Mentar, a sharp, no-fluff AI business mentor. You specialize in helping people start profitable online businesses. Your expertise covers:
 
@@ -87,7 +88,16 @@ serve(async (req) => {
     let systemPrompt = DISCOVERY_PROMPT;
     
     if (businessType === 'ecommerce') {
-      systemPrompt = ecomSystemPrompt;
+      // If a business type is selected but not ecommerce, return a message
+      return new Response(
+        JSON.stringify({ 
+          response: "This business type is not available yet. Please select ecommerce or speak to Mentar for guidance." 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
     } else if (businessType && !isDiscoveryMode) {
       // If a business type is selected but not ecommerce, return a message
       return new Response(
