@@ -71,17 +71,19 @@ function AIChatInterface() {
 
 To help me understand your starting point, please enter your current budget for this business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
           } else {
-            setInitialMessage(`Hello ${userData?.first_name || ''}, you've chosen ${businessTypeFromState}.`);
+            setInitialMessage(`Hello ${userData?.first_name || ''}, you've chosen ${businessTypeFromState}. Let's begin your journey to success.
+
+What's your main goal with this business? This will help me provide the most relevant guidance for your specific needs.`);
           }
         } else {
           setInitialMessage(`Hi, great choice! Let's confirm if this is a good fit for you and your goals.
 
-To help me understand your starting point, please enter your current budget for this business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
+What's your current budget for this business?`);
         }
         // Refresh projects list when returning from onboarding
         fetchUserProjects();
       } else {
-        // Check if user already has a business type in the projects table
+        // Check if user already has a business type in the database
         checkUserBusinessType();
       }
     };
@@ -129,45 +131,33 @@ To help me understand your starting point, please enter your current budget for 
         return;
       }
 
-      // Get user's first name from userData
-      const { data: userData, error: userError } = await supabase
+      const { data: userData, error } = await supabase
         .from('userData')
-        .select('first_name')
+        .select('business_type, first_name')
         .eq('user_id', session.user.id)
+
         .single();
 
-      if (userError) {
-        console.error('Error fetching user data:', userError);
+      if (error) {
+        console.error('Error fetching user data:', error);
         return;
       }
 
-      // Get the most recent project's business type
-      const { data: projects, error: projectError } = await supabase
-        .from('projects')
-        .select('business_type')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (projectError) {
-        console.error('Error fetching project data:', projectError);
-        return;
-      }
-
-      if (projects?.business_type) {
-        setBusinessType(projects.business_type);
-        const businessTypeLower = projects.business_type.toLowerCase();
+      if (userData?.business_type) {
+        setBusinessType(userData.business_type);
+        const businessTypeLower = userData.business_type.toLowerCase();
         
         if (businessTypeLower === 'ecommerce' || 
             businessTypeLower === 'agency' || 
             businessTypeLower === 'saas' || 
             businessTypeLower === 'copywriting') {
-          setInitialMessage(`Hi ${userData?.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
+          setInitialMessage(`Hi ${userData.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
 
 To help me understand your starting point, please enter your current budget for this business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
         } else {
-          setInitialMessage(`Hello ${userData?.first_name || ''}, you've chosen ${projects.business_type}.`);
+          setInitialMessage(`Hello ${userData.first_name || ''}, you've chosen ${userData.business_type}. Let's begin your journey to success.
+
+What's your main goal with this business? This will help me provide the most relevant guidance for your specific needs.`);
         }
       } else {
         setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");
@@ -301,7 +291,7 @@ To help me understand your starting point, please enter your current budget for 
           messages: [
             {
               role: "system",
-              content: buildPrompt('stage_0', 'budget', businessType || undefined)
+              content: buildPrompt('stage_0', 'budget')
             },
             ...messages.map(msg => ({
               role: msg.is_user ? "user" : "assistant",
@@ -467,7 +457,7 @@ To help me understand your starting point, please enter your current budget for 
           messages: [
             {
               role: "system",
-              content: buildPrompt('stage_0', 'budget', businessType || undefined)
+              content: buildPrompt('stage_0', 'budget')
             },
             ...popupMessages.map(msg => ({
               role: msg.isUser ? "user" : "assistant",
