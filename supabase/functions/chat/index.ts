@@ -87,28 +87,9 @@ serve(async (req) => {
     // Determine which system prompt to use
     let systemPrompt = DISCOVERY_PROMPT;
     
-    if (businessType === 'ecommerce') {
-      // If a business type is selected but not ecommerce, return a message
-      return new Response(
-        JSON.stringify({ 
-          response: "This business type is not available yet. Please select ecommerce or speak to Mentar for guidance." 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    } else if (businessType && !isDiscoveryMode) {
-      // If a business type is selected but not ecommerce, return a message
-      return new Response(
-        JSON.stringify({ 
-          response: "This business type is not available yet. Please select ecommerce or speak to Mentar for guidance." 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
+    if (businessType && !isDiscoveryMode) {
+      // Use the business-specific prompt when a business type is selected
+      systemPrompt = buildPrompt('stage_0', 'budget');
     }
 
     // Get AI response
