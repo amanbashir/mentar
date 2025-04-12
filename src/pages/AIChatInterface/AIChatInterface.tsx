@@ -193,13 +193,20 @@ What's your current budget for this business?`);
         setBusinessType(userData.business_type);
         const businessTypeLower = userData.business_type.toLowerCase();
         
-        if (businessTypeLower === 'ecommerce' || 
-            businessTypeLower === 'agency' || 
-            businessTypeLower === 'software' ||
-            businessTypeLower === 'copywriting') {
+        // Map business types to their proper names
+        const businessTypeMap: Record<string, string> = {
+          'ecommerce': 'ecommerce',
+          'agency': 'agency',
+          'software': 'software',
+          'copywriting': 'copywriting'
+        };
+        
+        const properBusinessType = businessTypeMap[businessTypeLower] || userData.business_type;
+        
+        if (properBusinessType) {
           setInitialMessage(`Hi ${userData.first_name || ''}, great choice! Let's confirm if this is a good fit for you and your goals.
 
-To help me understand your starting point, please enter your current budget for your ${userData.business_type} business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
+To help me understand your starting point, please enter your current budget for your ${properBusinessType} business. This is the amount you can invest upfront (e.g., $1000, $5000, etc.).`);
         } else {
           setInitialMessage(`Hello ${userData.first_name || ''}, you've chosen ${userData.business_type}. Let's begin your journey to success.
 
@@ -424,49 +431,44 @@ What's your main goal with this business? This will help me provide the most rel
     }
 
     // Ensure the response is business type-specific
-    if (currentProject.business_type === 'ecommerce' && aiResponse.toLowerCase().includes('copywriting')) {
-      // If the response mentions copywriting for an ecommerce business, trigger a correction
-      const correctedResponse = aiResponse.replace(
-        /copywriting business/g,
-        'ecommerce business'
-      ).replace(
-        /copywriter/g,
-        'online store owner'
-      );
+    if (currentProject.business_type === 'ecommerce' && 
+        (aiResponse.toLowerCase().includes('copywriting') || 
+         aiResponse.toLowerCase().includes('software') || 
+         aiResponse.toLowerCase().includes('agency'))) {
+      // If the response mentions other business types for an ecommerce business, trigger a correction
+      const correctedResponse = aiResponse
+        .replace(/copywriting business|software business|agency business/g, 'ecommerce business')
+        .replace(/copywriter|software founder|agency owner/g, 'online store owner');
       return correctedResponse;
     }
     
-    // Add similar corrections for other business types
-    if (currentProject.business_type === 'copywriting' && aiResponse.toLowerCase().includes('ecommerce')) {
-      const correctedResponse = aiResponse.replace(
-        /ecommerce business/g,
-        'copywriting business'
-      ).replace(
-        /online store owner/g,
-        'copywriter'
-      );
+    if (currentProject.business_type === 'copywriting' && 
+        (aiResponse.toLowerCase().includes('ecommerce') || 
+         aiResponse.toLowerCase().includes('software') || 
+         aiResponse.toLowerCase().includes('agency'))) {
+      const correctedResponse = aiResponse
+        .replace(/ecommerce business|software business|agency business/g, 'copywriting business')
+        .replace(/online store owner|software founder|agency owner/g, 'copywriter');
       return correctedResponse;
     }
     
-    if (currentProject.business_type === 'agency' && (aiResponse.toLowerCase().includes('ecommerce') || aiResponse.toLowerCase().includes('copywriting'))) {
-      const correctedResponse = aiResponse.replace(
-        /ecommerce business|copywriting business/g,
-        'agency business'
-      ).replace(
-        /online store owner|copywriter/g,
-        'agency owner'
-      );
+    if (currentProject.business_type === 'agency' && 
+        (aiResponse.toLowerCase().includes('ecommerce') || 
+         aiResponse.toLowerCase().includes('copywriting') || 
+         aiResponse.toLowerCase().includes('software'))) {
+      const correctedResponse = aiResponse
+        .replace(/ecommerce business|copywriting business|software business/g, 'agency business')
+        .replace(/online store owner|copywriter|software founder/g, 'agency owner');
       return correctedResponse;
     }
     
-    if (currentProject.business_type === 'software' && (aiResponse.toLowerCase().includes('ecommerce') || aiResponse.toLowerCase().includes('copywriting') || aiResponse.toLowerCase().includes('agency'))) {
-      const correctedResponse = aiResponse.replace(
-        /ecommerce business|copywriting business|agency business/g,
-        'software business'
-      ).replace(
-        /online store owner|copywriter|agency owner/g,
-        'software founder'
-      );
+    if (currentProject.business_type === 'software' && 
+        (aiResponse.toLowerCase().includes('ecommerce') || 
+         aiResponse.toLowerCase().includes('copywriting') || 
+         aiResponse.toLowerCase().includes('agency'))) {
+      const correctedResponse = aiResponse
+        .replace(/ecommerce business|copywriting business|agency business/g, 'software business')
+        .replace(/online store owner|copywriter|agency owner/g, 'software founder');
       return correctedResponse;
     }
   };
