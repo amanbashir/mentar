@@ -41,7 +41,7 @@ export default function AIChatInterface() {
       // Convert messages to OpenAI format
       const systemMessage: ChatCompletionSystemMessageParam = {
         role: "system",
-        content: buildPrompt('stage_0', 'budget')
+        content: buildPrompt('ecommerce', 'stage_0', {})
       };
 
       const chatMessages: (ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam)[] = 
