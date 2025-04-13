@@ -7,13 +7,15 @@ export const conversationFlow = {
   stage_4: ["metaSetup", "pixelTracking", "emailFlows", "retargetingSetup", "KPISetup"],
   stage_5: ["P&LTracking", "middayAdReview", "scalingRules", "creativeIteration", "commentControl"],
   stage_6: ["supplierLoop", "supportSOP", "localFulfillment", "marginTracking", "refundRateCheck"],
-  scaling: ["productPipeline", "AOVStrategy", "CACStrategy", "geoExpansion", "delegationSetup"]
+  scaling: ["productPipeline", "AOVStrategy", "CACStrategy", "geoExpansion", "delegationSetup"],
+  todo_list: ["ideaConfirmation", "actionSteps", "progressTracking", "nextActions"]
   },
   agency: {
     stage_0: ["agencyType", "agencySize", "agencyExperience", "agencySkill", "agencyGoalIncome", "agencySalesComfort", "agencyContentComfort", "agencyBusinessReason"],
     stage_1: ["agencyPersona", "agencyProductIdeas", "agencyCompetitorCheck", "agencyCOGS", "agencyPrice", "agencyBreakevenROAS", "agencyBrandAngle", "agencyDomain"],
     stage_2: ["agencyShopifySetup", "agencyDomainConnected", "agencyThemeInstalled", "agencyProductPageBuilt", "agencyCheckoutTested", "agencyEmailPopUpLive", "agencySupplierConfirmed"],
     stage_3: ["agencyStaticAds", "agencyVideoAds", "agencyHookTesting", "agencyCreativeRotation", "agencyCommentMonitoring"],
+    todo_list: ["ideaConfirmation", "actionSteps", "progressTracking", "nextActions"]
   },
   saas: {
     stage_0: ["budget", "time", "experience", "skill", "goalIncome", "salesComfort", "contentComfort", "businessReason"],
@@ -23,7 +25,8 @@ export const conversationFlow = {
     stage_4: ["analyticsSetup", "userTracking", "emailFlows", "retargetingSetup", "KPISetup"],
     stage_5: ["pricingOptimization", "userFeedback", "scalingRules", "featureRoadmap", "supportSystem"],
     stage_6: ["teamHiring", "supportSOP", "localOperations", "marginTracking", "churnRateCheck"],
-    scaling: ["productPipeline", "AOVStrategy", "CACStrategy", "geoExpansion", "delegationSetup"]
+    scaling: ["productPipeline", "AOVStrategy", "CACStrategy", "geoExpansion", "delegationSetup"],
+    todo_list: ["ideaConfirmation", "actionSteps", "progressTracking", "nextActions"]
   },
   copywriting: {
     stage_0: ["budget", "time", "experience", "skill", "goalIncome", "salesComfort", "contentComfort", "businessReason"],
@@ -33,6 +36,7 @@ export const conversationFlow = {
     stage_4: ["analyticsSetup", "clientTracking", "emailFlows", "retargetingSetup", "KPISetup"],
     stage_5: ["pricingOptimization", "clientFeedback", "scalingRules", "serviceRoadmap", "supportSystem"],
     stage_6: ["teamHiring", "supportSOP", "localOperations", "marginTracking", "clientRetentionCheck"],
-    scaling: ["servicePipeline", "AOVStrategy", "CACStrategy", "geoExpansion", "delegationSetup"]
+    scaling: ["servicePipeline", "AOVStrategy", "CACStrategy", "geoExpansion", "delegationSetup"],
+    todo_list: ["ideaConfirmation", "actionSteps", "progressTracking", "nextActions"]
   }
 };

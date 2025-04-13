@@ -67,14 +67,14 @@ export const stepPrompts: Record<string, string> = {
   businessReason: "Why did you choose this business model?"
 };
 
-export const buildPrompt = (stage: string, step: string, businessType?: BusinessType): string => {
+export const buildPrompt = (businessType: string, stage: string, data: any) => {
   // Always use the provided businessType, no fallback
   if (!businessType) {
     console.error('No business type provided to buildPrompt');
     return systemPrompt;
   }
 
-  const strategy = strategyMap[businessType];
+  const strategy = strategyMap[businessType as BusinessType];
   
   if (!strategy) {
     console.error(`No strategy found for model: ${businessType}`);
@@ -115,7 +115,40 @@ export const buildPrompt = (stage: string, step: string, businessType?: Business
     ? checklist.map((c: string) => `• ${c}`).join("\n")
     : "• No checklist available for this step.";
 
-  const stepPrompt = stepPrompts[step] || `Let's explore the step: ${step}. Help the user complete it like a strategic workshop — clarify, guide, and confirm.`;
+  const stepPrompt = stepPrompts[stage] || `Let's explore the step: ${stage}. Help the user complete it like a strategic workshop — clarify, guide, and confirm.`;
+
+  if (stage === 'todo_list') {
+    return `
+      Current Stage: Todo List Management
+      
+      Please review the following aspects of the business plan:
+      1. Business Idea Confirmation
+         - Current idea: ${data.ideaConfirmation || 'Not confirmed'}
+         - Validation status: ${data.validationStatus || 'Pending'}
+         - Market fit: ${data.marketFit || 'To be assessed'}
+      
+      2. Action Steps
+         - Next immediate actions: ${data.actionSteps || 'To be determined'}
+         - Dependencies: ${data.dependencies || 'None identified'}
+         - Timeline: ${data.timeline || 'To be established'}
+      
+      3. Progress Tracking
+         - Completed steps: ${data.completedSteps || 'None'}
+         - Current focus: ${data.currentFocus || 'Initial setup'}
+         - Blockers: ${data.blockers || 'None identified'}
+      
+      4. Next Actions
+         - Immediate next steps: ${data.nextActions || 'To be determined'}
+         - Resources needed: ${data.resourcesNeeded || 'To be identified'}
+         - Support required: ${data.supportRequired || 'None identified'}
+      
+      Please provide:
+      1. Confirmation of the business idea and any adjustments needed
+      2. Clear, actionable next steps with estimated timelines
+      3. Identification of any blockers or challenges
+      4. Specific resources or support needed
+    `;
+  }
 
   return `
 ${systemPrompt}
@@ -125,7 +158,7 @@ IMPORTANT CONTEXT:
 This user has already chosen their business type. If they provide a number in their first message, it represents their budget for this ${businessType} business.
 
 🧠 Current Business Model: ${businessType.toUpperCase()}
-📍 Stage: ${stage}, Step: ${step}
+📍 Stage: ${stage}, Step: ${stage}
 🎯 Stage Objective: ${stageInfo.objective || "N/A"}
 🔧 AI Support Recommendations: ${aiSupportText}
 
