@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import AIChatInterface from './pages/AIChatInterface/AIChatInterface';
 import Onboarding from './pages/Onboarding/Onboarding';
 import Settings from './pages/Settings/Settings';
+import Questionnaire from './pages/Questionnaire/Questionnaire';
 import './App.css';
 
 function App() {
@@ -62,6 +63,9 @@ function App() {
         } />
         <Route path="/onboarding" element={
           isAuthenticated ? <Onboarding /> : <Navigate to="/login" replace />
+        } />
+        <Route path="/questionnaire" element={
+          isAuthenticated ? <Questionnaire /> : <Navigate to="/login" replace />
         } />
         <Route path="/dashboard" element={
           isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />

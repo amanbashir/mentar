@@ -1,0 +1,100 @@
+.questionnaire-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  background-color: #000;
+  color: #fff;
+  padding: 20px;
+  text-align: center;
+}
+
+.logo {
+  margin-top: 40px;
+  margin-bottom: 40px;
+}
+
+.logo img {
+  height: 40px;
+  width: auto;
+}
+
+.questionnaire-container {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  margin-bottom: 60px;
+  color: #ffffff;
+  max-width: 600px;
+}
+
+.question-section {
+  width: 100%;
+  margin-top: 20px;
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin-bottom: 40px;
+  font-weight: 500;
+}
+
+.answer-input {
+  width: 100%;
+  padding: 15px;
+  border-radius: 5px;
+  border: none;
+  background-color: #e0e0e0;
+  font-size: 1rem;
+  margin-bottom: 30px;
+  resize: vertical;
+}
+
+.submit-button {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 15px 30px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 100%;
+  max-width: 400px;
+}
+
+.submit-button:hover {
+  background-color: #3367d6;
+}
+
+.submit-button:disabled {
+  background-color: #8babf1;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .questionnaire-container {
+    padding: 0 20px;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  .subtitle {
+    font-size: 1rem;
+  }
+} 

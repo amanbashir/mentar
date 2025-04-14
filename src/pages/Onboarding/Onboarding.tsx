@@ -62,9 +62,10 @@ const Onboarding = () => {
         return;
       }
 
-      // Navigate to chat with the new project info
-      navigate('/chat', { 
+      // Navigate to questionnaire with the new project info
+      navigate('/questionnaire', { 
         state: { 
+          businessType,
           project: {
             id: newProject.id,
             business_type: businessType,
