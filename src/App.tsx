@@ -53,13 +53,13 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={
-          isAuthenticated ? <Navigate to="/onboarding" replace /> : <Navigate to="/login" replace />
+          isAuthenticated ? <Navigate to="/chat" replace /> : <Navigate to="/login" replace />
         } />
         <Route path="/login" element={
-          isAuthenticated ? <Navigate to="/onboarding" replace /> : <Login />
+          isAuthenticated ? <Navigate to="/chat" replace /> : <Login />
         } />
         <Route path="/register" element={
-          isAuthenticated ? <Navigate to="/onboarding" replace /> : <Register />
+          isAuthenticated ? <Navigate to="/chat" replace /> : <Register />
         } />
         <Route path="/onboarding" element={
           isAuthenticated ? <Onboarding /> : <Navigate to="/login" replace />
