@@ -61,9 +61,10 @@ const Questionnaire = () => {
         return;
       }
 
+      // First, let's check what fields are available in the userData table
       const { data: userDataFromDB, error } = await supabase
         .from('userData')
-        .select('business_type')
+        .select('*')
         .eq('user_id', session.user.id)
         .single();
 
@@ -71,6 +72,8 @@ const Questionnaire = () => {
         console.error('Error fetching user data:', error);
         return;
       }
+
+      console.log('User data from DB:', userDataFromDB);
 
       if (userDataFromDB?.business_type) {
         setBusinessType(userDataFromDB.business_type);
@@ -153,23 +156,39 @@ const Questionnaire = () => {
         return;
       }
 
-      // Update user data in Supabase
-      const { error } = await supabase
+      // Prepare the data to be saved
+      const userDataToSave = {
+        goalIncome: data.goalIncome,
+        resources: data.resources,
+        starting_point: data.starting_point,
+        interests: data.interests,
+        hobbies: data.hobbies,
+        learning_style: data.learning_style,
+        vision: data.vision
+      };
+
+      console.log('Saving user data:', userDataToSave);
+
+      // First try with user_id
+      let { error } = await supabase
         .from('userData')
-        .update({
-          goalIncome: data.goalIncome,
-          resources: data.resources,
-          starting_point: data.starting_point,
-          interests: data.interests,
-          hobbies: data.hobbies,
-          learning_style: data.learning_style,
-          vision: data.vision
-        })
+        .update(userDataToSave)
         .eq('user_id', session.user.id);
 
+      // If that fails, try with id
       if (error) {
-        console.error('Error saving user data:', error);
-        return;
+        console.error('Error saving user data with user_id:', error);
+        
+        // Try with id instead
+        const { error: idError } = await supabase
+          .from('userData')
+          .update(userDataToSave)
+          .eq('id', session.user.id);
+          
+        if (idError) {
+          console.error('Error saving user data with id:', idError);
+          return;
+        }
       }
 
       // Navigate to chat interface
