@@ -500,7 +500,7 @@ function AIChatInterface() {
 
       // Generate and update business overview summary
       try {
-        const summaryPrompt = `Summarize the current business as a business overview for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear. Limit your summary to 2-3 sentences and no more than 60 words.`;
+        const summaryPrompt = `Summarize the current business for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear. Limit your summary to 2-3 sentences and no more than 60 words. Do not include any heading or label like 'Business Overview:' in your response.`;
         const contextMessages = [...messages, { is_user: true, content: userMessage }, { is_user: false, content: aiResponse }].slice(-10).map((m) => ({
           role: m.is_user ? 'user' : 'assistant',
           content: m.content
@@ -699,7 +699,7 @@ function AIChatInterface() {
 
       // Generate and update business overview summary
       try {
-        const summaryPrompt = `Summarize the current business as a business overview for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear. Limit your summary to 2-3 sentences and no more than 60 words.`;
+        const summaryPrompt = `Summarize the current business for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear. Limit your summary to 2-3 sentences and no more than 60 words. Do not include any heading or label like 'Business Overview:' in your response.`;
         const contextMessages = [...messages, { is_user: true, content: userMessage }, { is_user: false, content: aiResponse }].slice(-10).map((m) => ({
           role: m.is_user ? 'user' : 'assistant',
           content: m.content
