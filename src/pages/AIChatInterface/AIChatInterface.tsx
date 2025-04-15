@@ -19,6 +19,7 @@ interface Project {
   todo_2: string;
   todo_3: string;
   todo_4: string;
+  business_overview_summary?: string;
 }
 
 interface BusinessOverview {
@@ -570,13 +571,6 @@ function AIChatInterface() {
     }
   };
 
-  const updateBusinessOverview = (key: keyof BusinessOverview, value: string) => {
-    setBusinessOverview(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-
   const updateTodos = (moduleId: string, tasks: string[]) => {
     const newTodos = tasks.slice(0, 5).map((task, index) => ({
       id: `${moduleId}-${index}`,
@@ -667,8 +661,6 @@ function AIChatInterface() {
       const aiResponse = data.choices[0].message.content;
       
       await saveMessage(aiResponse, false);
-      extractBudgetAndGoal(aiResponse);
-      extractBusinessOverview(aiResponse);
     } catch (error) {
       console.error('Error in chat:', error);
       await saveMessage("I apologize, but I encountered an error. Please try again.", false);
@@ -683,138 +675,6 @@ function AIChatInterface() {
     }
   };
 
-  // Function to extract business overview from AI responses
-  const extractBusinessOverview = (aiResponse: string) => {
-    if (!currentProject) return;
-
-    // Look for setup information
-    const setupRegex = /(?:setup|start|begin|launch|establish) (.*?)(?:\.|\n|$)/i;
-    const setupMatch = aiResponse.match(setupRegex);
-    if (setupMatch && !businessOverview.setup) {
-      updateBusinessOverview('setup', setupMatch[1].trim());
-    }
-
-    // Look for financial information
-    const financialsRegex = /(?:financial|budget|cost|investment|spending) (.*?)(?:\.|\n|$)/i;
-    const financialsMatch = aiResponse.match(financialsRegex);
-    if (financialsMatch && !businessOverview.financials) {
-      updateBusinessOverview('financials', financialsMatch[1].trim());
-    }
-
-    // Look for timeline information
-    const timelineRegex = /(?:timeline|schedule|plan|deadline|milestone) (.*?)(?:\.|\n|$)/i;
-    const timelineMatch = aiResponse.match(timelineRegex);
-    if (timelineMatch && !businessOverview.timeline) {
-      updateBusinessOverview('timeline', timelineMatch[1].trim());
-    }
-
-    // Look for earnings information
-    const earningsRegex = /(?:earnings|revenue|income|profit|sales) (.*?)(?:\.|\n|$)/i;
-    const earningsMatch = aiResponse.match(earningsRegex);
-    if (earningsMatch && !businessOverview.earnings) {
-      updateBusinessOverview('earnings', earningsMatch[1].trim());
-    }
-
-    // Look for dreams/goals information
-    const dreamsRegex = /(?:dream|goal|vision|aspiration|ambition) (.*?)(?:\.|\n|$)/i;
-    const dreamsMatch = aiResponse.match(dreamsRegex);
-    if (dreamsMatch && !businessOverview.dreams) {
-      updateBusinessOverview('dreams', dreamsMatch[1].trim());
-    }
-
-    // Look for alignment information
-    const alignmentRegex = /(?:alignment|fit|match|compatibility|suitability) (.*?)(?:\.|\n|$)/i;
-    const alignmentMatch = aiResponse.match(alignmentRegex);
-    if (alignmentMatch && !businessOverview.alignment) {
-      updateBusinessOverview('alignment', alignmentMatch[1].trim());
-    }
-
-    // Look for readiness information
-    const readinessRegex = /(?:readiness|preparedness|capability|ability|skill) (.*?)(?:\.|\n|$)/i;
-    const readinessMatch = aiResponse.match(readinessRegex);
-    if (readinessMatch && !businessOverview.readiness) {
-      updateBusinessOverview('readiness', readinessMatch[1].trim());
-    }
-  };
-
-  // Function to extract budget and goal from AI responses
-  const extractBudgetAndGoal = (aiResponse: string) => {
-    if (!currentProject) return;
-
-    // Look for budget mentions (e.g., "$1000", "1000 dollars", etc.)
-    const budgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
-    const budgetMatch = aiResponse.match(budgetRegex);
-    
-    if (budgetMatch) {
-      const budget = budgetMatch[0].replace(/\s*dollars?|USD/i, '');
-      handleBudgetEdit(budget);
-    }
-
-    // Look for goal-related content after specific phrases
-    const goalRegex = /(?:your goal is|main goal is|goal to|aiming to|want to) (.*?)(?:\.|\n|$)/i;
-    const goalMatch = aiResponse.match(goalRegex);
-    
-    if (goalMatch) {
-      const goal = goalMatch[1].trim();
-      handleGoalEdit(goal);
-    }
-
-    // Look for launch date mentions
-    const launchDateRegex = /(?:launch date|release date|go live|start date) (?:is|will be|set to|scheduled for) (.*?)(?:\.|\n|$)/i;
-    const launchDateMatch = aiResponse.match(launchDateRegex);
-    
-    if (launchDateMatch) {
-      const dateStr = launchDateMatch[1].trim();
-      // Try to parse the date string
-      const parsedDate = new Date(dateStr);
-      if (!isNaN(parsedDate.getTime())) {
-        handleLaunchDateEdit(parsedDate.toISOString().split('T')[0]);
-      }
-    }
-
-    // Ensure the response is business type-specific
-    if (currentProject.business_type === 'ecommerce' && 
-        (aiResponse.toLowerCase().includes('copywriting') || 
-         aiResponse.toLowerCase().includes('software') || 
-         aiResponse.toLowerCase().includes('agency'))) {
-      // If the response mentions other business types for an ecommerce business, trigger a correction
-      const correctedResponse = aiResponse
-        .replace(/copywriting business|software business|agency business/g, 'ecommerce business')
-        .replace(/copywriter|software founder|agency owner/g, 'online store owner');
-      return correctedResponse;
-    }
-    
-    if (currentProject.business_type === 'copywriting' && 
-        (aiResponse.toLowerCase().includes('ecommerce') || 
-         aiResponse.toLowerCase().includes('software') || 
-         aiResponse.toLowerCase().includes('agency'))) {
-      const correctedResponse = aiResponse
-        .replace(/ecommerce business|software business|agency business/g, 'copywriting business')
-        .replace(/online store owner|software founder|agency owner/g, 'copywriter');
-      return correctedResponse;
-    }
-    
-    if (currentProject.business_type === 'agency' && 
-        (aiResponse.toLowerCase().includes('ecommerce') || 
-         aiResponse.toLowerCase().includes('copywriting') || 
-         aiResponse.toLowerCase().includes('software'))) {
-      const correctedResponse = aiResponse
-        .replace(/ecommerce business|copywriting business|software business/g, 'agency business')
-        .replace(/online store owner|copywriter|software founder/g, 'agency owner');
-      return correctedResponse;
-    }
-    
-    if (currentProject.business_type === 'software' && 
-        (aiResponse.toLowerCase().includes('ecommerce') || 
-         aiResponse.toLowerCase().includes('copywriting') || 
-         aiResponse.toLowerCase().includes('agency'))) {
-      const correctedResponse = aiResponse
-        .replace(/ecommerce business|copywriting business|agency business/g, 'software business')
-        .replace(/online store owner|copywriter|agency owner/g, 'software founder');
-      return correctedResponse;
-    }
-  };
-
   return (
     <div className="page-container">
       {/* Business Overview Panel */}
@@ -822,41 +682,7 @@ function AIChatInterface() {
         <div className="business-overview">
           <h2>Business Summary</h2>
           <div className="overview-content">
-            {businessOverview.setup && (
-              <div className="overview-item">
-                <strong>Setup:</strong> {businessOverview.setup}
-              </div>
-            )}
-            {businessOverview.financials && (
-              <div className="overview-item">
-                <strong>Financials:</strong> {businessOverview.financials}
-              </div>
-            )}
-            {businessOverview.timeline && (
-              <div className="overview-item">
-                <strong>Timeline:</strong> {businessOverview.timeline}
-              </div>
-            )}
-            {businessOverview.earnings && (
-              <div className="overview-item">
-                <strong>Earnings:</strong> {businessOverview.earnings}
-              </div>
-            )}
-            {businessOverview.dreams && (
-              <div className="overview-item">
-                <strong>Goals:</strong> {businessOverview.dreams}
-              </div>
-            )}
-            {businessOverview.alignment && (
-              <div className="overview-item">
-                <strong>Alignment:</strong> {businessOverview.alignment}
-              </div>
-            )}
-            {businessOverview.readiness && (
-              <div className="overview-item">
-                <strong>Readiness:</strong> {businessOverview.readiness}
-              </div>
-            )}
+            {currentProject.business_overview_summary}
           </div>
         </div>
       )}
