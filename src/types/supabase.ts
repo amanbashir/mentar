@@ -9,40 +9,15 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      userdata: {
-        Row: {
-          id: string
-          created_at: string
-          user_id: string
-          business_type: string
-          questionnaire_data: Json | null
-          todo_list: Json | null
-          business_plan: Json | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          user_id: string
-          business_type: string
-          questionnaire_data?: Json | null
-          todo_list?: Json | null
-          business_plan?: Json | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          user_id?: string
-          business_type?: string
-          questionnaire_data?: Json | null
-          todo_list?: Json | null
-          business_plan?: Json | null
-        }
-      }
       projects: {
         Row: {
           id: string
           created_at: string
           user_id: string
+          business_type: string
+          questionnaire_data: Json
+          todo_list: Json
+          business_plan: Json
           business_idea: string | null
           brief_summary: string | null
           total_budget: number | null
@@ -57,6 +32,10 @@ export interface Database {
           id?: string
           created_at?: string
           user_id: string
+          business_type: string
+          questionnaire_data?: Json
+          todo_list?: Json
+          business_plan?: Json
           business_idea?: string | null
           brief_summary?: string | null
           total_budget?: number | null
@@ -71,6 +50,10 @@ export interface Database {
           id?: string
           created_at?: string
           user_id?: string
+          business_type?: string
+          questionnaire_data?: Json
+          todo_list?: Json
+          business_plan?: Json
           business_idea?: string | null
           brief_summary?: string | null
           total_budget?: number | null
@@ -80,6 +63,35 @@ export interface Database {
           todo_2?: string | null
           todo_3?: string | null
           todo_4?: string | null
+        }
+      }
+      userdata: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string
+          business_type: string
+          questionnaire_data: Json
+          todo_list: Json
+          business_plan: Json
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id: string
+          business_type: string
+          questionnaire_data?: Json
+          todo_list?: Json
+          business_plan?: Json
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          user_id?: string
+          business_type?: string
+          questionnaire_data?: Json
+          todo_list?: Json
+          business_plan?: Json
         }
       }
     }
