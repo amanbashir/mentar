@@ -494,12 +494,47 @@ function AIChatInterface() {
       }
 
       const data = await response.json();
-      const aiMessage = {
-        id: (Date.now() + 1).toString(),
-        content: data.choices[0].message.content,
-        isUser: false
-      };
-      setPopupMessages(prev => [...prev, aiMessage]);
+      const aiResponse = data.choices[0].message.content;
+      
+      await saveMessage(aiResponse, false);
+
+      // Generate and update business overview summary
+      try {
+        const summaryPrompt = `Summarize the current business as a business overview for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear.`;
+        const contextMessages = [...messages, { is_user: true, content: userMessage }, { is_user: false, content: aiResponse }].slice(-10).map((m) => ({
+          role: m.is_user ? 'user' : 'assistant',
+          content: m.content
+        }));
+        const summaryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...contextMessages,
+              { role: 'user', content: summaryPrompt }
+            ],
+            temperature: 0.5
+          })
+        });
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          const summary = summaryData.choices[0].message.content;
+          // Update in DB
+          await supabase
+            .from('projects')
+            .update({ business_overview_summary: summary })
+            .eq('id', currentProject.id);
+          // Update local state
+          setCurrentProject((prev) => prev ? { ...prev, business_overview_summary: summary } : prev);
+        }
+      } catch (err) {
+        console.error('Error updating business overview summary:', err);
+      }
     } catch (error) {
       console.error('Error in popup chat:', error);
       const errorMessage = {
@@ -661,6 +696,44 @@ function AIChatInterface() {
       const aiResponse = data.choices[0].message.content;
       
       await saveMessage(aiResponse, false);
+
+      // Generate and update business overview summary
+      try {
+        const summaryPrompt = `Summarize the current business as a business overview for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear.`;
+        const contextMessages = [...messages, { is_user: true, content: userMessage }, { is_user: false, content: aiResponse }].slice(-10).map((m) => ({
+          role: m.is_user ? 'user' : 'assistant',
+          content: m.content
+        }));
+        const summaryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...contextMessages,
+              { role: 'user', content: summaryPrompt }
+            ],
+            temperature: 0.5
+          })
+        });
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          const summary = summaryData.choices[0].message.content;
+          // Update in DB
+          await supabase
+            .from('projects')
+            .update({ business_overview_summary: summary })
+            .eq('id', currentProject.id);
+          // Update local state
+          setCurrentProject((prev) => prev ? { ...prev, business_overview_summary: summary } : prev);
+        }
+      } catch (err) {
+        console.error('Error updating business overview summary:', err);
+      }
     } catch (error) {
       console.error('Error in chat:', error);
       await saveMessage("I apologize, but I encountered an error. Please try again.", false);
