@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { INITIAL_MESSAGE } from '../lib/businessDiscovery';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam } from 'openai/resources/chat/completions';
@@ -6,6 +6,9 @@ import { systemPrompt } from '../../lib/mentars/systemPrompt';
 import { buildPrompt } from '../../lib/mentars/promptBuilder';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { getProjectData, storeProjectData } from '../lib/supabase/projectData';
+import { ProjectDetails } from './ProjectDetails';
+import { supabase } from '../lib/supabase/supabaseClient';
 import './AIChatInterface.css';
 
 interface Message {
@@ -24,10 +27,71 @@ export default function AIChatInterface() {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [projectData, setProjectData] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get the current user ID from Supabase auth
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        // Fetch project data for the user
+        try {
+          const data = await getProjectData(user.id);
+          setProjectData(data);
+        } catch (error) {
+          console.error('Error fetching project data:', error);
+        }
+      }
+    };
+
+    getCurrentUser();
+  }, []);
+
+  // Function to extract project data from AI responses
+  const extractProjectData = (text: string) => {
+    // Look for patterns like "Business Idea: [idea]" or "Budget: [amount]"
+    const businessIdeaMatch = text.match(/Business Idea:?\s*([^\n]+)/i);
+    const briefSummaryMatch = text.match(/Brief Summary:?\s*([^\n]+)/i);
+    const totalBudgetMatch = text.match(/Total Budget:?\s*\$?([0-9,]+)/i);
+    const expectedLaunchDateMatch = text.match(/Expected Launch Date:?\s*([^\n]+)/i);
+    const incomeGoalMatch = text.match(/Income Goal:?\s*\$?([0-9,]+)/i);
+    
+    // Look for todo items
+    const todoMatches = text.match(/Todo \d+:?\s*([^\n]+)/gi);
+    
+    if (businessIdeaMatch || briefSummaryMatch || totalBudgetMatch || 
+        expectedLaunchDateMatch || incomeGoalMatch || todoMatches) {
+      
+      const extractedData: any = {};
+      
+      if (businessIdeaMatch) extractedData.business_idea = businessIdeaMatch[1].trim();
+      if (briefSummaryMatch) extractedData.brief_summary = briefSummaryMatch[1].trim();
+      if (totalBudgetMatch) extractedData.total_budget = parseFloat(totalBudgetMatch[1].replace(/,/g, ''));
+      if (expectedLaunchDateMatch) extractedData.expected_launch_date = expectedLaunchDateMatch[1].trim();
+      if (incomeGoalMatch) extractedData.income_goal = parseFloat(incomeGoalMatch[1].replace(/,/g, ''));
+      
+      // Extract todo items
+      if (todoMatches) {
+        todoMatches.forEach((match, index) => {
+          const todoText = match.replace(/Todo \d+:?\s*/i, '').trim();
+          if (index === 0) extractedData.todo_1 = todoText;
+          if (index === 1) extractedData.todo_2 = todoText;
+          if (index === 2) extractedData.todo_3 = todoText;
+          if (index === 3) extractedData.todo_4 = todoText;
+        });
+      }
+      
+      return extractedData;
+    }
+    
+    return null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || !openai.apiKey) return;
+    if (!inputValue.trim() || !openai.apiKey || !userId) return;
 
     const userMessage = inputValue.trim();
     setInputValue('');
@@ -61,6 +125,20 @@ export default function AIChatInterface() {
       
       // Add AI response to chat
       setMessages(prev => [...prev, { text: aiResponse, isUser: false }]);
+      
+      // Check if the AI response contains project data
+      const extractedData = extractProjectData(aiResponse);
+      if (extractedData) {
+        // Update project data in the database
+        try {
+          await storeProjectData(userId, extractedData);
+          // Refresh project data
+          const updatedData = await getProjectData(userId);
+          setProjectData(updatedData);
+        } catch (error) {
+          console.error('Error storing project data:', error);
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
       setMessages(prev => [...prev, { 
@@ -74,6 +152,7 @@ export default function AIChatInterface() {
 
   return (
     <div className="chat-container">
+      {projectData && <ProjectDetails data={projectData} />}
       <div className="messages-container">
         {messages.map((message, index) => (
           <div key={index} className={`message ${message.isUser ? 'user' : 'ai'}`}>

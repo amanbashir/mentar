@@ -117,4 +117,125 @@ BEGIN
     ON "userData"
     FOR DELETE
     USING (auth.uid() = user_id);
+END $$;
+
+-- Add new columns to the existing projects table
+DO $$
+BEGIN
+    -- Check and add business_idea column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'business_idea') THEN
+        ALTER TABLE "projects" ADD COLUMN "business_idea" TEXT;
+    END IF;
+
+    -- Check and add brief_summary column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'brief_summary') THEN
+        ALTER TABLE "projects" ADD COLUMN "brief_summary" TEXT;
+    END IF;
+
+    -- Check and add total_budget column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'total_budget') THEN
+        ALTER TABLE "projects" ADD COLUMN "total_budget" DECIMAL;
+    END IF;
+
+    -- Check and add expected_launch_date column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'expected_launch_date') THEN
+        ALTER TABLE "projects" ADD COLUMN "expected_launch_date" DATE;
+    END IF;
+
+    -- Check and add income_goal column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'income_goal') THEN
+        ALTER TABLE "projects" ADD COLUMN "income_goal" DECIMAL;
+    END IF;
+
+    -- Check and add todo_1 column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'todo_1') THEN
+        ALTER TABLE "projects" ADD COLUMN "todo_1" TEXT;
+    END IF;
+
+    -- Check and add todo_2 column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'todo_2') THEN
+        ALTER TABLE "projects" ADD COLUMN "todo_2" TEXT;
+    END IF;
+
+    -- Check and add todo_3 column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'todo_3') THEN
+        ALTER TABLE "projects" ADD COLUMN "todo_3" TEXT;
+    END IF;
+
+    -- Check and add todo_4 column
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                  WHERE table_name = 'projects' AND column_name = 'todo_4') THEN
+        ALTER TABLE "projects" ADD COLUMN "todo_4" TEXT;
+    END IF;
+END $$;
+
+-- Add comments to describe the columns
+COMMENT ON COLUMN "projects"."business_idea" IS 'The main business idea or concept';
+COMMENT ON COLUMN "projects"."brief_summary" IS 'A brief summary of the business plan';
+COMMENT ON COLUMN "projects"."total_budget" IS 'The total budget allocated for the project';
+COMMENT ON COLUMN "projects"."expected_launch_date" IS 'The expected launch date of the project';
+COMMENT ON COLUMN "projects"."income_goal" IS 'The target income goal for the project';
+COMMENT ON COLUMN "projects"."todo_1" IS 'First todo item';
+COMMENT ON COLUMN "projects"."todo_2" IS 'Second todo item';
+COMMENT ON COLUMN "projects"."todo_3" IS 'Third todo item';
+COMMENT ON COLUMN "projects"."todo_4" IS 'Fourth todo item';
+
+-- Create a trigger to automatically update the updated_at column for projects if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_trigger WHERE tgname = 'update_projects_timestamp') THEN
+        CREATE TRIGGER update_projects_timestamp
+            BEFORE UPDATE ON "projects"
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
+
+-- Enable Row Level Security (RLS) for projects if not already enabled
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'projects' AND rowsecurity = true) THEN
+        ALTER TABLE "projects" ENABLE ROW LEVEL SECURITY;
+    END IF;
+END $$;
+
+-- Create policies for projects table if they don't exist
+DO $$
+BEGIN
+    -- Check if policies exist
+    IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'projects' AND policyname = 'Users can view own projects') THEN
+        CREATE POLICY "Users can view own projects"
+        ON "projects"
+        FOR SELECT
+        USING (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'projects' AND policyname = 'Users can update own projects') THEN
+        CREATE POLICY "Users can update own projects"
+        ON "projects"
+        FOR UPDATE
+        USING (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'projects' AND policyname = 'Users can insert own projects') THEN
+        CREATE POLICY "Users can insert own projects"
+        ON "projects"
+        FOR INSERT
+        WITH CHECK (auth.uid() = user_id);
+    END IF;
+
+    IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'projects' AND policyname = 'Users can delete own projects') THEN
+        CREATE POLICY "Users can delete own projects"
+        ON "projects"
+        FOR DELETE
+        USING (auth.uid() = user_id);
+    END IF;
 END $$; 
