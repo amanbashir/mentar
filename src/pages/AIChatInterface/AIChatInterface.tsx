@@ -15,6 +15,10 @@ interface Project {
   goal: string;
   budget: string;
   launch_date: string;
+  todo_1: string;
+  todo_2: string;
+  todo_3: string;
+  todo_4: string;
 }
 
 interface BusinessOverview {
@@ -45,14 +49,6 @@ interface PopupMessage {
   id: string;
   content: string;
   isUser: boolean;
-}
-
-// Add interface for module tasks
-interface ModuleTask {
-  id: string;
-  title: string;
-  completed: boolean;
-  order: number;
 }
 
 function AIChatInterface() {
@@ -89,7 +85,6 @@ function AIChatInterface() {
   const popupMessagesEndRef = useRef<HTMLDivElement>(null);
   const [popupMessages, setPopupMessages] = useState<PopupMessage[]>([]);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
-  const [moduleTasks, setModuleTasks] = useState<ModuleTask[]>([]);
   const [isEditingLaunchDate, setIsEditingLaunchDate] = useState(false);
   const [tempLaunchDate, setTempLaunchDate] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -335,200 +330,6 @@ function AIChatInterface() {
   const handleSettings = () => {
     // Implement settings handling
     console.log('Settings option clicked');
-  };
-
-  // Function to extract and save tasks from AI response
-  const extractAndSaveTasks = async (aiResponse: string) => {
-    if (!currentProject) return;
-
-    try {
-      // Enhanced regex to catch tasks in various formats
-      const taskRegex = /(?:^\d+\.\s+|\n\d+\.\s+|^[-•]\s+|\n[-•]\s+|^Task\s*\d*:\s+|\nTask\s*\d*:\s+)(.*?)(?=(?:\n\d+\.|\n[-•]|\nTask\s*\d*:)|$)/gm;
-      const matches = aiResponse.matchAll(taskRegex);
-      const tasks = Array.from(matches, m => m[1]?.trim())
-        .filter(Boolean)
-        .filter(task => task.length >= 3); // Filter out very short strings that might not be tasks
-
-      if (tasks.length > 0) {
-        console.log('Extracted tasks:', tasks);
-
-        // Get current tasks to determine order and check for duplicates
-        const { data: existingTasks, error: countError } = await supabase
-          .from('module_tasks')
-          .select('title, id')
-          .eq('project_id', currentProject.id);
-
-        if (countError) {
-          console.error('Error checking existing tasks:', countError);
-          return;
-        }
-
-        const startOrder = (existingTasks?.length || 0) + 1;
-        const existingTitles = new Set(existingTasks?.map(t => t.title.toLowerCase()));
-
-        // Filter out duplicate tasks and create new ones
-        const newTasks = tasks.filter(title => !existingTitles.has(title.toLowerCase()));
-        
-        if (newTasks.length === 0) {
-          console.log('No new unique tasks to add');
-          return;
-        }
-
-        const tasksToInsert = newTasks.map((title, index) => ({
-          project_id: currentProject.id,
-          title,
-          completed: false,
-          order: startOrder + index,
-          created_at: new Date().toISOString()
-        }));
-
-        const { error } = await supabase
-          .from('module_tasks')
-          .insert(tasksToInsert);
-
-        if (error) {
-          console.error('Error saving tasks:', error);
-          return;
-        }
-
-        console.log('New tasks saved:', tasksToInsert);
-        fetchModuleTasks();
-      }
-    } catch (error) {
-      console.error('Error in extractAndSaveTasks:', error);
-    }
-  };
-
-  // Function to extract business overview from AI responses
-  const extractBusinessOverview = (aiResponse: string) => {
-    if (!currentProject) return;
-
-    // Look for setup information
-    const setupRegex = /(?:setup|start|begin|launch|establish) (.*?)(?:\.|\n|$)/i;
-    const setupMatch = aiResponse.match(setupRegex);
-    if (setupMatch && !businessOverview.setup) {
-      updateBusinessOverview('setup', setupMatch[1].trim());
-    }
-
-    // Look for financial information
-    const financialsRegex = /(?:financial|budget|cost|investment|spending) (.*?)(?:\.|\n|$)/i;
-    const financialsMatch = aiResponse.match(financialsRegex);
-    if (financialsMatch && !businessOverview.financials) {
-      updateBusinessOverview('financials', financialsMatch[1].trim());
-    }
-
-    // Look for timeline information
-    const timelineRegex = /(?:timeline|schedule|plan|deadline|milestone) (.*?)(?:\.|\n|$)/i;
-    const timelineMatch = aiResponse.match(timelineRegex);
-    if (timelineMatch && !businessOverview.timeline) {
-      updateBusinessOverview('timeline', timelineMatch[1].trim());
-    }
-
-    // Look for earnings information
-    const earningsRegex = /(?:earnings|revenue|income|profit|sales) (.*?)(?:\.|\n|$)/i;
-    const earningsMatch = aiResponse.match(earningsRegex);
-    if (earningsMatch && !businessOverview.earnings) {
-      updateBusinessOverview('earnings', earningsMatch[1].trim());
-    }
-
-    // Look for dreams/goals information
-    const dreamsRegex = /(?:dream|goal|vision|aspiration|ambition) (.*?)(?:\.|\n|$)/i;
-    const dreamsMatch = aiResponse.match(dreamsRegex);
-    if (dreamsMatch && !businessOverview.dreams) {
-      updateBusinessOverview('dreams', dreamsMatch[1].trim());
-    }
-
-    // Look for alignment information
-    const alignmentRegex = /(?:alignment|fit|match|compatibility|suitability) (.*?)(?:\.|\n|$)/i;
-    const alignmentMatch = aiResponse.match(alignmentRegex);
-    if (alignmentMatch && !businessOverview.alignment) {
-      updateBusinessOverview('alignment', alignmentMatch[1].trim());
-    }
-
-    // Look for readiness information
-    const readinessRegex = /(?:readiness|preparedness|capability|ability|skill) (.*?)(?:\.|\n|$)/i;
-    const readinessMatch = aiResponse.match(readinessRegex);
-    if (readinessMatch && !businessOverview.readiness) {
-      updateBusinessOverview('readiness', readinessMatch[1].trim());
-    }
-  };
-
-  // Function to extract budget and goal from AI responses
-  const extractBudgetAndGoal = (aiResponse: string) => {
-    if (!currentProject) return;
-
-    // Look for budget mentions (e.g., "$1000", "1000 dollars", etc.)
-    const budgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
-    const budgetMatch = aiResponse.match(budgetRegex);
-    
-    if (budgetMatch) {
-      const budget = budgetMatch[0].replace(/\s*dollars?|USD/i, '');
-      handleBudgetEdit(budget);
-    }
-
-    // Look for goal-related content after specific phrases
-    const goalRegex = /(?:your goal is|main goal is|goal to|aiming to|want to) (.*?)(?:\.|\n|$)/i;
-    const goalMatch = aiResponse.match(goalRegex);
-    
-    if (goalMatch) {
-      const goal = goalMatch[1].trim();
-      handleGoalEdit(goal);
-    }
-
-    // Look for launch date mentions
-    const launchDateRegex = /(?:launch date|release date|go live|start date) (?:is|will be|set to|scheduled for) (.*?)(?:\.|\n|$)/i;
-    const launchDateMatch = aiResponse.match(launchDateRegex);
-    
-    if (launchDateMatch) {
-      const dateStr = launchDateMatch[1].trim();
-      // Try to parse the date string
-      const parsedDate = new Date(dateStr);
-      if (!isNaN(parsedDate.getTime())) {
-        handleLaunchDateEdit(parsedDate.toISOString().split('T')[0]);
-      }
-    }
-
-    // Ensure the response is business type-specific
-    if (currentProject.business_type === 'ecommerce' && 
-        (aiResponse.toLowerCase().includes('copywriting') || 
-         aiResponse.toLowerCase().includes('software') || 
-         aiResponse.toLowerCase().includes('agency'))) {
-      // If the response mentions other business types for an ecommerce business, trigger a correction
-      const correctedResponse = aiResponse
-        .replace(/copywriting business|software business|agency business/g, 'ecommerce business')
-        .replace(/copywriter|software founder|agency owner/g, 'online store owner');
-      return correctedResponse;
-    }
-    
-    if (currentProject.business_type === 'copywriting' && 
-        (aiResponse.toLowerCase().includes('ecommerce') || 
-         aiResponse.toLowerCase().includes('software') || 
-         aiResponse.toLowerCase().includes('agency'))) {
-      const correctedResponse = aiResponse
-        .replace(/ecommerce business|software business|agency business/g, 'copywriting business')
-        .replace(/online store owner|software founder|agency owner/g, 'copywriter');
-      return correctedResponse;
-    }
-    
-    if (currentProject.business_type === 'agency' && 
-        (aiResponse.toLowerCase().includes('ecommerce') || 
-         aiResponse.toLowerCase().includes('copywriting') || 
-         aiResponse.toLowerCase().includes('software'))) {
-      const correctedResponse = aiResponse
-        .replace(/ecommerce business|copywriting business|software business/g, 'agency business')
-        .replace(/online store owner|copywriter|software founder/g, 'agency owner');
-      return correctedResponse;
-    }
-    
-    if (currentProject.business_type === 'software' && 
-        (aiResponse.toLowerCase().includes('ecommerce') || 
-         aiResponse.toLowerCase().includes('copywriting') || 
-         aiResponse.toLowerCase().includes('agency'))) {
-      const correctedResponse = aiResponse
-        .replace(/ecommerce business|copywriting business|agency business/g, 'software business')
-        .replace(/online store owner|copywriter|agency owner/g, 'software founder');
-      return correctedResponse;
-    }
   };
 
   const handleLogout = async () => {
@@ -798,84 +599,19 @@ function AIChatInterface() {
     setShowDropdown(!showDropdown);
   };
 
-  // Keep the fetchModuleTasks function to display tasks
-  const fetchModuleTasks = async () => {
-    if (!currentProject) return;
-
-    try {
-      const { data: tasks, error } = await supabase
-        .from('module_tasks')
-        .select('*')
-        .eq('project_id', currentProject.id)
-        .order('completed', { ascending: true })
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching module tasks:', error);
-        return;
-      }
-
-      console.log('Fetched module tasks:', tasks);
-      setModuleTasks(tasks || []);
-    } catch (error) {
-      console.error('Error in fetchModuleTasks:', error);
-    }
-  };
-
-  // Add effect to fetch tasks when current project changes
-  useEffect(() => {
-    if (currentProject) {
-      fetchModuleTasks();
-    }
-  }, [currentProject]);
-
-  // Function to handle task completion
-  const handleTaskCompletion = async (taskId: string, completed: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('module_tasks')
-        .update({ completed })
-        .eq('id', taskId);
-
-      if (error) {
-        console.error('Error updating task:', error);
-        return;
-      }
-
-      // Update local state
-      setModuleTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.id === taskId ? { ...task, completed } : task
-        )
-      );
-
-      // Update project progress
-      if (currentProject) {
-        const completedTasks = moduleTasks.filter(t => t.completed).length;
-        const progress = Math.round((completedTasks / moduleTasks.length) * 100);
-        
-        const { error: progressError } = await supabase
-          .from('projects')
-          .update({ progress })
-          .eq('id', currentProject.id);
-
-        if (progressError) {
-          console.error('Error updating progress:', progressError);
-        } else {
-          setCurrentProject({ ...currentProject, progress });
-        }
-      }
-    } catch (error) {
-      console.error('Error in handleTaskCompletion:', error);
-    }
-  };
-
-  // Add this new function after the existing functions
-  const calculateTimeRemaining = (launchDate: string) => {
-    const total = new Date(launchDate).getTime() - new Date().getTime();
-    const days = Math.floor(total / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
-    return { days, hours };
+  // Helper to get todos from currentProject
+  const getProjectTodos = () => {
+    if (!currentProject) return [];
+    return [
+      currentProject.todo_1,
+      currentProject.todo_2,
+      currentProject.todo_3,
+      currentProject.todo_4
+    ].filter(Boolean).map((task, idx) => ({
+      id: `todo_${idx+1}`,
+      title: task,
+      completed: false // If you want to track completion, add a completed field to the projects table
+    }));
   };
 
   // Modify the handleSubmit function to handle the sequential questions
@@ -931,7 +667,6 @@ function AIChatInterface() {
       const aiResponse = data.choices[0].message.content;
       
       await saveMessage(aiResponse, false);
-      await extractAndSaveTasks(aiResponse);
       extractBudgetAndGoal(aiResponse);
       extractBusinessOverview(aiResponse);
     } catch (error) {
@@ -945,6 +680,138 @@ function AIChatInterface() {
           inputRef.current.focus();
         }
       }, 100);
+    }
+  };
+
+  // Function to extract business overview from AI responses
+  const extractBusinessOverview = (aiResponse: string) => {
+    if (!currentProject) return;
+
+    // Look for setup information
+    const setupRegex = /(?:setup|start|begin|launch|establish) (.*?)(?:\.|\n|$)/i;
+    const setupMatch = aiResponse.match(setupRegex);
+    if (setupMatch && !businessOverview.setup) {
+      updateBusinessOverview('setup', setupMatch[1].trim());
+    }
+
+    // Look for financial information
+    const financialsRegex = /(?:financial|budget|cost|investment|spending) (.*?)(?:\.|\n|$)/i;
+    const financialsMatch = aiResponse.match(financialsRegex);
+    if (financialsMatch && !businessOverview.financials) {
+      updateBusinessOverview('financials', financialsMatch[1].trim());
+    }
+
+    // Look for timeline information
+    const timelineRegex = /(?:timeline|schedule|plan|deadline|milestone) (.*?)(?:\.|\n|$)/i;
+    const timelineMatch = aiResponse.match(timelineRegex);
+    if (timelineMatch && !businessOverview.timeline) {
+      updateBusinessOverview('timeline', timelineMatch[1].trim());
+    }
+
+    // Look for earnings information
+    const earningsRegex = /(?:earnings|revenue|income|profit|sales) (.*?)(?:\.|\n|$)/i;
+    const earningsMatch = aiResponse.match(earningsRegex);
+    if (earningsMatch && !businessOverview.earnings) {
+      updateBusinessOverview('earnings', earningsMatch[1].trim());
+    }
+
+    // Look for dreams/goals information
+    const dreamsRegex = /(?:dream|goal|vision|aspiration|ambition) (.*?)(?:\.|\n|$)/i;
+    const dreamsMatch = aiResponse.match(dreamsRegex);
+    if (dreamsMatch && !businessOverview.dreams) {
+      updateBusinessOverview('dreams', dreamsMatch[1].trim());
+    }
+
+    // Look for alignment information
+    const alignmentRegex = /(?:alignment|fit|match|compatibility|suitability) (.*?)(?:\.|\n|$)/i;
+    const alignmentMatch = aiResponse.match(alignmentRegex);
+    if (alignmentMatch && !businessOverview.alignment) {
+      updateBusinessOverview('alignment', alignmentMatch[1].trim());
+    }
+
+    // Look for readiness information
+    const readinessRegex = /(?:readiness|preparedness|capability|ability|skill) (.*?)(?:\.|\n|$)/i;
+    const readinessMatch = aiResponse.match(readinessRegex);
+    if (readinessMatch && !businessOverview.readiness) {
+      updateBusinessOverview('readiness', readinessMatch[1].trim());
+    }
+  };
+
+  // Function to extract budget and goal from AI responses
+  const extractBudgetAndGoal = (aiResponse: string) => {
+    if (!currentProject) return;
+
+    // Look for budget mentions (e.g., "$1000", "1000 dollars", etc.)
+    const budgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
+    const budgetMatch = aiResponse.match(budgetRegex);
+    
+    if (budgetMatch) {
+      const budget = budgetMatch[0].replace(/\s*dollars?|USD/i, '');
+      handleBudgetEdit(budget);
+    }
+
+    // Look for goal-related content after specific phrases
+    const goalRegex = /(?:your goal is|main goal is|goal to|aiming to|want to) (.*?)(?:\.|\n|$)/i;
+    const goalMatch = aiResponse.match(goalRegex);
+    
+    if (goalMatch) {
+      const goal = goalMatch[1].trim();
+      handleGoalEdit(goal);
+    }
+
+    // Look for launch date mentions
+    const launchDateRegex = /(?:launch date|release date|go live|start date) (?:is|will be|set to|scheduled for) (.*?)(?:\.|\n|$)/i;
+    const launchDateMatch = aiResponse.match(launchDateRegex);
+    
+    if (launchDateMatch) {
+      const dateStr = launchDateMatch[1].trim();
+      // Try to parse the date string
+      const parsedDate = new Date(dateStr);
+      if (!isNaN(parsedDate.getTime())) {
+        handleLaunchDateEdit(parsedDate.toISOString().split('T')[0]);
+      }
+    }
+
+    // Ensure the response is business type-specific
+    if (currentProject.business_type === 'ecommerce' && 
+        (aiResponse.toLowerCase().includes('copywriting') || 
+         aiResponse.toLowerCase().includes('software') || 
+         aiResponse.toLowerCase().includes('agency'))) {
+      // If the response mentions other business types for an ecommerce business, trigger a correction
+      const correctedResponse = aiResponse
+        .replace(/copywriting business|software business|agency business/g, 'ecommerce business')
+        .replace(/copywriter|software founder|agency owner/g, 'online store owner');
+      return correctedResponse;
+    }
+    
+    if (currentProject.business_type === 'copywriting' && 
+        (aiResponse.toLowerCase().includes('ecommerce') || 
+         aiResponse.toLowerCase().includes('software') || 
+         aiResponse.toLowerCase().includes('agency'))) {
+      const correctedResponse = aiResponse
+        .replace(/ecommerce business|software business|agency business/g, 'copywriting business')
+        .replace(/online store owner|software founder|agency owner/g, 'copywriter');
+      return correctedResponse;
+    }
+    
+    if (currentProject.business_type === 'agency' && 
+        (aiResponse.toLowerCase().includes('ecommerce') || 
+         aiResponse.toLowerCase().includes('copywriting') || 
+         aiResponse.toLowerCase().includes('software'))) {
+      const correctedResponse = aiResponse
+        .replace(/ecommerce business|copywriting business|software business/g, 'agency business')
+        .replace(/online store owner|copywriter|software founder/g, 'agency owner');
+      return correctedResponse;
+    }
+    
+    if (currentProject.business_type === 'software' && 
+        (aiResponse.toLowerCase().includes('ecommerce') || 
+         aiResponse.toLowerCase().includes('copywriting') || 
+         aiResponse.toLowerCase().includes('agency'))) {
+      const correctedResponse = aiResponse
+        .replace(/ecommerce business|copywriting business|agency business/g, 'software business')
+        .replace(/online store owner|copywriter|agency owner/g, 'software founder');
+      return correctedResponse;
     }
   };
 
@@ -1046,16 +913,9 @@ function AIChatInterface() {
           <div className="todo-list-container">
             <h2>Todo List</h2>
             <div className="todo-list">
-              {moduleTasks.map((task) => (
+              {getProjectTodos().map((task) => (
                 <div key={task.id} className="todo-item">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={(e) => handleTaskCompletion(task.id, e.target.checked)}
-                  />
-                  <span className={task.completed ? 'completed' : ''}>
-                    {task.title}
-                  </span>
+                  <span>{task.title}</span>
                 </div>
               ))}
             </div>
@@ -1138,23 +998,6 @@ function AIChatInterface() {
               <>
                 <div className="launch-date-display">
                   {new Date(currentProject.launch_date).toLocaleDateString()}
-                </div>
-                <div className="countdown-timer">
-                  {(() => {
-                    const { days, hours } = calculateTimeRemaining(currentProject.launch_date);
-                    return (
-                      <>
-                        <div className="countdown-item">
-                          <span className="countdown-value">{days}</span>
-                          <span className="countdown-label">Days</span>
-                        </div>
-                        <div className="countdown-item">
-                          <span className="countdown-value">{hours}</span>
-                          <span className="countdown-label">Hours</span>
-                        </div>
-                      </>
-                    );
-                  })()}
                 </div>
               </>
             ) : (
