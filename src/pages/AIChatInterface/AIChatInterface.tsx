@@ -92,37 +92,6 @@ function AIChatInterface() {
   const [moduleTasks, setModuleTasks] = useState<ModuleTask[]>([]);
   const [isEditingLaunchDate, setIsEditingLaunchDate] = useState(false);
   const [tempLaunchDate, setTempLaunchDate] = useState('');
-  const [userData, setUserData] = useState<{
-    first_name: string | null;
-    email: string | null;
-    avatar_url: string | null;
-    business_type: string | null;
-    goals: string | null;
-    resources: { capital: string | null; time_commitment: string | null } | null;
-    interests: string | null;
-    hobbies: string | null;
-    learning_style: string | null;
-    vision: string | null;
-    starting_point: { capital: number | null; timeAvailable: string | null; skills: string[] } | null;
-    blockers: string[] | null;
-    assistance_needed: string | null;
-    goalIncome: string | null;
-  }>({
-    first_name: null,
-    email: null,
-    avatar_url: null,
-    business_type: null,
-    goals: null,
-    resources: null,
-    interests: null,
-    hobbies: null,
-    learning_style: null,
-    vision: null,
-    starting_point: null,
-    blockers: null,
-    assistance_needed: null,
-    goalIncome: null
-  });
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -132,29 +101,15 @@ function AIChatInterface() {
     const initializeBusinessType = async () => {
       if (businessTypeFromState) {
         setBusinessType(businessTypeFromState);
-        // Get user's first name
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: userData } = await supabase
-            .from('userData')
-            .select('first_name')
-            .eq('user_id', session.user.id)
-            .single();
-          
-          const businessTypeLower = businessTypeFromState.toLowerCase();
-          
-          if (businessTypeLower === 'ecommerce' || 
-              businessTypeLower === 'agency' || 
-              businessTypeLower === 'software' ||
-              businessTypeLower === 'copywriting') {
-            setInitialMessage(`Hi ${userData?.first_name || 'there'}! I'm excited to help you build your ${businessType} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
-          } else {
-            setInitialMessage(`Hello ${userData?.first_name || 'there'}! I'm excited to help you build your ${businessTypeFromState} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
-          }
+        const businessTypeLower = businessTypeFromState.toLowerCase();
+        
+        if (businessTypeLower === 'ecommerce' || 
+            businessTypeLower === 'agency' || 
+            businessTypeLower === 'software' ||
+            businessTypeLower === 'copywriting') {
+          setInitialMessage(`Hi! I'm excited to help you build your ${businessType} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
         } else {
-          setInitialMessage(`Hi, great choice! Let's confirm if this is a good fit for you and your goals.
-
-What's your current budget for this business?`);
+          setInitialMessage(`Hello! I'm excited to help you build your ${businessTypeFromState} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
         }
         // Refresh projects list when returning from onboarding
         fetchUserProjects();
@@ -207,20 +162,21 @@ What's your current budget for this business?`);
         return;
       }
 
-      const { data: userData, error } = await supabase
+      const { data: businessData, error } = await supabase
         .from('userData')
-        .select('business_type, first_name')
+        .select('business_type')
         .eq('user_id', session.user.id)
         .single();
 
       if (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching business type:', error);
+        navigate('/onboarding');
         return;
       }
 
-      if (userData?.business_type) {
-        setBusinessType(userData.business_type);
-        const businessTypeLower = userData.business_type.toLowerCase();
+      if (businessData?.business_type) {
+        setBusinessType(businessData.business_type);
+        const businessTypeLower = businessData.business_type.toLowerCase();
         
         // Map business types to their proper names
         const businessTypeMap: Record<string, string> = {
@@ -230,19 +186,16 @@ What's your current budget for this business?`);
           'copywriting': 'copywriting'
         };
         
-        const properBusinessType = businessTypeMap[businessTypeLower] || userData.business_type;
+        const properBusinessType = businessTypeMap[businessTypeLower] || businessData.business_type;
         
-        if (properBusinessType) {
-          setInitialMessage(`Hi ${userData.first_name || 'there'}! I'm excited to help you build your ${properBusinessType} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
-        } else {
-          setInitialMessage(`Hello ${userData.first_name || 'there'}! I'm excited to help you build your ${userData.business_type} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
-        }
+        setInitialMessage(`Hi! I'm excited to help you build your ${properBusinessType} business. Let's start with your target monthly income goal - what amount would you like to achieve?`);
       } else {
-        setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");
+        // If no business type is set, redirect to onboarding
+        navigate('/onboarding');
       }
     } catch (error) {
       console.error('Error:', error);
-      setInitialMessage("My name is Mentar. I'm here to help you start your online business. Do you already know what kind of business you want to start?");
+      navigate('/onboarding');
     }
   };
 
@@ -578,382 +531,6 @@ What's your current budget for this business?`);
     }
   };
 
-  // Add this function to check for missing user data
-  const checkMissingUserData = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { data: userDataFromDB, error } = await supabase
-        .from('userData')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user data:', error);
-        return;
-      }
-
-      // Update local state with user data
-      setUserData(userDataFromDB || {
-        first_name: null,
-        email: null,
-        avatar_url: null,
-        business_type: null,
-        goals: null,
-        resources: null,
-        interests: null,
-        hobbies: null,
-        learning_style: null,
-        vision: null,
-        starting_point: null,
-        blockers: null,
-        assistance_needed: null,
-        goalIncome: null
-      });
-
-      // Check for missing fields
-      const missingFields = [];
-      if (!userDataFromDB?.first_name) missingFields.push('first_name');
-      if (!userDataFromDB?.email) missingFields.push('email');
-      if (!userDataFromDB?.business_type) missingFields.push('business_type');
-      if (!userDataFromDB?.goals) missingFields.push('goals');
-      if (!userDataFromDB?.resources?.capital) missingFields.push('resources.capital');
-      if (!userDataFromDB?.resources?.time_commitment) missingFields.push('resources.time_commitment');
-      if (!userDataFromDB?.interests) missingFields.push('interests');
-      if (!userDataFromDB?.hobbies) missingFields.push('hobbies');
-      if (!userDataFromDB?.learning_style) missingFields.push('learning_style');
-      if (!userDataFromDB?.vision) missingFields.push('vision');
-      if (!userDataFromDB?.starting_point?.capital) missingFields.push('starting_point.capital');
-      if (!userDataFromDB?.starting_point?.timeAvailable) missingFields.push('starting_point.timeAvailable');
-      if (!userDataFromDB?.starting_point?.skills || userDataFromDB?.starting_point?.skills.length === 0) missingFields.push('starting_point.skills');
-      if (!userDataFromDB?.blockers || userDataFromDB?.blockers.length === 0) missingFields.push('blockers');
-      if (!userDataFromDB?.assistance_needed) missingFields.push('assistance_needed');
-
-      return missingFields;
-    } catch (error) {
-      console.error('Error checking missing user data:', error);
-      return [];
-    }
-  };
-
-  // Add this function to update user data
-  const updateUserData = async (updates: Partial<typeof userData>) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      // Update the database
-      const { error } = await supabase
-        .from('userData')
-        .update(updates)
-        .eq('user_id', session.user.id);
-
-      if (error) {
-        console.error('Error updating user data:', error);
-        return;
-      }
-
-      // Update local state
-      setUserData((prev: typeof userData) => ({ ...prev, ...updates }));
-    } catch (error) {
-      console.error('Error in updateUserData:', error);
-    }
-  };
-
-  // Add this function to extract user data from AI responses
-  const extractUserData = (aiResponse: string) => {
-    console.log("Extracting user data from AI response:", aiResponse);
-    
-    // Extract first name if not already set
-    if (!userData.first_name) {
-      const nameRegex = /(?:your name is|you are|you're|you are called|you go by) ([A-Za-z]+)/i;
-      const nameMatch = aiResponse.match(nameRegex);
-      if (nameMatch) {
-        console.log("Extracted first name:", nameMatch[1]);
-        updateUserData({ first_name: nameMatch[1] });
-      }
-    }
-
-    // Extract goals if not already set
-    if (!userData.goals) {
-      const goalsRegex = /(?:your goal is|main goal is|goal to|aiming to|want to|you want to) (.*?)(?:\.|\n|$)/i;
-      const goalsMatch = aiResponse.match(goalsRegex);
-      if (goalsMatch) {
-        console.log("Extracted goals:", goalsMatch[1].trim());
-        updateUserData({ goals: goalsMatch[1].trim() });
-      }
-    }
-
-    // Extract budget/capital if not already set
-    if (!userData.resources?.capital) {
-      // Look for budget mentions in the AI response
-      const budgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
-      const budgetMatch = aiResponse.match(budgetRegex);
-      if (budgetMatch) {
-        const budget = budgetMatch[0].replace(/\s*dollars?|USD/i, '');
-        console.log("Extracted budget:", budget);
-        updateUserData({ 
-          resources: { 
-            capital: budget,
-            time_commitment: userData.resources?.time_commitment || null
-          } 
-        });
-      }
-      
-      // Also check for budget in user's last message
-      if (messages.length > 0) {
-        const lastUserMessage = messages[messages.length - 1].content;
-        const userBudgetRegex = /\$\d+(?:,\d{3})*|\d+\s*(?:dollars?|USD)/gi;
-        const userBudgetMatch = lastUserMessage.match(userBudgetRegex);
-        if (userBudgetMatch) {
-          const budget = userBudgetMatch[0].replace(/\s*dollars?|USD/i, '');
-          console.log("Extracted budget from user message:", budget);
-          updateUserData({ 
-            resources: { 
-              capital: budget,
-              time_commitment: userData.resources?.time_commitment || null
-            } 
-          });
-        }
-      }
-    }
-
-    // Extract time commitment if not already set
-    if (!userData.resources?.time_commitment) {
-      // Look for time commitment in the AI response
-      const timeRegex = /(\d+)\s*(?:hours?|hrs?)\s*(?:per|a)\s*(?:week|day)/i;
-      const timeMatch = aiResponse.match(timeRegex);
-      if (timeMatch) {
-        const timeCommitment = `${timeMatch[1]} hours per week`;
-        console.log("Extracted time commitment:", timeCommitment);
-        updateUserData({ 
-          resources: { 
-            capital: userData.resources?.capital || null,
-            time_commitment: timeCommitment
-          } 
-        });
-      }
-      
-      // Also check for time commitment in user's last message
-      if (messages.length > 0) {
-        const lastUserMessage = messages[messages.length - 1].content;
-        const userTimeRegex = /(\d+)\s*(?:hours?|hrs?)\s*(?:per|a)\s*(?:week|day)/i;
-        const userTimeMatch = lastUserMessage.match(userTimeRegex);
-        if (userTimeMatch) {
-          const timeCommitment = `${userTimeMatch[1]} hours per week`;
-          console.log("Extracted time commitment from user message:", timeCommitment);
-          updateUserData({ 
-            resources: { 
-              capital: userData.resources?.capital || null,
-              time_commitment: timeCommitment
-            } 
-          });
-        }
-      }
-    }
-
-    // Extract dream income if not already set
-    if (!userData.goalIncome) {
-      // Look for dream income in the AI response
-      const dreamIncomeRegex = /(?:dream|target|goal|desired|monthly|income|earnings|revenue) (?:of|is|about|around|approximately)?\s*\$?(\d+(?:,\d{3})*|\d+)\s*(?:per month|monthly|a month)/i;
-      const dreamIncomeMatch = aiResponse.match(dreamIncomeRegex);
-      if (dreamIncomeMatch) {
-        const dreamIncome = dreamIncomeMatch[1].replace(/,/g, '');
-        console.log("Extracted dream income:", dreamIncome);
-        updateUserData({ goalIncome: dreamIncome });
-      }
-      
-      // Also check for dream income in user's last message
-      if (messages.length > 0) {
-        const lastUserMessage = messages[messages.length - 1].content;
-        const userDreamIncomeRegex = /(?:dream|target|goal|desired|monthly|income|earnings|revenue) (?:of|is|about|around|approximately)?\s*\$?(\d+(?:,\d{3})*|\d+)\s*(?:per month|monthly|a month)/i;
-        const userDreamIncomeMatch = lastUserMessage.match(userDreamIncomeRegex);
-        if (userDreamIncomeMatch) {
-          const dreamIncome = userDreamIncomeMatch[1].replace(/,/g, '');
-          console.log("Extracted dream income from user message:", dreamIncome);
-          updateUserData({ goalIncome: dreamIncome });
-        }
-        
-        // Also check for direct number responses
-        const directNumberRegex = /\$?(\d+(?:,\d{3})*|\d+)\s*(?:per month|monthly|a month)/i;
-        const directNumberMatch = lastUserMessage.match(directNumberRegex);
-        if (directNumberMatch) {
-          const dreamIncome = directNumberMatch[1].replace(/,/g, '');
-          console.log("Extracted direct number as dream income:", dreamIncome);
-          updateUserData({ goalIncome: dreamIncome });
-        }
-      }
-    }
-
-    // Extract interests if not already set
-    if (!userData.interests) {
-      const interestsRegex = /(?:interested in|passionate about|fascinated by|like|enjoy) (.*?)(?:\.|\n|$)/i;
-      const interestsMatch = aiResponse.match(interestsRegex);
-      if (interestsMatch) {
-        console.log("Extracted interests:", interestsMatch[1].trim());
-        updateUserData({ interests: interestsMatch[1].trim() });
-      }
-    }
-
-    // Extract hobbies if not already set
-    if (!userData.hobbies) {
-      const hobbiesRegex = /(?:hobbies|hobby|activities|free time) (?:include|are|is) (.*?)(?:\.|\n|$)/i;
-      const hobbiesMatch = aiResponse.match(hobbiesRegex);
-      if (hobbiesMatch) {
-        console.log("Extracted hobbies:", hobbiesMatch[1].trim());
-        updateUserData({ hobbies: hobbiesMatch[1].trim() });
-      }
-    }
-
-    // Extract learning style if not already set
-    if (!userData.learning_style) {
-      const learningStyleRegex = /(?:learn|learning|study) (?:best|better|prefer) (?:by|through|via) (.*?)(?:\.|\n|$)/i;
-      const learningStyleMatch = aiResponse.match(learningStyleRegex);
-      if (learningStyleMatch) {
-        console.log("Extracted learning style:", learningStyleMatch[1].trim());
-        updateUserData({ learning_style: learningStyleMatch[1].trim() });
-      }
-    }
-
-    // Extract vision if not already set
-    if (!userData.vision) {
-      const visionRegex = /(?:vision|dream|aspiration|ambition) (?:is|to) (.*?)(?:\.|\n|$)/i;
-      const visionMatch = aiResponse.match(visionRegex);
-      if (visionMatch) {
-        console.log("Extracted vision:", visionMatch[1].trim());
-        updateUserData({ vision: visionMatch[1].trim() });
-      }
-    }
-
-    // Extract skills if not already set
-    if (!userData.starting_point?.skills || userData.starting_point.skills.length === 0) {
-      const skillsRegex = /(?:skills|abilities|capabilities) (?:include|are) (.*?)(?:\.|\n|$)/i;
-      const skillsMatch = aiResponse.match(skillsRegex);
-      if (skillsMatch) {
-        const skills = skillsMatch[1].split(/,|\sand\s/).map(skill => skill.trim());
-        console.log("Extracted skills:", skills);
-        updateUserData({ 
-          starting_point: { 
-            capital: userData.starting_point?.capital || null,
-            timeAvailable: userData.starting_point?.timeAvailable || null,
-            skills 
-          } 
-        });
-      }
-    }
-
-    // Extract blockers if not already set
-    if (!userData.blockers || userData.blockers.length === 0) {
-      const blockersRegex = /(?:blockers|obstacles|challenges|difficulties) (?:include|are) (.*?)(?:\.|\n|$)/i;
-      const blockersMatch = aiResponse.match(blockersRegex);
-      if (blockersMatch) {
-        const blockers = blockersMatch[1].split(/,|\sand\s/).map(blocker => blocker.trim());
-        console.log("Extracted blockers:", blockers);
-        updateUserData({ blockers });
-      }
-    }
-
-    // Extract assistance needed if not already set
-    if (!userData.assistance_needed) {
-      const assistanceRegex = /(?:need help with|assistance with|support with) (.*?)(?:\.|\n|$)/i;
-      const assistanceMatch = aiResponse.match(assistanceRegex);
-      if (assistanceMatch) {
-        console.log("Extracted assistance needed:", assistanceMatch[1].trim());
-        updateUserData({ assistance_needed: assistanceMatch[1].trim() });
-      }
-    }
-  };
-
-  // Modify the handleSubmit function to handle the sequential questions
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim() || isLoading || !currentProject) return;
-
-    const userMessage = inputMessage.trim();
-    setInputMessage('');
-    setIsLoading(true);
-
-    try {
-      await saveMessage(userMessage, true);
-
-      // Check for missing user data
-      const missingFields = await checkMissingUserData();
-      
-      // Build the system prompt with business type context and missing fields
-      const businessTypeContext = `You are helping the user build a ${currentProject.business_type} business. 
-      The user's budget is ${currentProject.budget || 'not set yet'}. 
-      The user's goal is ${currentProject.goal || 'not set yet'}.`;
-      
-      // Add instructions to collect missing user data if any
-      const dataCollectionInstructions = `
-When collecting user information, ask these questions one at a time in this order:
-1. What's your target monthly income goal?
-2. How many hours per week can you commit to this business?
-3. What relevant skills or experience do you have?
-4. What are your main interests or hobbies?
-5. How do you prefer to learn (videos, reading, hands-on)?
-6. When would you like to launch your business?
-
-IMPORTANT: Only ask ONE question at a time and wait for the user's response before asking the next question. Never list multiple questions or ask about vision, challenges, or areas needing help.`;
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "system",
-              content: `${systemPrompt}\n\n${businessTypeContext}\n\n${dataCollectionInstructions}`
-            },
-            ...messages.map(msg => ({
-              role: msg.is_user ? "user" : "assistant",
-              content: msg.content
-            })),
-            {
-              role: "user",
-              content: userMessage
-            }
-          ],
-          temperature: 0.7,
-          presence_penalty: 0.6,
-          frequency_penalty: 0.6
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-      
-      await saveMessage(aiResponse, false);
-      await extractAndSaveTasks(aiResponse);
-      extractBudgetAndGoal(aiResponse);
-      extractBusinessOverview(aiResponse);
-      
-      // Extract user data from the AI response
-      extractUserData(aiResponse);
-    } catch (error) {
-      console.error('Error in chat:', error);
-      await saveMessage("I apologize, but I encountered an error. Please try again.", false);
-    } finally {
-      setIsLoading(false);
-      // Ensure the input field is focused after the AI response
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-        }
-      }, 100);
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -1076,25 +653,10 @@ IMPORTANT: Only ask ONE question at a time and wait for the user's response befo
     setPopupMessages(prev => [...prev, userPopupMessage]);
 
     try {
-      // Check for missing user data
-      const missingFields = await checkMissingUserData();
-      
-      // Build the system prompt with business type context and missing fields
+      // Build the system prompt with business type context
       const businessTypeContext = `You are helping the user build a ${currentProject.business_type} business. 
       The user's budget is ${currentProject.budget || 'not set yet'}. 
       The user's goal is ${currentProject.goal || 'not set yet'}.`;
-      
-      // Add instructions to collect missing user data if any
-      const dataCollectionInstructions = `
-When collecting user information, ask these questions one at a time in this order:
-1. What's your target monthly income goal?
-2. How many hours per week can you commit to this business?
-3. What relevant skills or experience do you have?
-4. What are your main interests or hobbies?
-5. How do you prefer to learn (videos, reading, hands-on)?
-6. When would you like to launch your business?
-
-IMPORTANT: Only ask ONE question at a time and wait for the user's response before asking the next question. Never list multiple questions or ask about vision, challenges, or areas needing help.`;
 
       // Get AI response using the same endpoint as the main chat
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1108,7 +670,7 @@ IMPORTANT: Only ask ONE question at a time and wait for the user's response befo
           messages: [
             {
               role: "system",
-              content: `${systemPrompt}\n\n${businessTypeContext}\n\n${dataCollectionInstructions}`
+              content: `${systemPrompt}\n\n${businessTypeContext}`
             },
             ...popupMessages.map(msg => ({
               role: msg.isUser ? "user" : "assistant",
@@ -1136,9 +698,6 @@ IMPORTANT: Only ask ONE question at a time and wait for the user's response befo
         isUser: false
       };
       setPopupMessages(prev => [...prev, aiMessage]);
-      
-      // Extract user data from the AI response
-      extractUserData(aiMessage.content);
     } catch (error) {
       console.error('Error in popup chat:', error);
       const errorMessage = {
@@ -1319,14 +878,75 @@ IMPORTANT: Only ask ONE question at a time and wait for the user's response befo
     return { days, hours };
   };
 
-  // Add useEffect to check for missing user data on component mount
-  useEffect(() => {
-    const checkUserData = async () => {
-      await checkMissingUserData();
-    };
-    
-    checkUserData();
-  }, []);
+  // Modify the handleSubmit function to handle the sequential questions
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputMessage.trim() || isLoading || !currentProject) return;
+
+    const userMessage = inputMessage.trim();
+    setInputMessage('');
+    setIsLoading(true);
+
+    try {
+      await saveMessage(userMessage, true);
+      
+      // Build the system prompt with business type context
+      const businessTypeContext = `You are helping the user build a ${currentProject.business_type} business. 
+      The user's budget is ${currentProject.budget || 'not set yet'}. 
+      The user's goal is ${currentProject.goal || 'not set yet'}.`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: `${systemPrompt}\n\n${businessTypeContext}`
+            },
+            ...messages.map(msg => ({
+              role: msg.is_user ? "user" : "assistant",
+              content: msg.content
+            })),
+            {
+              role: "user",
+              content: userMessage
+            }
+          ],
+          temperature: 0.7,
+          presence_penalty: 0.6,
+          frequency_penalty: 0.6
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+      
+      await saveMessage(aiResponse, false);
+      await extractAndSaveTasks(aiResponse);
+      extractBudgetAndGoal(aiResponse);
+      extractBusinessOverview(aiResponse);
+    } catch (error) {
+      console.error('Error in chat:', error);
+      await saveMessage("I apologize, but I encountered an error. Please try again.", false);
+    } finally {
+      setIsLoading(false);
+      // Ensure the input field is focused after the AI response
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+    }
+  };
 
   return (
     <div className="page-container">
