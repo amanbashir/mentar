@@ -48,7 +48,7 @@ const Questionnaire = () => {
     ].forEach((key, idx) => {
       userAnswers[key] = answers[idx];
     });
-    navigate('/questionnaire', { state: { userAnswers, project } });
+    navigate('/questionnaire/complete', { state: { userAnswers, project } });
   };
 
   return (
