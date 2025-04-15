@@ -845,7 +845,9 @@ function AIChatInterface() {
                   setIsEditingBudget(true);
                 }}
               >
-                {currentProject?.budget || 'Click to set budget'}
+                {currentProject?.budget
+                  ? `Your stated budget: ${/^\$/.test(currentProject.budget) ? currentProject.budget : `$${currentProject.budget}`}`
+                  : 'Click to set budget'}
               </div>
             )}
           </div>
@@ -886,7 +888,9 @@ function AIChatInterface() {
                   setIsEditingGoal(true);
                 }}
               >
-                {currentProject?.goal || 'Click to set goal'}
+                {currentProject?.goal
+                  ? `Your stated goal: ${currentProject.goal}`
+                  : 'Click to set goal'}
               </div>
             )}
           </div>
