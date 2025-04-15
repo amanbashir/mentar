@@ -822,34 +822,11 @@ function AIChatInterface() {
           
           <div className="budget-container">
             <h2>Budget</h2>
-            {isEditingBudget ? (
-              <div className="editable-field">
-                <input
-                  type="text"
-                  value={tempBudget}
-                  onChange={(e) => setTempBudget(e.target.value)}
-                  onBlur={() => handleBudgetEdit(tempBudget)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleBudgetEdit(tempBudget);
-                    }
-                  }}
-                  autoFocus
-                />
-              </div>
-            ) : (
-              <div
-                className="budget-display"
-                onClick={() => {
-                  setTempBudget(currentProject?.budget || '');
-                  setIsEditingBudget(true);
-                }}
-              >
-                {currentProject?.budget
-                  ? `Your stated budget: ${/^\$/.test(currentProject.budget) ? currentProject.budget : `$${currentProject.budget}`}`
-                  : 'Click to set budget'}
-              </div>
-            )}
+            <div className="budget-display">
+              {currentProject?.budget
+                ? `Your stated budget: ${/^\$/.test(currentProject.budget) ? currentProject.budget : `$${currentProject.budget}`}`
+                : ''}
+            </div>
           </div>
 
           <div className="progress-container">
@@ -865,34 +842,11 @@ function AIChatInterface() {
 
           <div className="goal-container">
             <h2>Goal</h2>
-            {isEditingGoal ? (
-              <div className="editable-field">
-                <input
-                  type="text"
-                  value={tempGoal}
-                  onChange={(e) => setTempGoal(e.target.value)}
-                  onBlur={() => handleGoalEdit(tempGoal)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleGoalEdit(tempGoal);
-                    }
-                  }}
-                  autoFocus
-                />
-              </div>
-            ) : (
-              <div
-                className="goal-display"
-                onClick={() => {
-                  setTempGoal(currentProject?.goal || '');
-                  setIsEditingGoal(true);
-                }}
-              >
-                {currentProject?.goal
-                  ? `Your stated goal: ${currentProject.goal}`
-                  : 'Click to set goal'}
-              </div>
-            )}
+            <div className="goal-display">
+              {currentProject?.goal
+                ? `Your stated goal: ${currentProject.goal}`
+                : ''}
+            </div>
           </div>
 
           <div className="launch-date-container">
