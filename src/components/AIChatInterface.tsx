@@ -36,6 +36,7 @@ export default function AIChatInterface() {
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const retryTimeoutRef = useRef<number | null>(null);
+  const [businessOverview, setBusinessOverview] = useState('');
 
   useEffect(() => {
     // Get the current user ID from Supabase auth
@@ -62,6 +63,23 @@ export default function AIChatInterface() {
       }
     };
   }, []);
+
+  // Fetch the business overview from Supabase on project load
+  useEffect(() => {
+    const fetchOverview = async () => {
+      if (projectData && projectData.id) {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('business_overview_summary')
+          .eq('id', projectData.id)
+          .single();
+        if (!error && data && data.business_overview_summary) {
+          setBusinessOverview(data.business_overview_summary);
+        }
+      }
+    };
+    fetchOverview();
+  }, [projectData]);
 
   // Function to check rate limiting
   const checkRateLimit = (): boolean => {
@@ -121,6 +139,45 @@ export default function AIChatInterface() {
     return null;
   };
 
+  // Generate and save a new business overview after each user prompt
+  const updateBusinessOverview = async (messages: { text: string; isUser: boolean }[]) => {
+    if (!projectData || !projectData.id) return;
+    try {
+      const summaryPrompt = `Summarize the current business as a business overview for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear.`;
+      const contextMessages = messages.slice(-10).map((m: { text: string; isUser: boolean }) => ({
+        role: m.isUser ? 'user' : 'assistant',
+        content: m.text
+      }));
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...contextMessages,
+            { role: 'user', content: summaryPrompt }
+          ],
+          temperature: 0.5
+        })
+      });
+      if (!response.ok) throw new Error('Failed to get business overview summary');
+      const data = await response.json();
+      const summary = data.choices[0].message.content;
+      setBusinessOverview(summary);
+      // Save to Supabase
+      await supabase
+        .from('projects')
+        .update({ business_overview_summary: summary })
+        .eq('id', projectData.id);
+    } catch (error) {
+      console.error('Error updating business overview:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || !openai.apiKey || !userId) return;
@@ -177,6 +234,8 @@ export default function AIChatInterface() {
           console.error('Error storing project data:', error);
         }
       }
+      // Update the business overview summary
+      await updateBusinessOverview([...updatedMessages, { text: aiResponse, isUser: false }]);
     } catch (error: any) {
       console.error('Error:', error);
       
@@ -212,6 +271,18 @@ export default function AIChatInterface() {
   return (
     <div className="chat-container">
       {projectData && <ProjectDetails data={projectData} />}
+      {projectData && (
+        <div className="business-overview">
+          <h2>Business Overview</h2>
+          <div className="overview-content">
+            {businessOverview ? (
+              <div className="overview-item">{businessOverview}</div>
+            ) : (
+              <div className="overview-item">No overview yet. Start chatting to generate a summary.</div>
+            )}
+          </div>
+        </div>
+      )}
       {error && <div className="error-message">{error}</div>}
       <div className="messages-container">
         {messages.map((message, index) => (
