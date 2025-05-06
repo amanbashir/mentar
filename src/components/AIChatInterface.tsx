@@ -1,15 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
-import { INITIAL_MESSAGE } from '../lib/businessDiscovery';
-import OpenAI from 'openai';
-import type { ChatCompletionMessageParam, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam } from 'openai/resources/chat/completions';
-import { systemPrompt } from '../../lib/mentars/systemPrompt';
-import { buildPrompt } from '../../lib/mentars/promptBuilder';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { getProjectData, storeProjectData } from '../lib/supabase/projectData';
-import { ProjectDetails } from './ProjectDetails';
-import { supabase } from '../lib/supabase/supabaseClient';
-import './AIChatInterface.css';
+import { useState, useEffect, useRef } from "react";
+import { INITIAL_MESSAGE } from "../lib/businessDiscovery";
+import OpenAI from "openai";
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionSystemMessageParam,
+  ChatCompletionUserMessageParam,
+  ChatCompletionAssistantMessageParam,
+} from "openai/resources/chat/completions";
+import { systemPrompt } from "../../lib/mentars/systemPrompt";
+import { buildPrompt } from "../../lib/mentars/promptBuilder";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { getProjectData, storeProjectData } from "../lib/supabase/projectData";
+import { ProjectDetails } from "./ProjectDetails";
+import { supabase } from "../lib/supabase/supabaseClient";
+import "./AIChatInterface.css";
 
 interface Message {
   text: string;
@@ -18,7 +23,7 @@ interface Message {
 
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
+  dangerouslyAllowBrowser: true,
 });
 
 // Rate limiting variables
@@ -28,20 +33,22 @@ const requestTimestamps: number[] = [];
 
 export default function AIChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
-    { text: INITIAL_MESSAGE, isUser: false }
+    { text: INITIAL_MESSAGE, isUser: false },
   ]);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [projectData, setProjectData] = useState<any>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const retryTimeoutRef = useRef<number | null>(null);
-  const [businessOverview, setBusinessOverview] = useState('');
+  const [businessOverview, setBusinessOverview] = useState("");
 
   useEffect(() => {
     // Get the current user ID from Supabase auth
     const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
         // Fetch project data for the user
@@ -49,13 +56,13 @@ export default function AIChatInterface() {
           const data = await getProjectData(user.id);
           setProjectData(data);
         } catch (error) {
-          console.error('Error fetching project data:', error);
+          console.error("Error fetching project data:", error);
         }
       }
     };
 
     getCurrentUser();
-    
+
     // Cleanup function
     return () => {
       if (retryTimeoutRef.current) {
@@ -69,9 +76,9 @@ export default function AIChatInterface() {
     const fetchOverview = async () => {
       if (projectData && projectData.id) {
         const { data, error } = await supabase
-          .from('projects')
-          .select('business_overview_summary')
-          .eq('id', projectData.id)
+          .from("projects")
+          .select("business_overview_summary")
+          .eq("id", projectData.id)
           .single();
         if (!error && data && data.business_overview_summary) {
           setBusinessOverview(data.business_overview_summary);
@@ -85,15 +92,18 @@ export default function AIChatInterface() {
   const checkRateLimit = (): boolean => {
     const now = Date.now();
     // Remove timestamps older than the window
-    while (requestTimestamps.length > 0 && requestTimestamps[0] < now - RATE_LIMIT_WINDOW) {
+    while (
+      requestTimestamps.length > 0 &&
+      requestTimestamps[0] < now - RATE_LIMIT_WINDOW
+    ) {
       requestTimestamps.shift();
     }
-    
+
     // Check if we're over the limit
     if (requestTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
       return false;
     }
-    
+
     // Add current timestamp
     requestTimestamps.push(now);
     return true;
@@ -105,76 +115,100 @@ export default function AIChatInterface() {
     const businessIdeaMatch = text.match(/Business Idea:?\s*([^\n]+)/i);
     const briefSummaryMatch = text.match(/Brief Summary:?\s*([^\n]+)/i);
     const totalBudgetMatch = text.match(/Total Budget:?\s*\$?([0-9,]+)/i);
-    const expectedLaunchDateMatch = text.match(/Expected Launch Date:?\s*([^\n]+)/i);
+    const expectedLaunchDateMatch = text.match(
+      /Expected Launch Date:?\s*([^\n]+)/i
+    );
     const incomeGoalMatch = text.match(/Income Goal:?\s*\$?([0-9,]+)/i);
-    
+
     // Look for todo items
     const todoMatches = text.match(/Todo \d+:?\s*([^\n]+)/gi);
-    
-    if (businessIdeaMatch || briefSummaryMatch || totalBudgetMatch || 
-        expectedLaunchDateMatch || incomeGoalMatch || todoMatches) {
-      
+
+    if (
+      businessIdeaMatch ||
+      briefSummaryMatch ||
+      totalBudgetMatch ||
+      expectedLaunchDateMatch ||
+      incomeGoalMatch ||
+      todoMatches
+    ) {
       const extractedData: any = {};
-      
-      if (businessIdeaMatch) extractedData.business_idea = businessIdeaMatch[1].trim();
-      if (briefSummaryMatch) extractedData.brief_summary = briefSummaryMatch[1].trim();
-      if (totalBudgetMatch) extractedData.total_budget = parseFloat(totalBudgetMatch[1].replace(/,/g, ''));
-      if (expectedLaunchDateMatch) extractedData.expected_launch_date = expectedLaunchDateMatch[1].trim();
-      if (incomeGoalMatch) extractedData.income_goal = parseFloat(incomeGoalMatch[1].replace(/,/g, ''));
-      
+
+      if (businessIdeaMatch)
+        extractedData.business_idea = businessIdeaMatch[1].trim();
+      if (briefSummaryMatch)
+        extractedData.brief_summary = briefSummaryMatch[1].trim();
+      if (totalBudgetMatch)
+        extractedData.total_budget = parseFloat(
+          totalBudgetMatch[1].replace(/,/g, "")
+        );
+      if (expectedLaunchDateMatch)
+        extractedData.expected_launch_date = expectedLaunchDateMatch[1].trim();
+      if (incomeGoalMatch)
+        extractedData.income_goal = parseFloat(
+          incomeGoalMatch[1].replace(/,/g, "")
+        );
+
       // Extract todo items
       if (todoMatches) {
         todoMatches.forEach((match, index) => {
-          const todoText = match.replace(/Todo \d+:?\s*/i, '').trim();
+          const todoText = match.replace(/Todo \d+:?\s*/i, "").trim();
           if (index === 0) extractedData.todo_1 = todoText;
           if (index === 1) extractedData.todo_2 = todoText;
           if (index === 2) extractedData.todo_3 = todoText;
           if (index === 3) extractedData.todo_4 = todoText;
         });
       }
-      
+
       return extractedData;
     }
-    
+
     return null;
   };
 
   // Generate and save a new business overview after each user prompt
-  const updateBusinessOverview = async (messages: { text: string; isUser: boolean }[]) => {
+  const updateBusinessOverview = async (
+    messages: { text: string; isUser: boolean }[]
+  ) => {
     if (!projectData || !projectData.id) return;
     try {
       const summaryPrompt = `Summarize the current business as a business overview for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear.`;
-      const contextMessages = messages.slice(-10).map((m: { text: string; isUser: boolean }) => ({
-        role: m.isUser ? 'user' : 'assistant',
-        content: m.text
-      }));
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...contextMessages,
-            { role: 'user', content: summaryPrompt }
-          ],
-          temperature: 0.5
-        })
-      });
-      if (!response.ok) throw new Error('Failed to get business overview summary');
+      const contextMessages = messages
+        .slice(-10)
+        .map((m: { text: string; isUser: boolean }) => ({
+          role: m.isUser ? "user" : "assistant",
+          content: m.text,
+        }));
+      const response = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...contextMessages,
+              { role: "user", content: summaryPrompt },
+            ],
+            temperature: 0.5,
+          }),
+        }
+      );
+      if (!response.ok)
+        throw new Error("Failed to get business overview summary");
       const data = await response.json();
       const summary = data.choices[0].message.content;
       setBusinessOverview(summary);
       // Save to Supabase
       await supabase
-        .from('projects')
+        .from("projects")
         .update({ business_overview_summary: summary })
-        .eq('id', projectData.id);
+        .eq("id", projectData.id);
     } catch (error) {
-      console.error('Error updating business overview:', error);
+      console.error("Error updating business overview:", error);
     }
   };
 
@@ -183,44 +217,53 @@ export default function AIChatInterface() {
     if (!inputValue.trim() || !openai.apiKey || !userId) return;
 
     const userMessage = inputValue.trim();
-    setInputValue('');
+    setInputValue("");
     setIsLoading(true);
     setError(null);
 
     try {
       // Add user message to chat
-      const updatedMessages = [...messages, { text: userMessage, isUser: true }];
+      const updatedMessages = [
+        ...messages,
+        { text: userMessage, isUser: true },
+      ];
       setMessages(updatedMessages);
 
       // Check rate limiting
       if (!checkRateLimit()) {
-        throw new Error("Rate limit exceeded. Please wait a moment before sending another message.");
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before sending another message."
+        );
       }
 
       // Convert messages to OpenAI format
       const systemMessage: ChatCompletionSystemMessageParam = {
         role: "system",
-        content: buildPrompt('ecommerce', 'stage_0', {})
+        content: buildPrompt("ecommerce", "stage_0", {}),
       };
 
-      const chatMessages: (ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam)[] = 
-        updatedMessages.slice(1).map(m => ({
-          role: m.isUser ? "user" : "assistant",
-          content: m.text
-        }));
+      const chatMessages: (
+        | ChatCompletionUserMessageParam
+        | ChatCompletionAssistantMessageParam
+      )[] = updatedMessages.slice(1).map((m) => ({
+        role: m.isUser ? "user" : "assistant",
+        content: m.text,
+      }));
 
       // Get AI response
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [systemMessage, ...chatMessages],
-        temperature: 0.7
+        temperature: 0.7,
       });
 
-      const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I couldn't generate a response. Please try again.";
-      
+      const aiResponse =
+        completion.choices[0]?.message?.content ||
+        "I apologize, but I couldn't generate a response. Please try again.";
+
       // Add AI response to chat
-      setMessages(prev => [...prev, { text: aiResponse, isUser: false }]);
-      
+      setMessages((prev) => [...prev, { text: aiResponse, isUser: false }]);
+
       // Check if the AI response contains project data
       const extractedData = extractProjectData(aiResponse);
       if (extractedData) {
@@ -231,36 +274,46 @@ export default function AIChatInterface() {
           const updatedData = await getProjectData(userId);
           setProjectData(updatedData);
         } catch (error) {
-          console.error('Error storing project data:', error);
+          console.error("Error storing project data:", error);
         }
       }
       // Update the business overview summary
-      await updateBusinessOverview([...updatedMessages, { text: aiResponse, isUser: false }]);
+      await updateBusinessOverview([
+        ...updatedMessages,
+        { text: aiResponse, isUser: false },
+      ]);
     } catch (error: any) {
-      console.error('Error:', error);
-      
+      console.error("Error:", error);
+
       // Handle rate limiting error
-      if (error.status === 429 || error.message?.includes('rate limit')) {
-        setError("You've reached the rate limit. Please wait a moment before trying again.");
-        
+      if (error.status === 429 || error.message?.includes("rate limit")) {
+        setError(
+          "You've reached the rate limit. Please wait a moment before trying again."
+        );
+
         // Set a timeout to retry after a delay
         if (retryTimeoutRef.current) {
           window.clearTimeout(retryTimeoutRef.current);
         }
-        
+
         retryTimeoutRef.current = window.setTimeout(() => {
           setError(null);
           setIsLoading(false);
         }, 10000); // 10 seconds delay
       } else {
-        setError("I apologize, but I'm having trouble connecting. Please check your internet connection and try again.");
+        setError(
+          "I apologize, but I'm having trouble connecting. Please check your internet connection and try again."
+        );
         setIsLoading(false);
       }
-      
-      setMessages(prev => [...prev, { 
-        text: "I apologize, but I'm having trouble connecting. Please check your internet connection and try again.", 
-        isUser: false 
-      }]);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: "I apologize, but I'm having trouble connecting. Please check your internet connection and try again.",
+          isUser: false,
+        },
+      ]);
     } finally {
       if (!retryTimeoutRef.current) {
         setIsLoading(false);
@@ -278,7 +331,9 @@ export default function AIChatInterface() {
             {businessOverview ? (
               <div className="overview-item">{businessOverview}</div>
             ) : (
-              <div className="overview-item">No overview yet. Start chatting to generate a summary.</div>
+              <div className="overview-item">
+                No overview yet. Start chatting to generate a summary.
+              </div>
             )}
           </div>
         </div>
@@ -286,8 +341,13 @@ export default function AIChatInterface() {
       {error && <div className="error-message">{error}</div>}
       <div className="messages-container">
         {messages.map((message, index) => (
-          <div key={index} className={`message ${message.isUser ? 'user' : 'ai'}`}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+          <div
+            key={index}
+            className={`message ${message.isUser ? "user" : "ai"}`}
+          >
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.text}
+            </ReactMarkdown>
           </div>
         ))}
         {isLoading && (
@@ -314,4 +374,4 @@ export default function AIChatInterface() {
       </form>
     </div>
   );
-} 
+}

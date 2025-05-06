@@ -1,8 +1,14 @@
+import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -10,27 +16,23 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { messages } = req.body;
+    const { prompt } = req.body;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4",
       messages: [
-        {
-          role: "system",
-          content: "You are Mentar, a highly capable AI coach focused on helping users achieve their life and business goals. You provide clear, actionable advice while maintaining a professional and supportive tone. Your responses should be direct, practical, and tailored to the user's specific situation."
-        },
-        ...messages.map((msg: any) => ({
-          role: msg.role,
-          content: msg.content
-        }))
+        { role: "system", content: prompt },
       ],
-      temperature: 0.7
+      temperature: 0.7,
+      presence_penalty: 0.6,
+      frequency_penalty: 0.6,
     });
 
-    const reply = completion.choices[0].message.content;
-    res.status(200).json({ message: reply });
+    const message = completion.choices[0].message.content;
+
+    return res.status(200).json({ message });
   } catch (error) {
-    console.error('OpenAI API Error:', error);
-    res.status(500).json({ message: 'Error processing your request' });
+    console.error('Error in chat API:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 } 

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { MentarService } from '../lib/services/mentarService';
-import { UserProfile } from '../types/mentar';
+import React, { useState } from "react";
+import { MentarService } from "../lib/services/mentarService";
+import { UserProfile } from "../types/mentar";
 
 interface ChatProps {
   currentProfile: UserProfile;
@@ -8,7 +8,11 @@ interface ChatProps {
   onMessageSend: (message: string) => void;
 }
 
-const Chat: React.FC<ChatProps> = ({ currentProfile, messages, onMessageSend }) => {
+const Chat: React.FC<ChatProps> = ({
+  currentProfile,
+  messages,
+  onMessageSend,
+}) => {
   const handleUserMessage = async (message: string) => {
     if (!currentProfile) return;
     onMessageSend(message);
@@ -19,7 +23,7 @@ const Chat: React.FC<ChatProps> = ({ currentProfile, messages, onMessageSend }) 
       <div className="flex-1 overflow-y-auto">
         {/* Message display logic will be handled by parent component */}
       </div>
-      
+
       {/* Add spacing above input */}
       <div className="mt-12">
         {/* Input component will be handled by parent component */}
@@ -28,4 +32,4 @@ const Chat: React.FC<ChatProps> = ({ currentProfile, messages, onMessageSend }) 
   );
 };
 
-export default Chat; 
+export default Chat;

@@ -82,11 +82,7 @@ export default function Login() {
 
           {error && <p className="error-message">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="login-button"
-          >
+          <button type="submit" disabled={loading} className="login-button">
             Sign In
           </button>
 
