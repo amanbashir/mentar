@@ -2,14 +2,26 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "../../lib/supabaseClient";
-import { systemPrompt } from "../../../lib/mentars/systemPrompt";
-import { buildPrompt } from "../../../lib/mentars/promptBuilder";
-import { userProfile } from "../../../lib/mentars/userProfile";
-import { saasStrategy } from "../../../lib/mentars/saasStrategy";
-import { agencyStrategy } from "../../../lib/mentars/agencyStrategy";
-import { ecomStrategy } from "../../../lib/mentars/ecomStrategy";
-import { copywritingStrategy } from "../../../lib/mentars/copywritingStrategy";
+import { systemPrompt, getCombinedPrompt } from "../../utils/prompts";
 import "./AIChatInterface.css";
+import { motion } from "framer-motion";
+import Navbar from "../../components/Navbar";
+import { FaTrashCan } from "react-icons/fa6";
+import {
+  extractBudget,
+  extractIncomeGoal,
+  extractBusinessIdea,
+  generateInitialTodos,
+  generateStageIntroduction,
+  getStrategyForBusinessType,
+  isStageCompleted,
+  updateTodosForStage,
+  generateBusinessOverviewSummary,
+  getAIChatResponse,
+  getNextStage,
+  typedSaasStrategy,
+} from "../../utils/openai";
+
 // Types
 interface Project {
   id: string;
@@ -76,32 +88,7 @@ interface BusinessStrategy {
 
 type StageKey = keyof BusinessStrategy;
 
-const typedSaasStrategy = saasStrategy as BusinessStrategy;
-
 // Helper functions
-const extractBudget = (text: string): string | null => {
-  const sentences = text
-    .split(/[.!?]+/)
-    .slice(0, 2)
-    .join(". ");
-  return sentences.trim();
-};
-
-const extractIncomeGoal = (text: string): string | null => {
-  const incomeMatch = text.match(
-    /(?:income|revenue|earnings|monthly goal).*?\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/i
-  );
-  return incomeMatch ? incomeMatch[1].replace(/,/g, "") : null;
-};
-
-const extractBusinessIdea = (text: string): string => {
-  const sentences = text
-    .split(/[.!?]+/)
-    .slice(0, 2)
-    .join(". ");
-  return sentences.trim();
-};
-
 const calculateProgress = (
   completedStages: string[],
   tasksInProgress: string[]
@@ -110,29 +97,16 @@ const calculateProgress = (
   const completedStageCount = completedStages.length;
   const stageProgress = (completedStageCount / totalStages) * 100;
 
-  const totalTasks = Object.values(typedSaasStrategy).reduce((acc, stage) => {
-    return acc + (stage.checklist?.length || 0);
-  }, 0);
+  const totalTasks = Object.values(typedSaasStrategy).reduce(
+    (acc, stage: any) => {
+      return acc + (stage.checklist?.length || 0);
+    },
+    0
+  );
   const completedTaskCount = tasksInProgress.length;
   const taskProgress = (completedTaskCount / totalTasks) * 100;
 
   return Math.round((stageProgress + taskProgress) / 2);
-};
-
-// Get the appropriate strategy based on business type
-const getStrategyForBusinessType = (businessType: string): BusinessStrategy => {
-  switch (businessType.toLowerCase()) {
-    case "saas":
-      return saasStrategy as BusinessStrategy;
-    case "agency":
-      return agencyStrategy as BusinessStrategy;
-    case "ecommerce":
-      return ecomStrategy as BusinessStrategy;
-    case "copywriting":
-      return copywritingStrategy as BusinessStrategy;
-    default:
-      return saasStrategy as BusinessStrategy; // Default to SaaS strategy
-  }
 };
 
 function AIChatInterface() {
@@ -143,7 +117,6 @@ function AIChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [businessType, setBusinessType] = useState<string | null>(null);
-  const [todos, setTodos] = useState<TodoItem[]>([]);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [tempGoal, setTempGoal] = useState("");
@@ -163,6 +136,10 @@ function AIChatInterface() {
   const [isEditingLaunchDate, setIsEditingLaunchDate] = useState(false);
   const [tempLaunchDate, setTempLaunchDate] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+  const [expandedTodos, setExpandedTodos] = useState<Record<string, boolean>>(
+    {}
+  );
 
   useEffect(() => {
     // Handle new project from onboarding
@@ -218,6 +195,7 @@ function AIChatInterface() {
 
         console.log("Session found:", session.user.id);
         setIsAuthChecked(true);
+
         fetchUserProjects();
       } catch (error) {
         console.error("Error checking auth:", error);
@@ -292,9 +270,20 @@ function AIChatInterface() {
 
       if (error) throw error;
 
-      setInitialMessage(
-        `Hi! I'm excited to help you build your ${currentProject?.business_type} business. Let's start with your budget - how much are you planning to invest in this business?`
-      );
+      // Set initial message based on whether budget is set
+      if (!currentProject?.total_budget) {
+        setInitialMessage(
+          `Hi! I'm excited to help you build your ${currentProject?.business_type} business. Let's start with your budget - how much are you planning to invest in this business?`
+        );
+      } else if (!currentProject?.income_goal) {
+        setInitialMessage(
+          `Great! With a budget of ${currentProject.total_budget}, what's your target monthly income goal for this ${currentProject.business_type} business?`
+        );
+      } else {
+        setInitialMessage(
+          `Welcome back! I see you're working on your ${currentProject.business_type} business with a budget of ${currentProject.total_budget} and a monthly income goal of ${currentProject.income_goal}. How can I help you today?`
+        );
+      }
 
       if (messages) {
         setMessages(messages);
@@ -344,6 +333,7 @@ function AIChatInterface() {
 
   const handleSettings = () => {
     // Implement settings handling
+    navigate("/settings");
     console.log("Settings option clicked");
   };
 
@@ -458,40 +448,7 @@ function AIChatInterface() {
     scrollToBottom();
   }, [messages]);
 
-  // Add this function after the calculateProgress function
-  const updateTodosInRealTime = async (projectId: string) => {
-    try {
-      const { data: updatedProject, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("id", projectId)
-        .single();
-
-      if (error) {
-        console.error("Error fetching updated project:", error);
-        return;
-      }
-
-      if (updatedProject) {
-        setCurrentProject(updatedProject);
-        // Update todos based on the current stage
-        const currentStage = updatedProject.current_stage as StageKey;
-        if (typedSaasStrategy[currentStage]) {
-          const stageData = typedSaasStrategy[currentStage];
-          const newTodos =
-            stageData.checklist?.map((task) => ({
-              task,
-              completed:
-                updatedProject.tasks_in_progress?.includes(task) || false,
-            })) || [];
-          setTodos(newTodos);
-        }
-      }
-    } catch (error) {
-      console.error("Error updating todos in real-time:", error);
-    }
-  };
-
+  // Update the handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading || !currentProject) return;
@@ -503,89 +460,153 @@ function AIChatInterface() {
     try {
       await saveMessage(userMessage, true);
 
-      const businessTypeContext = `You are helping the user build a ${
-        currentProject.business_type
-      } business. 
-      The user's budget is ${currentProject.total_budget || "not set yet"}. 
-      The user's business idea is ${
-        currentProject.business_idea || "not set yet"
-      }.
-      The user's income goal is ${currentProject.income_goal || "not set yet"}.
-      Please provide specific, actionable responses and include any relevant numbers or goals mentioned by the user.`;
+      // Only generate todos if the project has no todos yet (initial setup)
+      if (!currentProject.todos || currentProject.todos.length === 0) {
+        if (!currentProject.total_budget) {
+          const budget = extractBudget(userMessage);
+          if (!budget) {
+            throw new Error("Could not extract budget from message");
+          }
 
-      const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: `${systemPrompt}\n\n${businessTypeContext}`,
-              },
-              ...messages.map((msg) => ({
-                role: msg.is_user ? "user" : "assistant",
-                content: msg.content,
-              })),
-              { role: "user", content: userMessage },
-            ],
-            temperature: 0.7,
-            presence_penalty: 0.6,
-            frequency_penalty: 0.6,
-          }),
+          // Update project with budget
+          const { error: budgetUpdateError } = await supabase
+            .from("projects")
+            .update({ total_budget: budget })
+            .eq("id", currentProject.id);
+
+          if (budgetUpdateError) throw budgetUpdateError;
+
+          // Update local state
+          setCurrentProject((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  total_budget: budget,
+                }
+              : null
+          );
+
+          // Ask for income goal
+          const incomeGoalMessage = `Great! With a budget of ${budget}, what's your target monthly income goal for this ${currentProject.business_type} business?`;
+          await saveMessage(incomeGoalMessage, false);
+          setIsLoading(false);
+          return;
+        } else if (!currentProject.income_goal) {
+          const incomeGoal = extractIncomeGoal(userMessage);
+          if (!incomeGoal) {
+            // Instead of throwing an error, provide a helpful response
+            const helpMessage =
+              "I couldn't identify your monthly income goal from your message. Please specify it in a format like: 'My income goal is $5,000 per month' or 'I want to earn $2,500 monthly.'";
+            await saveMessage(helpMessage, false);
+            setIsLoading(false);
+            return;
+          }
+
+          const incomeGoalNumber = parseFloat(incomeGoal);
+          if (isNaN(incomeGoalNumber)) {
+            // Instead of throwing an error for invalid number, provide a helpful response
+            const helpMessage =
+              "I couldn't convert your income goal to a valid number. Please specify a clear amount, for example: 'My income goal is $5,000 per month.'";
+            await saveMessage(helpMessage, false);
+            setIsLoading(false);
+            return;
+          }
+
+          // Update project with income goal
+          const { error: incomeGoalUpdateError } = await supabase
+            .from("projects")
+            .update({ income_goal: incomeGoalNumber })
+            .eq("id", currentProject.id);
+
+          if (incomeGoalUpdateError) throw incomeGoalUpdateError;
+
+          // Update local state
+          setCurrentProject((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  income_goal: incomeGoalNumber,
+                }
+              : null
+          );
+
+          // Generate initial todos
+          const generatedTodos = await generateInitialTodos(
+            currentProject.id,
+            currentProject.total_budget,
+            currentProject.business_type
+          );
+
+          // Update project with todos
+          const { error: todosUpdateError } = await supabase
+            .from("projects")
+            .update({
+              todos: generatedTodos,
+              tasks_in_progress: [],
+              current_stage: "stage_1",
+            })
+            .eq("id", currentProject.id);
+
+          if (todosUpdateError) throw todosUpdateError;
+
+          // Update local state
+          setCurrentProject((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  todos: generatedTodos,
+                  tasks_in_progress: [],
+                  current_stage: "stage_1",
+                }
+              : null
+          );
+
+          // Get the current strategy for detailed stage information
+          const currentStrategy = getStrategyForBusinessType(
+            currentProject.business_type
+          );
+
+          // Generate detailed stage introduction
+          const aiResponse = generateStageIntroduction(
+            currentProject.business_type,
+            "stage_1",
+            currentStrategy,
+            currentProject.total_budget
+          );
+
+          await saveMessage(aiResponse, false);
+          setIsLoading(false);
+          return;
         }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to get AI response");
       }
 
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
+      // Continue with normal AI response for subsequent messages
+      // Use the getAIChatResponse utility function instead of implementing the API call here
+      const aiResponse = await getAIChatResponse(
+        messages,
+        userMessage,
+        currentProject,
+        getCombinedPrompt(currentProject.business_type)
+      );
 
       await saveMessage(aiResponse, false);
 
-      // Extract values from messages
-      const newBudget = extractBudget(userMessage) || extractBudget(aiResponse);
+      // Generate a proper business overview summary using the utility function
+      const businessOverview = await generateBusinessOverviewSummary(
+        currentProject
+      );
+
+      // Only update the business overview and summary, not the todos or tasks
+      const updates: Partial<Project> = {
+        brief_summary: businessOverview,
+        business_overview_summary: businessOverview,
+      };
+
       const newIncomeGoal =
         extractIncomeGoal(userMessage) || extractIncomeGoal(aiResponse);
       const newBusinessIdea =
         extractBusinessIdea(userMessage) || extractBusinessIdea(aiResponse);
 
-      // Only update values if new ones are found and different from current
-      const updates: Partial<Project> = {
-        brief_summary: aiResponse.split("\n")[0],
-        business_overview_summary: aiResponse,
-        business_type: currentProject.business_type,
-        completed_stages: currentProject.completed_stages || [],
-        current_stage: currentProject.current_stage || "stage_1",
-        current_step:
-          currentProject.current_step || saasStrategy.stage_1.checklist[0],
-        expected_launch_date:
-          currentProject.expected_launch_date ||
-          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split("T")[0],
-        tasks_in_progress:
-          currentProject.tasks_in_progress ||
-          saasStrategy.stage_1.checklist.slice(0, 2),
-        todos: currentProject.todos,
-      };
-
-      // Only update budget if a new valid budget is found
-      if (newBudget) {
-        const budgetNumber = parseFloat(newBudget.replace(/[^0-9.]/g, ""));
-        if (!isNaN(budgetNumber)) {
-          updates.total_budget = budgetNumber.toString();
-        }
-      }
-
-      // Only update income goal if a new valid goal is found
       if (newIncomeGoal) {
         const incomeGoalNumber = parseFloat(newIncomeGoal);
         if (!isNaN(incomeGoalNumber)) {
@@ -593,7 +614,6 @@ function AIChatInterface() {
         }
       }
 
-      // Only update business idea if a new one is found
       if (newBusinessIdea) {
         updates.business_idea = newBusinessIdea;
       }
@@ -608,71 +628,8 @@ function AIChatInterface() {
         console.error("Error updating project:", projectUpdateError);
       }
 
-      // Update local state with new values
+      // Update local state
       setCurrentProject((prev) => (prev ? { ...prev, ...updates } : null));
-
-      await updateTodosInRealTime(currentProject.id);
-
-      // Generate and update business overview summary
-      try {
-        const summaryPrompt = `Summarize the current business for the user, including the business type, product/service, target audience, value proposition, and any other key details so far. Be concise and clear. Limit your summary to 2-3 sentences and no more than 60 words. Do not include any heading or label like 'Business Overview:' in your response.`;
-        const contextMessages = [
-          ...messages,
-          { is_user: true, content: userMessage },
-          { is_user: false, content: aiResponse },
-        ]
-          .slice(-10)
-          .map((m) => ({
-            role: m.is_user ? "user" : "assistant",
-            content: m.content,
-          }));
-
-        const summaryResponse = await fetch(
-          "https://api.openai.com/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-            },
-            body: JSON.stringify({
-              model: "gpt-4o-mini",
-              messages: [
-                { role: "system", content: systemPrompt },
-                ...contextMessages,
-                { role: "user", content: summaryPrompt },
-              ],
-              temperature: 0.5,
-            }),
-          }
-        );
-
-        if (summaryResponse.ok) {
-          const summaryData = await summaryResponse.json();
-          const summary = summaryData.choices[0].message.content;
-
-          const { error: summaryUpdateError } = await supabase
-            .from("projects")
-            .update({ business_overview_summary: summary })
-            .eq("id", currentProject.id);
-
-          if (summaryUpdateError) {
-            console.error(
-              "Error updating business overview summary:",
-              summaryUpdateError
-            );
-          }
-
-          setCurrentProject((prev) =>
-            prev ? { ...prev, business_overview_summary: summary } : prev
-          );
-        }
-      } catch (err) {
-        console.error("Error updating business overview summary:", err);
-      }
-
-      setInputMessage("");
-      setIsLoading(false);
     } catch (error) {
       console.error("Error in chat:", error);
       await saveMessage(
@@ -762,210 +719,22 @@ function AIChatInterface() {
     }
   };
 
-  const updateTodos = (moduleId: string, tasks: string[]) => {
-    const newTodos = tasks.slice(0, 5).map((task, index) => ({
-      id: `${moduleId}-${index}`,
-      task,
-      completed: false,
-      module: moduleId,
-    }));
-    setTodos(newTodos);
-  };
-
-  // Add effect to log when projects or dropdown state changes
-  useEffect(() => {
-    console.log("Projects updated:", projects);
-    console.log("Dropdown state:", showDropdown);
-  }, [projects, showDropdown]);
-
-  // Update the dropdown toggle handler
-  const toggleDropdown = () => {
-    console.log("Toggling dropdown. Current state:", !showDropdown);
-    setShowDropdown(!showDropdown);
-  };
-
-  // Update the updateTodosForStage function
-  const updateTodosForStage = async (stage: StageKey) => {
-    if (!currentProject) return;
-
-    const currentStrategy = getStrategyForBusinessType(
-      currentProject.business_type
-    );
-    const stageData = currentStrategy[stage];
-    let stageTodos: string[] = [];
-
-    // Get business-type-specific todos
-    switch (currentProject.business_type.toLowerCase()) {
-      case "saas":
-        stageTodos =
-          stageData.checklist?.filter(
-            (task) =>
-              task.toLowerCase().includes("software") ||
-              task.toLowerCase().includes("subscription") ||
-              task.toLowerCase().includes("saas")
-          ) || [];
-        break;
-      case "agency":
-        stageTodos =
-          stageData.checklist?.filter(
-            (task) =>
-              task.toLowerCase().includes("agency") ||
-              task.toLowerCase().includes("client") ||
-              task.toLowerCase().includes("service")
-          ) || [];
-        break;
-      case "ecommerce":
-        stageTodos =
-          stageData.checklist?.filter(
-            (task) =>
-              task.toLowerCase().includes("product") ||
-              task.toLowerCase().includes("inventory") ||
-              task.toLowerCase().includes("shipping") ||
-              task.toLowerCase().includes("ecommerce")
-          ) || [];
-        break;
-      case "copywriting":
-        stageTodos =
-          stageData.checklist?.filter(
-            (task) =>
-              task.toLowerCase().includes("copy") ||
-              task.toLowerCase().includes("content") ||
-              task.toLowerCase().includes("writing")
-          ) || [];
-        break;
-      default:
-        stageTodos = stageData.checklist || [];
-    }
-
-    // Add common todos that apply to all business types
-    const commonTodos =
-      stageData.checklist?.filter(
-        (task) =>
-          !task.toLowerCase().includes("software") &&
-          !task.toLowerCase().includes("subscription") &&
-          !task.toLowerCase().includes("saas") &&
-          !task.toLowerCase().includes("product") &&
-          !task.toLowerCase().includes("inventory") &&
-          !task.toLowerCase().includes("shipping") &&
-          !task.toLowerCase().includes("ecommerce") &&
-          !task.toLowerCase().includes("service") &&
-          !task.toLowerCase().includes("client") &&
-          !task.toLowerCase().includes("consultation") &&
-          !task.toLowerCase().includes("platform") &&
-          !task.toLowerCase().includes("vendor") &&
-          !task.toLowerCase().includes("marketplace") &&
-          !task.toLowerCase().includes("copy") &&
-          !task.toLowerCase().includes("content") &&
-          !task.toLowerCase().includes("writing")
-      ) || [];
-
-    // Combine business-specific and common todos
-    const allTodos = [...new Set([...stageTodos, ...commonTodos])];
-
-    const newTodos = allTodos.map((task) => ({
-      task,
-      completed: currentProject.tasks_in_progress?.includes(task) || false,
-    }));
-
-    try {
-      const { error } = await supabase
-        .from("projects")
-        .update({
-          todos: newTodos,
-          current_stage: stage,
-        })
-        .eq("id", currentProject.id);
-
-      if (error) {
-        console.error("Error updating todos for stage:", error);
-        return;
-      }
-
-      setCurrentProject((prev) =>
-        prev
-          ? {
-              ...prev,
-              todos: newTodos,
-              current_stage: stage,
-            }
-          : null
-      );
-    } catch (error) {
-      console.error("Error updating todos for stage:", error);
-    }
-  };
-
-  // Add useEffect to handle stage changes
-  useEffect(() => {
-    if (currentProject?.current_stage) {
-      const stage = currentProject.current_stage as StageKey;
-      if (typedSaasStrategy[stage]) {
-        updateTodosForStage(stage);
-      }
-    }
-  }, [currentProject?.current_stage]);
-
-  // Update the getProjectTodos function
-  const getProjectTodos = (): TodoItem[] => {
-    if (!currentProject) return [];
-
-    // If we have todos in the database, use those
-    if (currentProject.todos && currentProject.todos.length > 0) {
-      return currentProject.todos;
-    }
-
-    // Otherwise, generate todos from the current stage
-    const currentStage =
-      (currentProject.current_stage as StageKey) || "stage_1";
-    const currentStrategy = getStrategyForBusinessType(
-      currentProject.business_type
-    );
-    const stageData = currentStrategy[currentStage];
-    const todos: TodoItem[] = [];
-
-    if (stageData.checklist) {
-      stageData.checklist.forEach((task: string) => {
-        todos.push({
-          task,
-          completed: currentProject.tasks_in_progress?.includes(task) || false,
-        });
-      });
-    }
-
-    // Update the todos in the database
-    updateTodosForStage(currentStage);
-
-    return todos;
-  };
-
-  // Update the handleTodoChange function
   const handleTodoChange = async (todoItem: TodoItem, isCompleted: boolean) => {
     if (!currentProject) return;
 
     try {
-      // Update local state immediately for better UX
+      // Create updated todos array
       const updatedTodos =
         currentProject.todos?.map((t) =>
           t.task === todoItem.task ? { ...t, completed: isCompleted } : t
         ) || [];
-
-      // Update frontend state immediately
-      setTodos(updatedTodos);
-      setCurrentProject((prev) =>
-        prev
-          ? {
-              ...prev,
-              todos: updatedTodos,
-            }
-          : null
-      );
 
       // Get all completed tasks
       const completedTasks = updatedTodos
         .filter((t) => t.completed)
         .map((t) => t.task);
 
-      // Update in database - only update existing fields
+      // Update in database first
       const { error } = await supabase
         .from("projects")
         .update({
@@ -976,31 +745,50 @@ function AIChatInterface() {
 
       if (error) {
         console.error("Error updating todo in database:", error);
-        // Revert local state if database update fails
-        setTodos(currentProject.todos || []);
-        setCurrentProject((prev) =>
-          prev
-            ? {
-                ...prev,
-                todos: currentProject.todos || [],
-              }
-            : null
-        );
         throw error;
       }
 
-      // Update the current project state
+      // Only update local state after successful database update
       setCurrentProject((prev) =>
         prev
           ? {
               ...prev,
+              todos: updatedTodos,
               tasks_in_progress: completedTasks,
             }
           : null
       );
+
+      // Check if all tasks in the current stage are completed
+      const currentStrategy = getStrategyForBusinessType(
+        currentProject.business_type
+      );
+      const currentStage = currentProject.current_stage as StageKey;
+      const stageCompleted = isStageCompleted(
+        completedTasks,
+        currentStage,
+        currentStrategy,
+        currentProject.todos
+      );
+
+      if (stageCompleted) {
+        // Get next stage
+        const nextStage = getNextStage(currentStage);
+        if (nextStage) {
+          // Generate new todos for the next stage
+          await updateTodosForStage(nextStage, currentProject);
+
+          // Add a message to inform the user about stage completion
+          const stageCompletionMessage = `Congratulations! You've completed all tasks for ${currentStage
+            .replace("_", " ")
+            .toUpperCase()}. Moving on to ${nextStage
+            .replace("_", " ")
+            .toUpperCase()}...`;
+          await saveMessage(stageCompletionMessage, false);
+        }
+      }
     } catch (error) {
       console.error("Error updating todo:", error);
-      // Show error to user
       alert("Failed to update todo. Please try again.");
     }
   };
@@ -1022,91 +810,21 @@ function AIChatInterface() {
     setPopupMessages((prev) => [...prev, userPopupMessage]);
 
     try {
-      // Build the system prompt with business type context
-      const businessTypeContext = `You are helping the user build a ${
-        currentProject.business_type
-      } business. 
-      The user's budget is ${currentProject.total_budget || "not set yet"}. 
-      The user's business idea is ${
-        currentProject.business_idea || "not set yet"
-      }.`;
+      // Use the getAIChatResponse utility function instead of implementing the API call here
+      // Convert popup messages to the format expected by getAIChatResponse
+      const formattedMessages = popupMessages.map((msg) => ({
+        id: msg.id,
+        content: msg.content,
+        is_user: msg.isUser,
+        created_at: new Date().toISOString(),
+      }));
 
-      // Get AI response using the same endpoint as the main chat
-      const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: `${systemPrompt}\n\n${businessTypeContext}`,
-              },
-              ...popupMessages.map((msg) => ({
-                role: msg.isUser ? "user" : "assistant",
-                content: msg.content,
-              })),
-              {
-                role: "user",
-                content: userMessage,
-              },
-            ],
-            temperature: 0.7,
-            presence_penalty: 0.6,
-            frequency_penalty: 0.6,
-          }),
-        }
+      const aiResponse = await getAIChatResponse(
+        formattedMessages,
+        userMessage,
+        currentProject,
+        getCombinedPrompt(currentProject.business_type)
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to get AI response");
-      }
-
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-
-      await saveMessage(aiResponse, false);
-
-      // Update project data in Supabase based on AI response
-      const { error: projectUpdateError } = await supabase
-        .from("projects")
-        .update({
-          brief_summary: aiResponse.split("\n")[0],
-          business_idea: aiResponse.split("\n")[1],
-          business_overview_summary: aiResponse,
-          business_type: currentProject.business_type,
-          completed_stages: currentProject.completed_stages || [],
-          current_stage: currentProject.current_stage || "stage_1",
-          current_step:
-            currentProject.current_step || saasStrategy.stage_1.checklist[0],
-          expected_launch_date:
-            currentProject.expected_launch_date ||
-            new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-              .toISOString()
-              .split("T")[0],
-          income_goal: currentProject.income_goal || 0,
-          tasks_in_progress:
-            currentProject.tasks_in_progress ||
-            saasStrategy.stage_1.checklist.slice(0, 2),
-          total_budget: currentProject.total_budget || 0,
-          progress: calculateProgress(
-            currentProject.completed_stages || [],
-            currentProject.tasks_in_progress || []
-          ),
-        })
-        .eq("id", currentProject.id);
-
-      if (projectUpdateError) {
-        console.error("Error updating project:", projectUpdateError);
-      }
-
-      // Update todos in real-time after project update
-      await updateTodosInRealTime(currentProject.id);
 
       // Add AI response to popup messages
       const aiPopupMessage = {
@@ -1139,157 +857,318 @@ function AIChatInterface() {
     }
   };
 
+  // Add a function to toggle todo expansion
+  const toggleTodoExpansion = (todoId: string) => {
+    setExpandedTodos((prev) => ({
+      ...prev,
+      [todoId]: !prev[todoId],
+    }));
+  };
+
   return (
     <div className="page-container">
-      {/* Business Overview Panel */}
-      {currentProject && (
-        <div className="business-overview">
-          <h2>Business Summary</h2>
-          <div className="overview-content">
-            {currentProject.business_overview_summary}
-          </div>
-        </div>
-      )}
+      <Navbar />
 
-      {/* Logo Container */}
-      <div className="logo-container">
-        <div className="logo" onClick={toggleDropdown}>
-          <img src="/logo-black.png" alt="Mentar Logo" />
-        </div>
-        {showDropdown && (
-          <div ref={dropdownRef} className="dropdown-menu">
-            {projects.length > 0 ? (
-              <>
-                {projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className={`dropdown-item ${
-                      currentProject?.id === project.id ? "active" : ""
-                    }`}
-                    onClick={() => handleProjectSwitch(project)}
-                  >
-                    <div className="project-item">
-                      <span className="project-name">
-                        {project.business_type}
-                      </span>
-                      <button
-                        className="delete-project"
-                        onClick={(e) => handleDeleteProject(project.id, e)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <div className="dropdown-divider" />
-              </>
-            ) : (
-              <div className="dropdown-item">No projects</div>
-            )}
+      {/* Left Sidebar */}
+      {currentProject && (
+        <div className="projects-list-panel">
+          {/* Project Selector */}
+          <div className="project-selector">
             <div
-              className="dropdown-item new-project"
-              onClick={handleNewProject}
+              className="project-selector-header"
+              onClick={() => setIsProjectSelectorOpen(!isProjectSelectorOpen)}
             >
-              New Project
+              <div className="project-type-container">
+                <span className="project-type">
+                  {currentProject.business_type}
+                </span>
+                <span className="project-date">
+                  {new Date(currentProject.created_at).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                    }
+                  )}
+                </span>
+              </div>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{
+                  transform: isProjectSelectorOpen
+                    ? "rotate(180deg)"
+                    : "rotate(0deg)",
+                  transition: "transform 0.3s ease",
+                }}
+              >
+                <path
+                  d="M6 9L12 15L18 9"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
-            <div className="dropdown-divider" />
-            <div className="dropdown-item" onClick={handleSettings}>
-              Settings
-            </div>
-            <div className="dropdown-divider" />
-            <div className="dropdown-item" onClick={handleLogout}>
-              Logout
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Right Sidebar */}
-      {currentProject && (
-        <div className="right-sidebar">
-          {/* Todo List */}
-          <div className="todo-list-container">
-            <h2>
-              Todo List -{" "}
-              {currentProject?.current_stage?.replace("_", " ").toUpperCase()}
-            </h2>
-            <div className="todo-list">
-              {getProjectTodos().map((todoItem, index) => (
-                <div key={`${todoItem.task}-${index}`} className="todo-item">
-                  <label className="todo-label">
-                    <input
-                      type="checkbox"
-                      checked={todoItem.completed}
-                      onChange={(e) =>
-                        handleTodoChange(todoItem, e.target.checked)
-                      }
-                      className="todo-checkbox"
-                    />
-                    <span
-                      className={`todo-text ${
-                        todoItem.completed ? "completed" : ""
-                      }`}
-                    >
-                      {todoItem.task}
-                    </span>
-                  </label>
+            <div
+              className={`project-selector-content ${
+                isProjectSelectorOpen ? "open" : ""
+              }`}
+            >
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className={`project-selector-item ${
+                    currentProject?.id === project.id ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    handleProjectSwitch(project);
+                    setIsProjectSelectorOpen(false);
+                  }}
+                >
+                  <span>{project.business_type}</span>
+                  <div
+                    // className="delete-project"
+                    onClick={(e) => handleDeleteProject(project.id, e)}
+                  >
+                    <FaTrashCan />
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Budget Container */}
-          <div className="budget-container">
-            <h2>Budget</h2>
-            <div className="budget-display">
-              {currentProject?.total_budget
-                ? `$${currentProject.total_budget}`
-                : "No budget set"}
-            </div>
-          </div>
-
-          {/* Progress Container */}
-          <div className="progress-container">
-            <h2>Progress</h2>
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{
-                  width: `${calculateProgress(
-                    currentProject?.completed_stages || [],
-                    currentProject?.tasks_in_progress || []
-                  )}%`,
-                }}
+          {/* New Project Button */}
+          <motion.button
+            className="new-project-button"
+            onClick={handleNewProject}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 5V19M5 12H19"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            </div>
-            <div className="progress-text">
-              {calculateProgress(
-                currentProject?.completed_stages || [],
-                currentProject?.tasks_in_progress || []
-              )}
-              % Complete
-            </div>
-          </div>
+            </svg>
+            New Project
+          </motion.button>
 
-          {/* Goal Container */}
-          <div className="goal-container">
-            <h2>Business Idea</h2>
-            <div className="goal-display">
-              {currentProject?.business_idea
-                ? `Your business idea: ${currentProject.business_idea}`
-                : ""}
+          {/* Business Overview */}
+          <div className="overview-container">
+            <h2>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9 22V12H15V22"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Business Overview
+            </h2>
+            <div className="overview-content">
+              {currentProject.business_overview_summary ||
+                "No overview available yet. Start chatting to build your business plan!"}
             </div>
           </div>
 
           {/* Launch Date Container */}
           <div className="launch-date-container">
-            <h2>Expected Launch Date</h2>
-            <div className="launch-date-display">
-              {currentProject?.expected_launch_date
-                ? new Date(
-                    currentProject.expected_launch_date
-                  ).toLocaleDateString()
-                : "Launch date will be set based on your progress"}
+            <h2>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M16 2V6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8 2V6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M3 10H21"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Expected Launch
+            </h2>
+            <div className="launch-date-content">
+              <div className="launch-date-display">
+                {currentProject?.expected_launch_date
+                  ? new Date(
+                      currentProject.expected_launch_date
+                    ).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : "Launch date will be set based on your progress"}
+              </div>
+              {currentProject?.expected_launch_date && (
+                <div className="countdown-timer">
+                  <div className="countdown-item">
+                    <span className="countdown-value">
+                      {Math.ceil(
+                        (new Date(
+                          currentProject.expected_launch_date
+                        ).getTime() -
+                          new Date().getTime()) /
+                          (1000 * 60 * 60 * 24)
+                      )}
+                    </span>
+                    <span className="countdown-label">Days Until Launch</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <motion.button
+            className="settings-button"
+            onClick={handleSettings}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.258 9.77251 19.9887C9.5799 19.7194 9.31074 19.5143 9 19.4C8.69838 19.2669 8.36381 19.2272 8.03941 19.286C7.71502 19.3448 7.41568 19.4995 7.18 19.73L7.12 19.79C6.93425 19.976 6.71368 20.1235 6.47088 20.2241C6.22808 20.3248 5.96783 20.3766 5.705 20.3766C5.44217 20.3766 5.18192 20.3248 4.93912 20.2241C4.69632 20.1235 4.47575 19.976 4.29 19.79C4.10405 19.6043 3.95653 19.3837 3.85588 19.1409C3.75523 18.8981 3.70343 18.6378 3.70343 18.375C3.70343 18.1122 3.75523 17.8519 3.85588 17.6091C3.95653 17.3663 4.10405 17.1457 4.29 16.96L4.35 16.9C4.58054 16.6643 4.73519 16.365 4.794 16.0406C4.85282 15.7162 4.81312 15.3816 4.68 15.08C4.55324 14.7842 4.34276 14.532 4.07447 14.3543C3.80618 14.1766 3.49179 14.0813 3.17 14.08H3C2.46957 14.08 1.96086 13.8693 1.58579 13.4942C1.21071 13.1191 1 12.6104 1 12.08C1 11.5496 1.21071 11.0409 1.58579 10.6658C1.96086 10.2907 2.46957 10.08 3 10.08H3.09C3.42099 10.0723 3.742 9.96512 4.0113 9.77251C4.28059 9.5799 4.48572 9.31074 4.6 9C4.73312 8.69838 4.77282 8.36381 4.714 8.03941C4.65519 7.71502 4.50054 7.41568 4.27 7.18L4.21 7.12C4.02405 6.93425 3.87653 6.71368 3.77588 6.47088C3.67523 6.22808 3.62343 5.96783 3.62343 5.705C3.62343 5.44217 3.67523 5.18192 3.77588 4.93912C3.87653 4.69632 4.02405 4.47575 4.21 4.29C4.39575 4.10405 4.61632 3.95653 4.85912 3.85588C5.10192 3.75523 5.36217 3.70343 5.625 3.70343C5.88783 3.70343 6.14808 3.75523 6.39088 3.85588C6.63368 3.95653 6.85425 4.10405 7.04 4.29L7.1 4.35C7.33568 4.58054 7.63502 4.73519 7.95941 4.794C8.28381 4.85282 8.61838 4.81312 8.92 4.68H9C9.29577 4.55324 9.54802 4.34276 9.72569 4.07447C9.90337 3.80618 9.99872 3.49179 10 3.17V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Settings
+          </motion.button>
+        </div>
+      )}
+
+      {/* Right Sidebar - Todo List Only */}
+      {currentProject && (
+        <div className="right-sidebar">
+          <div className="todo-list-container">
+            <h2>
+              Action Items -{" "}
+              {currentProject?.current_stage?.replace("_", " ").toUpperCase()}
+            </h2>
+
+            {/* Progress Bar */}
+            <div className="progress-container">
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{
+                    width: `${
+                      (currentProject.todos?.filter((todo) => todo.completed)
+                        .length /
+                        (currentProject.todos?.length || 1)) *
+                      100
+                    }%`,
+                  }}
+                />
+              </div>
+              <div className="progress-text">
+                {currentProject.todos?.filter((todo) => todo.completed)
+                  .length || 0}{" "}
+                of {currentProject.todos?.length || 0} tasks completed
+              </div>
+            </div>
+
+            <div className="todo-list">
+              {currentProject.todos?.map((todoItem, index) => {
+                const todoId = `${todoItem.task.substring(0, 20)}-${index}`;
+                return (
+                  <div key={todoId} className="todo-item">
+                    <label className="todo-label">
+                      <input
+                        type="checkbox"
+                        checked={todoItem.completed}
+                        onChange={(e) =>
+                          handleTodoChange(todoItem, e.target.checked)
+                        }
+                        className="todo-checkbox"
+                        // Stop propagation to prevent expanding when clicking the checkbox
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span
+                        className={`todo-text ${
+                          todoItem.completed ? "completed" : ""
+                        } ${expandedTodos[todoId] ? "expanded" : ""}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleTodoExpansion(todoId);
+                        }}
+                      >
+                        {todoItem.task}
+                      </span>
+                    </label>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1358,13 +1237,38 @@ function AIChatInterface() {
               <span className="arrow-up">↑</span>
             </button>
           </form>
+
+          {/* FAB Button */}
+          <motion.button
+            style={{
+              position: "fixed",
+              bottom: "24px",
+              right: "24px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "12px 20px",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              borderRadius: "50px",
+              color: "white",
+              fontWeight: "500",
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+              zIndex: "100",
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleChatPopup}
+          >
+            <img src="/logo-white.png" alt="Mentar" width={24} height={24} />
+            <span>Speak to Mentar</span>
+          </motion.button>
         </div>
       )}
 
       {/* Chat Popup */}
-      <button className="speak-to-mentar" onClick={toggleChatPopup}>
-        Speak to Mentar
-      </button>
       <div className={`chat-popup ${isChatPopupOpen ? "open" : ""}`}>
         <div className="chat-popup-header">
           <img src="/logo-black.png" alt="Mentar" />
