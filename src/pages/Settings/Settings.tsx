@@ -149,85 +149,184 @@ const Settings = () => {
 
   return (
     <div className="settings-container">
-      <div className="settings-header">
-        <h1>Settings</h1>
-        <button onClick={handleBackToChat} className="back-button">
-          Back to Chat
-        </button>
-      </div>
-
-      <div className="settings-content">
-        <div className="settings-sidebar">
-          <button
-            className={activeSection === "billing" ? "active" : ""}
+      <div className="settings-sidebar">
+        <div className="sidebar-top">
+          <div className="back-button" onClick={handleBackToChat}>
+            ←
+          </div>
+          <div className="logo">
+            <img src="/logo-black.png" alt="Logo" />
+          </div>
+        </div>
+        <div className="menu-items">
+          <div
+            className={`menu-item ${
+              activeSection === "billing" ? "active" : ""
+            }`}
             onClick={() => setActiveSection("billing")}
           >
             Billing
-          </button>
-          <button
-            className={activeSection === "account" ? "active" : ""}
-            onClick={() => setActiveSection("account")}
+          </div>
+          <div
+            className={`menu-item ${
+              activeSection === "profile" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("profile")}
           >
-            Account
-          </button>
+            Profile
+          </div>
         </div>
+      </div>
 
-        <div className="settings-main">
-          {message && (
-            <div className={`message ${message.type}`}>{message.text}</div>
-          )}
+      <div className="settings-content">
+        {/* {message && (
+          <div className={`message ${message.type}`}>{message.text}</div>
+        )} */}
 
-          {activeSection === "billing" && (
-            <div className="billing-section">
-              <h2>Subscription Status</h2>
-              <p>Current Plan: {subscriptionStatus}</p>
-              {subscriptionStatus === "none" && (
-                <button
-                  onClick={() => handleUpgrade("price_xxxxx")}
-                  disabled={isLoadingCheckout}
-                >
-                  {isLoadingCheckout ? "Loading..." : "Upgrade to Pro"}
-                </button>
-              )}
+        {activeSection === "billing" && (
+          <div className="billing-section">
+            <h1>Billing</h1>
+            <div className="current-plan">
+              Current Plan: <span>{subscriptionStatus || "Free"}</span>
             </div>
-          )}
 
-          {activeSection === "account" && (
-            <div className="account-section">
-              <h2>Account Settings</h2>
-
-              <div className="setting-item">
-                <h3>Email</h3>
-                <p>{userData?.email}</p>
-              </div>
-
-              <div className="setting-item">
-                <h3>Password</h3>
-                <button onClick={handlePasswordReset} disabled={isLoading}>
-                  Reset Password
+            <div className="pricing-cards">
+              <div className="pricing-card">
+                <h2>Free</h2>
+                <div className="price">$0</div>
+                <div className="price-period">forever</div>
+                <ul className="features">
+                  <li>Basic access</li>
+                  <li>Limited messages</li>
+                  <li>Standard support</li>
+                </ul>
+                <button
+                  className={
+                    subscriptionStatus === "none"
+                      ? "current-plan-btn"
+                      : "upgrade-btn"
+                  }
+                  disabled={subscriptionStatus === "none" || isLoadingCheckout}
+                >
+                  {subscriptionStatus === "none" ? "Current Plan" : "Downgrade"}
                 </button>
               </div>
 
-              <div className="danger-zone">
-                <h3>Danger Zone</h3>
+              <div className="pricing-card featured">
+                <div className="discount-badge">Most Popular</div>
+                <h2>Pro</h2>
+                <div className="price">$9.99</div>
+                <div className="price-period">per month</div>
+                <ul className="features">
+                  <li>Unlimited messages</li>
+                  <li>Faster response times</li>
+                  <li>Priority support</li>
+                </ul>
                 <button
+                  className={
+                    subscriptionStatus === "pro"
+                      ? "current-plan-btn"
+                      : "upgrade-btn"
+                  }
+                  onClick={() =>
+                    subscriptionStatus !== "pro" && handleUpgrade("price_xxxxx")
+                  }
+                  disabled={subscriptionStatus === "pro" || isLoadingCheckout}
+                >
+                  {isLoadingCheckout
+                    ? "Loading..."
+                    : subscriptionStatus === "pro"
+                    ? "Current Plan"
+                    : "Upgrade"}
+                </button>
+              </div>
+
+              <div className="pricing-card">
+                <h2>Business</h2>
+                <div className="price">$29.99</div>
+                <div className="price-period">per month</div>
+                <ul className="features">
+                  <li>Everything in Pro</li>
+                  <li>Team collaboration</li>
+                  <li>Advanced features</li>
+                </ul>
+                <button
+                  className={
+                    subscriptionStatus === "business"
+                      ? "current-plan-btn"
+                      : "upgrade-btn"
+                  }
+                  onClick={() =>
+                    subscriptionStatus !== "business" &&
+                    handleUpgrade("price_yyyyy")
+                  }
+                  disabled={
+                    subscriptionStatus === "business" || isLoadingCheckout
+                  }
+                >
+                  {isLoadingCheckout
+                    ? "Loading..."
+                    : subscriptionStatus === "business"
+                    ? "Current Plan"
+                    : "Upgrade"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSection === "profile" && (
+          <div className="profile-section">
+            <h1>Profile Settings</h1>
+
+            <div className="profile-info">
+              <div className="profile-picture">
+                <div className="avatar">
+                  <div className="avatar-placeholder">👤</div>
+                </div>
+                <button className="upload-button" disabled={isLoading}>
+                  Upload Photo
+                </button>
+              </div>
+
+              <div className="profile-field">
+                <label>Email</label>
+                <div className="profile-value">{userData?.email}</div>
+              </div>
+
+              <div className="profile-field">
+                <label>Password</label>
+                <div className="profile-value">
+                  ••••••••
+                  <button
+                    className="edit-button"
+                    onClick={handlePasswordReset}
+                    disabled={isLoading}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div className="profile-actions">
+                <button
+                  className="action-button"
                   onClick={handleLogout}
-                  className="logout-button"
                   disabled={isLoading}
                 >
                   Log Out
                 </button>
                 <button
+                  className="action-button delete-account"
                   onClick={handleDeleteAccount}
-                  className="delete-button"
                   disabled={isLoading}
                 >
                   Delete Account
                 </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

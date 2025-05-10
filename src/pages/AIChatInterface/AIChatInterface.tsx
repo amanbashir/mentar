@@ -141,6 +141,7 @@ function AIChatInterface() {
     {}
   );
   const [isGeneratingTodos, setIsGeneratingTodos] = useState(false);
+  const popupInputRef = useRef<HTMLTextAreaElement>(null);
 
   const messagesContainerStyle = {
     gap: "28px",
@@ -426,7 +427,7 @@ function AIChatInterface() {
   };
 
   const adjustTextareaHeight = () => {
-    const textarea = textareaRef.current;
+    const textarea = inputRef.current;
     if (textarea) {
       textarea.style.height = "auto";
       textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`; // Max height of 200px
@@ -868,13 +869,33 @@ function AIChatInterface() {
       setIsPopupLoading(false);
       // Focus the popup input field after the AI response
       setTimeout(() => {
-        const popupInput = document.querySelector(
-          ".chat-popup-input input"
-        ) as HTMLInputElement;
-        if (popupInput) {
-          popupInput.focus();
+        if (popupInputRef.current) {
+          popupInputRef.current.focus();
+          adjustPopupTextareaHeight();
         }
       }, 100);
+    }
+  };
+
+  const adjustPopupTextareaHeight = () => {
+    const textarea = popupInputRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`; // Max height of 120px
+    }
+  };
+
+  const handlePopupInputChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    setPopupMessage(e.target.value);
+    adjustPopupTextareaHeight();
+  };
+
+  const handlePopupKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handlePopupSubmit(e as any);
     }
   };
 
@@ -885,6 +906,14 @@ function AIChatInterface() {
       [todoId]: !prev[todoId],
     }));
   };
+
+  useEffect(() => {
+    // Focus input and adjust height when messages change
+    if (inputRef.current) {
+      inputRef.current.focus();
+      adjustTextareaHeight();
+    }
+  }, [messages]);
 
   return (
     <div className="page-container">
@@ -1198,6 +1227,20 @@ function AIChatInterface() {
                         {todoItem.task}
                       </span>
                     </label>
+                    <button
+                      className="get-started-button"
+                      onClick={() => {
+                        setInputMessage(todoItem.task);
+                        if (inputRef.current) {
+                          inputRef.current.focus();
+                          setTimeout(() => {
+                            adjustTextareaHeight();
+                          }, 0);
+                        }
+                      }}
+                    >
+                      Get Started
+                    </button>
                   </div>
                 );
               })}
@@ -1332,12 +1375,14 @@ function AIChatInterface() {
           <div ref={popupMessagesEndRef} />
         </div>
         <form onSubmit={handlePopupSubmit} className="chat-popup-input">
-          <input
-            type="text"
+          <textarea
+            ref={popupInputRef}
             value={popupMessage}
-            onChange={(e) => setPopupMessage(e.target.value)}
+            onChange={handlePopupInputChange}
+            onKeyDown={handlePopupKeyDown}
             placeholder="Enter chat here.."
             disabled={isPopupLoading}
+            rows={1}
           />
           <button
             type="submit"

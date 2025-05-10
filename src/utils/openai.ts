@@ -243,7 +243,8 @@ export const generateStageIntroduction = (
   const stageData = strategy[stage];
   const stageNumber = stage.replace("stage_", "");
 
-  return `Great! I've set your budget to ${budget}. Let me introduce you to Stage ${stageNumber} of building your ${businessType} business.
+return `
+Great! I've set your budget to ${budget}. Let me introduce you to Stage ${stageNumber} of building your ${businessType} business.
 
 Stage ${stageNumber} Objective: ${stageData.objective}
 

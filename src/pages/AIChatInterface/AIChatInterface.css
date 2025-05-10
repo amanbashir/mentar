@@ -505,24 +505,57 @@
   border-color: rgba(255, 255, 255, 0.12);
 }
 
+/* Todo Item */
 .todo-item {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  padding: 14px;
   transition: all 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 12px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .todo-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Get Started Button */
+.get-started-button {
+  background: rgba(43, 135, 255, 0.15);
+  border: 1px solid rgba(43, 135, 255, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 5px;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+}
+
+.get-started-button:hover {
+  background: rgba(43, 135, 255, 0.25);
   transform: translateY(-2px);
 }
 
-/* Custom scrollbar for right sidebar */
-.right-sidebar::-webkit-scrollbar {
-  display: none;
+.get-started-button:active {
+  transform: translateY(0);
+}
+
+/* Todo Label */
+.todo-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  width: 100%;
 }
 
 .chat-container {
@@ -670,38 +703,37 @@
 }
 
 .input-container {
-  display: flex;
-  gap: 10px;
-  padding: 8px 20px;
-  background-color: rgba(51, 51, 51, 0.8);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  margin: 0 auto;
-  width: 95%;
   position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 760px;
-  align-items: center;
+  bottom: 0;
+  left: 340px;
+  right: 340px;
+  display: flex;
+  align-items: flex-end;
+  padding: 20px 24px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 1) 80%, rgba(0, 0, 0, 0));
+  z-index: 5;
+  gap: 12px;
+  justify-content: center;
 }
 
 .message-input {
-  flex-grow: 1;
-  background: transparent;
+  width: 100%;
   border: none;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 18px;
-  padding: 8px 0;
-
-  letter-spacing: -0.01em;
+  outline: none;
+  background: transparent;
+  color: white;
+  font-size: 15px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   resize: none;
-  min-height: 24px;
-  max-height: 200px;
-  overflow-y: auto;
-  line-height: 1.6;
-  display: flex;
-  align-items: center;
+  overflow: hidden;
+  min-height: 48px;
+  /* max-height: 200px; */
+  transition: height 0.2s ease;
+  line-height: 1.5;
+  max-width: 60%;
 }
 
 .message-input::-webkit-scrollbar {
@@ -1001,48 +1033,54 @@
 }
 
 .chat-popup-input {
-  padding: 20px;
   display: flex;
-  gap: 10px;
-  align-items: center;
-  background: rgba(128, 128, 128, 0.1);
+  align-items: flex-end;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 12px;
+  gap: 8px;
 }
 
-.chat-popup-input input {
+.chat-popup-input textarea {
   flex-grow: 1;
-  background: transparent;
-  border: none;
-  padding: 12px 16px;
-  color: black;
-  font-size: 18px;
-}
-
-.chat-popup-input input::placeholder {
-  color: rgba(0, 0, 0, 0.4);
-  letter-spacing: 0;
-}
-
-.chat-popup-input input:focus {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 18px;
+  padding: 10px 14px;
+  font-size: 14px;
   outline: none;
+  resize: none;
+  overflow: hidden;
+  min-height: 40px;
+  max-height: 120px;
+  transition: height 0.2s ease;
+  line-height: 1.5;
+}
+
+.chat-popup-input textarea::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.chat-popup-input textarea:focus {
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .chat-popup-input button {
-  background: black;
+  background: #0084ff;
   border: none;
-  width: 32px;
-  height: 32px;
+  color: white;
   border-radius: 50%;
-  cursor: pointer;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 .chat-popup-input button .arrow-up {
-  color: white;
+  transform: rotate(0deg);
   font-size: 18px;
-  transform: translateY(-1px);
 }
+
 /* Goal Section */
 .goal-container h2 {
   font-size: 20px;
@@ -1063,7 +1101,7 @@
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-  font-size: 16px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.9);
   transition: opacity 0.2s ease;
 }
@@ -1181,7 +1219,7 @@
 
 .todo-text {
   flex: 1;
-  font-size: 16px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.5;
   display: -webkit-box;
@@ -1198,15 +1236,6 @@
 
 .todo-text.expanded {
   -webkit-line-clamp: unset;
-}
-
-.todo-item {
-  transition: all 0.3s ease;
-  margin-bottom: 15px;
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Add an indicator for expandable todos that looks better */
