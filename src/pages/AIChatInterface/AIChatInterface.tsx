@@ -140,6 +140,19 @@ function AIChatInterface() {
   const [expandedTodos, setExpandedTodos] = useState<Record<string, boolean>>(
     {}
   );
+  const [isGeneratingTodos, setIsGeneratingTodos] = useState(false);
+
+  const messagesContainerStyle = {
+    gap: "28px",
+  };
+
+  const inputContainerStyle = {
+    padding: "12px 24px",
+  };
+
+  const todoItemStyle = {
+    padding: "16px",
+  };
 
   useEffect(() => {
     // Handle new project from onboarding
@@ -530,6 +543,9 @@ function AIChatInterface() {
               : null
           );
 
+          // Show todo generation loading overlay
+          setIsGeneratingTodos(true);
+
           // Generate initial todos
           const generatedTodos = await generateInitialTodos(
             currentProject.id,
@@ -560,6 +576,9 @@ function AIChatInterface() {
                 }
               : null
           );
+
+          // Hide todo generation loading overlay
+          setIsGeneratingTodos(false);
 
           // Get the current strategy for detailed stage information
           const currentStrategy = getStrategyForBusinessType(
@@ -631,6 +650,8 @@ function AIChatInterface() {
       // Update local state
       setCurrentProject((prev) => (prev ? { ...prev, ...updates } : null));
     } catch (error) {
+      // Hide todo generation loading overlay in case of error
+      setIsGeneratingTodos(false);
       console.error("Error in chat:", error);
       await saveMessage(
         "I apologize, but I encountered an error. Please try again.",
@@ -869,6 +890,17 @@ function AIChatInterface() {
     <div className="page-container">
       <Navbar />
 
+      {/* Loading Overlay for Todo Generation */}
+      {isGeneratingTodos && (
+        <div className="todo-generation-overlay">
+          <div className="todo-generation-dialog">
+            <div className="loading-spinner"></div>
+            <h3>Personalising your Business for you</h3>
+            <p>Creating tailored action items for your business plan...</p>
+          </div>
+        </div>
+      )}
+
       {/* Left Sidebar */}
       {currentProject && (
         <div className="projects-list-panel">
@@ -971,7 +1003,7 @@ function AIChatInterface() {
           {/* Business Overview */}
           <div className="overview-container">
             <h2>
-              <svg
+              {/* <svg
                 width="16"
                 height="16"
                 viewBox="0 0 24 24"
@@ -992,7 +1024,7 @@ function AIChatInterface() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
-              </svg>
+              </svg> */}
               Business Overview
             </h2>
             <div className="overview-content">
@@ -1004,7 +1036,7 @@ function AIChatInterface() {
           {/* Launch Date Container */}
           <div className="launch-date-container">
             <h2>
-              <svg
+              {/* <svg
                 width="16"
                 height="16"
                 viewBox="0 0 24 24"
@@ -1039,7 +1071,7 @@ function AIChatInterface() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
-              </svg>
+              </svg> */}
               Expected Launch
             </h2>
             <div className="launch-date-content">
@@ -1142,7 +1174,7 @@ function AIChatInterface() {
               {currentProject.todos?.map((todoItem, index) => {
                 const todoId = `${todoItem.task.substring(0, 20)}-${index}`;
                 return (
-                  <div key={todoId} className="todo-item">
+                  <div key={todoId} className="todo-item" style={todoItemStyle}>
                     <label className="todo-label">
                       <input
                         type="checkbox"
@@ -1192,7 +1224,7 @@ function AIChatInterface() {
         </div>
       ) : (
         <div className="chat-container">
-          <div className="messages-container">
+          <div className="messages-container" style={messagesContainerStyle}>
             {initialMessage && (
               <div className="message ai">
                 <div className="message-content">{initialMessage}</div>
@@ -1217,7 +1249,11 @@ function AIChatInterface() {
             )}
             <div ref={messagesEndRef} />
           </div>
-          <form onSubmit={handleSubmit} className="input-container">
+          <form
+            onSubmit={handleSubmit}
+            className="input-container"
+            style={inputContainerStyle}
+          >
             <textarea
               ref={inputRef}
               value={inputMessage}

@@ -102,7 +102,7 @@ const Onboarding = () => {
           className="card"
           onClick={() => handleBusinessTypeSelect("ecommerce")}
         >
-          <h2>Ecommerce</h2>
+          <h2 className="card-text">Ecommerce</h2>
           <img
             src="/specialists/businessman (1).png"
             alt="Ecommerce Specialist"
@@ -113,7 +113,7 @@ const Onboarding = () => {
           className="card"
           onClick={() => handleBusinessTypeSelect("agency")}
         >
-          <h2>Agency</h2>
+          <h2 className="card-text">Agency</h2>
           <img
             src="/specialists/man-with-hat.png"
             alt="Agency Specialist"
@@ -124,7 +124,7 @@ const Onboarding = () => {
           className="card"
           onClick={() => handleBusinessTypeSelect("software")}
         >
-          <h2>Software</h2>
+          <h2 className="card-text">Software</h2>
           <img
             src="/specialists/short-hair-man-with-sweater.png"
             alt="Software Specialist"
@@ -135,7 +135,7 @@ const Onboarding = () => {
           className="card"
           onClick={() => handleBusinessTypeSelect("copywriting")}
         >
-          <h2>Copywriting</h2>
+          <h2 className="card-text">Copywriting</h2>
           <img
             src="/specialists/boy-with-vr.png"
             alt="Copywriting Specialist"

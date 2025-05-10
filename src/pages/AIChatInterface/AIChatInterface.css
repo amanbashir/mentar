@@ -1,3 +1,4 @@
+/* Apply styling to the entire application */
 .page-container {
   width: 100vw;
   height: 100vh;
@@ -85,7 +86,7 @@
 }
 
 .project-type {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   color: white;
   text-transform: capitalize;
@@ -94,6 +95,7 @@
 .project-date {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.6);
+  font-weight: 300;
 }
 
 .project-selector-content {
@@ -123,6 +125,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  letter-spacing: -0.01em;
 }
 
 .project-selector-item:hover {
@@ -165,6 +168,7 @@
   transition: all 0.3s ease;
   width: 100%;
   margin-bottom: 24px;
+  letter-spacing: -0.01em;
 }
 
 .new-project-button:hover {
@@ -230,7 +234,7 @@
 }
 
 .project-idea {
-  font-size: 14px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
   line-height: 1.5;
@@ -288,7 +292,7 @@
 }
 
 .progress-text {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
   text-align: center;
 }
@@ -332,19 +336,20 @@
   background: rgba(255, 255, 255, 0.03);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 20px;
+  /* padding: 20px; */
   transition: all 0.3s ease;
   margin-top: auto;
 }
 
 .launch-date-container h2 {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
-  margin: 0 0 16px 0;
+  margin: 0 0 22px 0;
   color: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: -0.02em;
 }
 
 .launch-date-content {
@@ -354,42 +359,44 @@
 }
 
 .launch-date-display {
-  font-size: 15px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.9);
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  line-height: 1.5;
-  font-weight: 500;
+  line-height: 1.7;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 .overview-container {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 20px;
   transition: all 0.3s ease;
 }
 
 .overview-container h2 {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
-  margin: 0 0 16px 0;
+  margin: 0 0 22px 0;
   color: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: -0.02em;
 }
 
 .overview-content {
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.7;
   color: rgba(255, 255, 255, 0.8);
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
   padding: 10px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  letter-spacing: -0.01em;
 }
 
 .countdown-timer {
@@ -417,7 +424,7 @@
 }
 
 .countdown-value {
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 600;
   color: #2b87ff;
   margin-bottom: 8px;
@@ -426,12 +433,13 @@
 }
 
 .countdown-label {
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.02em;
   text-align: center;
   line-height: 1.4;
+  font-weight: 500;
 }
 
 .todo-list {
@@ -454,12 +462,13 @@
 .todo-list-container h2,
 .launch-date-container h2,
 .overview-container h2 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
-  margin: 0 0 20px 0;
+  margin: 0 0 22px 0;
   background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
 }
 
 /* Remove individual container backgrounds and borders */
@@ -524,8 +533,7 @@
   margin: 0 auto;
   padding: 20px;
   color: white;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+
   position: relative;
 }
 
@@ -621,11 +629,12 @@
   padding: 0;
   white-space: pre-wrap;
   font-weight: 400;
-  line-height: 1.8;
+  line-height: 1.9;
   background: none;
-  font-size: 20px;
+  font-size: 30px;
   display: flex;
   flex-direction: column;
+  letter-spacing: -0.02em;
 }
 
 .message.user {
@@ -650,6 +659,8 @@
   text-align: left;
   max-width: 600px;
   letter-spacing: -0.01em;
+  line-height: 1.8;
+  font-size: 15px;
 }
 
 .typing-indicator {
@@ -680,15 +691,15 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 16px;
+  font-size: 18px;
   padding: 8px 0;
-  font-family: inherit;
+
   letter-spacing: -0.01em;
   resize: none;
   min-height: 24px;
   max-height: 200px;
   overflow-y: auto;
-  line-height: 1.5;
+  line-height: 1.6;
   display: flex;
   align-items: center;
 }
@@ -708,6 +719,7 @@
 
 .message-input::placeholder {
   color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0;
 }
 
 .message-input:focus {
@@ -719,8 +731,8 @@
   border: none;
   color: black;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -973,19 +985,19 @@
 
 .chat-popup-content .message.bot {
   color: black;
-  font-size: 18px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 400;
 }
 
 .chat-popup-content .message.user {
   color: #0a84ff;
-  font-size: 18px;
+  font-size: 20px;
   text-align: right;
 }
 
 /* Keep the initial "How can I help?" message larger */
 .chat-popup-content .message.bot:first-child:not(:only-child) {
-  font-size: 24px;
+  font-size: 26px;
 }
 
 .chat-popup-input {
@@ -1002,11 +1014,12 @@
   border: none;
   padding: 12px 16px;
   color: black;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .chat-popup-input input::placeholder {
   color: rgba(0, 0, 0, 0.4);
+  letter-spacing: 0;
 }
 
 .chat-popup-input input:focus {
@@ -1050,7 +1063,7 @@
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.9);
   transition: opacity 0.2s ease;
 }
@@ -1160,7 +1173,7 @@
   content: "✓";
   position: absolute;
   color: white;
-  font-size: 14px;
+  font-size: 16px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -1168,7 +1181,7 @@
 
 .todo-text {
   flex: 1;
-  font-size: 14px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.5;
   display: -webkit-box;
@@ -1179,6 +1192,8 @@
   cursor: pointer;
   position: relative;
   padding-right: 20px; /* Space for the indicator */
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 .todo-text.expanded {
@@ -1257,29 +1272,36 @@
 }
 
 .countdown-value {
-  font-size: 28px;
+  font-size: 34px;
   font-weight: 600;
   color: #2b87ff;
   margin-bottom: 6px;
 }
 
 .countdown-label {
-  font-size: 12px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.4;
+  font-weight: 500;
 }
 
 .launch-date-display {
-  font-size: 14px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.9);
   margin-bottom: 20px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 .overview-content {
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.7;
   color: rgba(255, 255, 255, 0.9);
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 /* Settings Button */
@@ -1297,6 +1319,7 @@
   align-items: center;
   gap: 8px;
   transition: all 0.3s ease;
+  letter-spacing: -0.01em;
 }
 
 .settings-button:hover {
@@ -1314,4 +1337,76 @@
 .todo-text.completed {
   text-decoration: line-through;
   color: rgba(255, 255, 255, 0.5);
+}
+
+/* Font weight settings for system fonts */
+.message-content strong {
+  font-weight: 600;
+}
+
+/* Todo Generation Overlay */
+.todo-generation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.todo-generation-dialog {
+  background-color: #1e1e2e;
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: fadeIn 0.3s ease;
+}
+
+.todo-generation-dialog h3 {
+  margin-top: 20px;
+  font-size: 24px;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.todo-generation-dialog p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.todo-generation-dialog .loading-spinner {
+  margin: 0 auto 16px;
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #6366f1;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

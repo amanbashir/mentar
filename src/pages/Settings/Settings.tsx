@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
-import { createCheckoutSession, getSubscriptionStatus } from '../../services/stripeService';
-import stripePromise from '../../lib/stripeClient';
-import './Settings.css';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
+import {
+  createCheckoutSession,
+  getSubscriptionStatus,
+} from "../../services/stripeService";
+import stripePromise from "../../lib/stripeClient";
+import "./Settings.css";
 
 interface UserData {
   id: string;
@@ -15,10 +18,13 @@ interface UserData {
 
 const Settings = () => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState('billing');
+  const [activeSection, setActiveSection] = useState("billing");
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none');
+  const [message, setMessage] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>("none");
   const [isLoadingCheckout, setIsLoadingCheckout] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
 
@@ -29,20 +35,22 @@ const Settings = () => {
 
   const fetchUserData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session?.user) {
         const { data, error } = await supabase
-          .from('userData')
-          .select('*')
-          .eq('id', session.user.id)
+          .from("userData")
+          .select("*")
+          .eq("id", session.user.id)
           .single();
 
         if (error) throw error;
         setUserData(data);
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
-      setMessage({ text: 'Failed to load user data', type: 'error' });
+      console.error("Error fetching user data:", error);
+      setMessage({ text: "Failed to load user data", type: "error" });
     }
   };
 
@@ -51,39 +59,44 @@ const Settings = () => {
       const status = await getSubscriptionStatus();
       setSubscriptionStatus(status);
     } catch (error) {
-      console.error('Error fetching subscription status:', error);
+      console.error("Error fetching subscription status:", error);
     }
   };
 
   const handlePasswordReset = async () => {
     if (userData?.email) {
       try {
-        const { error } = await supabase.auth.resetPasswordForEmail(userData.email);
+        const { error } = await supabase.auth.resetPasswordForEmail(
+          userData.email
+        );
         if (error) throw error;
-        setMessage({ text: 'Password reset email sent', type: 'success' });
+        setMessage({ text: "Password reset email sent", type: "success" });
       } catch (error) {
-        console.error('Error sending password reset:', error);
-        setMessage({ text: 'Failed to send password reset email', type: 'error' });
+        console.error("Error sending password reset:", error);
+        setMessage({
+          text: "Failed to send password reset email",
+          type: "error",
+        });
       }
     }
   };
 
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm(
-      'Are you sure you want to delete your account? This action cannot be undone.'
+      "Are you sure you want to delete your account? This action cannot be undone."
     );
 
     if (!confirmed) return;
 
     setIsLoading(true);
     try {
-      if (!userData) throw new Error('No user data found');
+      if (!userData) throw new Error("No user data found");
 
       // Delete the user's data from userData table
       const { error: deleteDataError } = await supabase
-        .from('userData')
+        .from("userData")
         .delete()
-        .eq('id', userData.id);
+        .eq("id", userData.id);
 
       if (deleteDataError) throw deleteDataError;
 
@@ -95,10 +108,10 @@ const Settings = () => {
       if (deleteError) throw deleteError;
 
       await supabase.auth.signOut();
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('Error deleting account:', error);
-      setMessage({ text: 'Failed to delete account', type: 'error' });
+      console.error("Error deleting account:", error);
+      setMessage({ text: "Failed to delete account", type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -106,11 +119,11 @@ const Settings = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/');
+    navigate("/");
   };
 
   const handleBackToChat = () => {
-    navigate('/chat');
+    navigate("/chat");
   };
 
   const handleUpgrade = async (priceId: string) => {
@@ -118,13 +131,17 @@ const Settings = () => {
     try {
       const successUrl = `${window.location.origin}/settings?success=true`;
       const cancelUrl = `${window.location.origin}/settings?canceled=true`;
-      const session = await createCheckoutSession(priceId, successUrl, cancelUrl);
+      const session = await createCheckoutSession(
+        priceId,
+        successUrl,
+        cancelUrl
+      );
       if (session?.url) {
         window.location.href = session.url;
       }
     } catch (error) {
-      console.error('Error creating checkout session:', error);
-      setMessage({ text: 'Failed to start checkout process', type: 'error' });
+      console.error("Error creating checkout session:", error);
+      setMessage({ text: "Failed to start checkout process", type: "error" });
     } finally {
       setIsLoadingCheckout(false);
     }
@@ -142,14 +159,14 @@ const Settings = () => {
       <div className="settings-content">
         <div className="settings-sidebar">
           <button
-            className={activeSection === 'billing' ? 'active' : ''}
-            onClick={() => setActiveSection('billing')}
+            className={activeSection === "billing" ? "active" : ""}
+            onClick={() => setActiveSection("billing")}
           >
             Billing
           </button>
           <button
-            className={activeSection === 'account' ? 'active' : ''}
-            onClick={() => setActiveSection('account')}
+            className={activeSection === "account" ? "active" : ""}
+            onClick={() => setActiveSection("account")}
           >
             Account
           </button>
@@ -157,30 +174,28 @@ const Settings = () => {
 
         <div className="settings-main">
           {message && (
-            <div className={`message ${message.type}`}>
-              {message.text}
-            </div>
+            <div className={`message ${message.type}`}>{message.text}</div>
           )}
 
-          {activeSection === 'billing' && (
+          {activeSection === "billing" && (
             <div className="billing-section">
               <h2>Subscription Status</h2>
               <p>Current Plan: {subscriptionStatus}</p>
-              {subscriptionStatus === 'none' && (
+              {subscriptionStatus === "none" && (
                 <button
-                  onClick={() => handleUpgrade('price_xxxxx')}
+                  onClick={() => handleUpgrade("price_xxxxx")}
                   disabled={isLoadingCheckout}
                 >
-                  {isLoadingCheckout ? 'Loading...' : 'Upgrade to Pro'}
+                  {isLoadingCheckout ? "Loading..." : "Upgrade to Pro"}
                 </button>
               )}
             </div>
           )}
 
-          {activeSection === 'account' && (
+          {activeSection === "account" && (
             <div className="account-section">
               <h2>Account Settings</h2>
-              
+
               <div className="setting-item">
                 <h3>Email</h3>
                 <p>{userData?.email}</p>
@@ -218,4 +233,4 @@ const Settings = () => {
   );
 };
 
-export default Settings; 
+export default Settings;
