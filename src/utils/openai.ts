@@ -509,6 +509,20 @@ export const getAIChatResponse = async (
       return "I'm sorry, but I couldn't process an empty message.";
     }
 
+    // Check if the user message is about a todo task or help request
+    const isTaskRequest = userMessage.toLowerCase().includes("can you help") ||
+      userMessage.toLowerCase().includes("how do i") || 
+      userMessage.toLowerCase().includes("how to") ||
+      userMessage.toLowerCase().includes("could you assist") || 
+      userMessage.toLowerCase().includes("guide me");
+      
+    // Check if user has pasted a todo task from the list
+    const isExactTodoTask = currentProject.todos?.some((todo: any) => 
+      todo.task.toLowerCase() === userMessage.toLowerCase() ||
+      userMessage.toLowerCase().includes(todo.task.toLowerCase())
+    );
+
+    // Enhanced business context with action-oriented focus
     const businessTypeContext = `You are helping the user build a ${
       currentProject.business_type || "business"
     } business. 
@@ -517,14 +531,30 @@ export const getAIChatResponse = async (
       currentProject.business_idea || "not set yet"
     }.
     The user's income goal is ${currentProject.income_goal || "not set yet"}.
-
-    When providing a business overview or summary, keep it concise and to the point (max 150 characters). Focus on the key aspects: business type, main offering, target market, and unique value proposition.`;
+    
+    ${isExactTodoTask || isTaskRequest ? 
+      `IMPORTANT: The user is asking for help with a specific task or has pasted a todo item from their list.
+      You MUST directly solve their task, not just provide guidance on how to do it.
+      DO NOT say phrases like "Here's how to do this" or "Step-by-step way to do this".
+      Instead, DIRECTLY give them the solution, exact content, templates, or completed work they need.
+      For example:
+      - If they need marketing copy, WRITE the actual marketing copy
+      - If they need a business plan, CREATE the actual business plan 
+      - If they need a competitor analysis, PROVIDE the complete analysis
+      - If they need a pricing strategy, DEVELOP the full pricing model
+      
+      Provide the FINISHED WORK they need, not just instructions on how to do it themselves.
+      Include specific information, examples, and completed templates that they can use immediately.` : 
+      `When providing a business overview or summary, keep it concise and to the point (max 150 characters). Focus on the key aspects: business type, main offering, target market, and unique value proposition.`
+    }`;
 
     // Log details for debugging
     console.log("API Request details:");
     console.log("- Business type:", currentProject.business_type);
     console.log("- Message count:", messages.length);
     console.log("- System prompt length:", systemPrompt.length);
+    console.log("- Is task request:", isTaskRequest);
+    console.log("- Is exact todo task:", isExactTodoTask);
     
     // Check API key
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;

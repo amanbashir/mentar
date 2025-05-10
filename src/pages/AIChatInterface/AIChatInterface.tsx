@@ -474,6 +474,11 @@ function AIChatInterface() {
     try {
       await saveMessage(userMessage, true);
 
+      // Determine if this is a task from the todo list
+      const isTodoTask = currentProject.todos?.some(
+        (todo: TodoItem) => todo.task === userMessage
+      );
+
       // Only generate todos if the project has no todos yet (initial setup)
       if (!currentProject.todos || currentProject.todos.length === 0) {
         if (!currentProject.total_budget) {
@@ -600,11 +605,23 @@ function AIChatInterface() {
         }
       }
 
+      // If the message is a todo item, add a specific prompt to help with task completion
+      let enhancedUserMessage = userMessage;
+      if (isTodoTask) {
+        const matchingTodo = currentProject.todos?.find(
+          (todo: TodoItem) => todo.task === userMessage
+        );
+        if (matchingTodo) {
+          // Mark this as a request for completed work, not just guidance
+          enhancedUserMessage = `Complete this task for me: "${userMessage}". Don't tell me how to do it - instead, provide the actual finished work, content, or solution I need. Give me something I can use immediately without further work on my part.`;
+        }
+      }
+
       // Continue with normal AI response for subsequent messages
       // Use the getAIChatResponse utility function instead of implementing the API call here
       const aiResponse = await getAIChatResponse(
         messages,
-        userMessage,
+        enhancedUserMessage, // Use the enhanced message for better task handling
         currentProject,
         getCombinedPrompt(currentProject.business_type)
       );
@@ -1230,7 +1247,9 @@ function AIChatInterface() {
                     <button
                       className="get-started-button"
                       onClick={() => {
-                        setInputMessage(todoItem.task);
+                        setInputMessage(
+                          todoItem.task + "\n\nHelp me complete this task"
+                        );
                         if (inputRef.current) {
                           inputRef.current.focus();
                           setTimeout(() => {

@@ -537,7 +537,7 @@
   cursor: pointer;
   margin-top: 5px;
   transition: all 0.3s ease;
-  align-self: flex-start;
+  align-self: flex-end;
 }
 
 .get-started-button:hover {
