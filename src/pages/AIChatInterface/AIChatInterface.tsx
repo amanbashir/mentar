@@ -21,6 +21,7 @@ import {
   getNextStage,
   typedSaasStrategy,
 } from "../../utils/openai";
+import DeleteProjectDialog from "../../components/DeleteProjectDialog";
 
 // Types
 interface Project {
@@ -142,6 +143,8 @@ function AIChatInterface() {
   );
   const [isGeneratingTodos, setIsGeneratingTodos] = useState(false);
   const popupInputRef = useRef<HTMLTextAreaElement>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const messagesContainerStyle = {
     gap: "28px",
@@ -287,15 +290,15 @@ function AIChatInterface() {
       // Set initial message based on whether budget is set
       if (!currentProject?.total_budget) {
         setInitialMessage(
-          `Hi! I'm excited to help you build your ${currentProject?.business_type} business. Let's start with your budget - how much are you planning to invest in this business?`
+          `Let's set your budget to get started. Please enter your planned investment amount.`
         );
       } else if (!currentProject?.income_goal) {
         setInitialMessage(
-          `Great! With a budget of ${currentProject.total_budget}, what's your target monthly income goal for this ${currentProject.business_type} business?`
+          `Please specify your target monthly income goal to help me tailor the business plan.`
         );
       } else {
         setInitialMessage(
-          `Welcome back! I see you're working on your ${currentProject.business_type} business with a budget of ${currentProject.total_budget} and a monthly income goal of ${currentProject.income_goal}. How can I help you today?`
+          `Welcome back! I'm ready to help you with your ${currentProject.business_type} business. What would you like to work on?`
         );
       }
 
@@ -365,15 +368,15 @@ function AIChatInterface() {
     e: React.MouseEvent
   ) => {
     e.stopPropagation(); // Prevent project switching when clicking delete
-
-    // Use a more reliable approach for confirmation
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this project and all its messages? This action cannot be undone."
-    );
-
-    if (!confirmDelete) {
-      return;
+    const projectToDelete = projects.find((p) => p.id === projectId);
+    if (projectToDelete) {
+      setProjectToDelete(projectToDelete);
+      setIsDeleteDialogOpen(true);
     }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!projectToDelete) return;
 
     try {
       // Get the current user to verify ownership
@@ -388,7 +391,7 @@ function AIChatInterface() {
       const { error: messagesError } = await supabase
         .from("messages")
         .delete()
-        .eq("project_id", projectId);
+        .eq("project_id", projectToDelete.id);
 
       if (messagesError) {
         throw messagesError;
@@ -398,18 +401,20 @@ function AIChatInterface() {
       const { error: projectError } = await supabase
         .from("projects")
         .delete()
-        .eq("id", projectId);
+        .eq("id", projectToDelete.id);
 
       if (projectError) {
         throw projectError;
       }
 
       // Update local state
-      const updatedProjects = projects.filter((p) => p.id !== projectId);
+      const updatedProjects = projects.filter(
+        (p) => p.id !== projectToDelete.id
+      );
       setProjects(updatedProjects);
 
       // If the deleted project was the current one, switch to the most recent project
-      if (currentProject?.id === projectId) {
+      if (currentProject?.id === projectToDelete.id) {
         if (updatedProjects.length > 0) {
           setCurrentProject(updatedProjects[0]);
           setMessages([]);
@@ -420,6 +425,10 @@ function AIChatInterface() {
           navigate("/onboarding", { replace: true });
         }
       }
+
+      // Close the dialog
+      setIsDeleteDialogOpen(false);
+      setProjectToDelete(null);
     } catch (error: any) {
       console.error("Error deleting project:", error);
       alert(`Failed to delete project: ${error.message}`);
@@ -630,7 +639,8 @@ function AIChatInterface() {
 
       // Generate a proper business overview summary using the utility function
       const businessOverview = await generateBusinessOverviewSummary(
-        currentProject
+        currentProject,
+        messages
       );
 
       // Only update the business overview and summary, not the todos or tasks
@@ -1411,6 +1421,17 @@ function AIChatInterface() {
           </button>
         </form>
       </div>
+
+      {/* Add the DeleteProjectDialog component */}
+      <DeleteProjectDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setProjectToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        projectType={projectToDelete?.business_type || ""}
+      />
     </div>
   );
 }

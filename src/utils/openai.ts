@@ -148,13 +148,17 @@ export const generateInitialTodos = async (
       throw new Error("No checklist found for stage 1");
     }
 
-    const todoGenerationPrompt = `As an AI business mentor, generate detailed, actionable tasks for building a ${businessType} business with a budget of ${budget}. 
+    const todoGenerationPrompt = `As an AI business mentor, generate detailed, 5 actionable  tasks for building a ${businessType} business with a budget of ${budget}.
     The tasks should be based on the following checklist items:
     ${stage1Data.checklist.join("\n")}
-    
-    For each checklist item, create 4-5 specific, actionable tasks that the user must complete.
+
+    For each checklist item, create a maximum of 5 specific, actionable tasks in total for this stage.
     Make the tasks detailed and specific to their business type and budget.
     Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
+
+    MAX 5 TASKS
+    DONT GENERATE MORE THAN 5 TASKS
+
     Example format:
     [
       {"task": "Research and analyze 3 direct competitors in the [specific niche] market", "completed": false},
@@ -321,18 +325,23 @@ export const updateTodosForStage = async (
     // Generate AI todos for the stage
     const todoGenerationPrompt = `As an AI business mentor, generate extremely detailed, step-by-step actionable tasks for stage ${stage} of building a ${
       currentProject.business_type || "general"
-    } business. 
+    } business.
     The user's budget is ${currentProject.total_budget || "not set yet"}.
     The user's business idea is ${
       currentProject.business_idea || "not set yet"
     }.
-    
-    Generate 5-7 ultra-specific, actionable tasks that the user must complete for this stage.
+
+    Generate a maximum of 5 ultra-specific, actionable tasks that the user must complete for this stage.
     Each task should include exact websites, tools, or platforms to use, with specific steps.
     For example, instead of "Get a domain name", say "Go to Namecheap.com or GoDaddy.com and purchase a domain name that includes your main keyword. Budget $10-15 for the first year."
     Instead of "Set up social media", say "Create a business account on Instagram by downloading the app from App Store/Google Play, clicking 'Sign Up', selecting 'Create a Business Account', and completing your profile with your logo and a 150-character bio."
-    
+
     Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
+
+    MAX 5 TASKS
+    DONT GENERATE MORE THAN 5 TASKS
+
+
     Example format:
     [
       {"task": "Go to Ahrefs.com or SEMrush.com (both offer free trials) and research 3 direct competitors in your niche. Create a spreadsheet listing their top 10 ranking keywords, backlink sources, and content topics.", "completed": false},
@@ -414,7 +423,7 @@ export const updateTodosForStage = async (
 };
 
 // Generate business overview summary
-export const generateBusinessOverviewSummary = async (currentProject: any) => {
+export const generateBusinessOverviewSummary = async (currentProject: any, messages: any[]) => {
   try {
     // Check API key
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -422,15 +431,20 @@ export const generateBusinessOverviewSummary = async (currentProject: any) => {
       console.error("OpenAI API key is missing in generateBusinessOverviewSummary");
       return "Business overview unavailable due to API configuration issue.";
     }
-    
+
     if (!currentProject) {
       console.error("No current project provided to generateBusinessOverviewSummary");
       return "Business overview unavailable.";
     }
 
-    const summaryPrompt = `Create a concise business overview summary for a ${
-      currentProject.business_type || "new"
-    } business with the following details:
+    const chatHistory = messages.map(msg => `${msg.is_user ? 'User' : 'AI'}: ${msg.content}`).join('\n');
+
+    const summaryPrompt = `Based on the following chat conversation, create a concise business overview summary (max 150 characters).
+    The summary should reflect the current state of the business plan and update with each new message.
+    Consider the business type, main offering, target market, budget, income goal, and current progress.
+
+    Project Details:
+    - Business Type: ${currentProject.business_type || "new"}
     - Budget: ${currentProject.total_budget || "Not set"}
     - Business Idea: ${currentProject.business_idea || "Not set"}
     - Current Stage: ${
@@ -441,8 +455,11 @@ export const generateBusinessOverviewSummary = async (currentProject: any) => {
       currentProject.todos?.filter((todo: TodoItem) => todo.completed).length || 0
     } of ${currentProject.todos?.length || 0}
     - Income Goal: ${currentProject.income_goal || "Not set"}
-    
-    Focus on the key aspects: business type, main offering, target market, and current progress.`;
+
+    Chat History:
+    ${chatHistory}
+
+    Provide a very short summary of the business based on all the information above.`;
 
     console.log("Generating business overview for:", currentProject.business_type);
 
@@ -488,9 +505,9 @@ export const generateBusinessOverviewSummary = async (currentProject: any) => {
 
 // Get AI chat response
 export const getAIChatResponse = async (
-  messages: any[], 
-  userMessage: string, 
-  currentProject: any, 
+  messages: any[],
+  userMessage: string,
+  currentProject: any,
   systemPrompt: string
 ) => {
   try {
@@ -525,27 +542,33 @@ export const getAIChatResponse = async (
     // Enhanced business context with action-oriented focus
     const businessTypeContext = `You are helping the user build a ${
       currentProject.business_type || "business"
-    } business. 
-    The user's budget is ${currentProject.total_budget || "not set yet"}. 
+    } business.
+    The user's budget is ${currentProject.total_budget || "not set yet"}.
     The user's business idea is ${
       currentProject.business_idea || "not set yet"
     }.
     The user's income goal is ${currentProject.income_goal || "not set yet"}.
-    
-    ${isExactTodoTask || isTaskRequest ? 
+
+    IMPORTANT INSTRUCTIONS:
+    1. DO NOT ask questions about business type, budget, business idea, or income goals - this information is already provided above.
+    2. DO NOT ask for context about the business - use the information provided above.
+    3. Only ask specific questions related to the immediate task or problem the user needs help with.
+    4. Focus on providing direct, actionable solutions based on the context you already have.
+
+    ${isExactTodoTask || isTaskRequest ?
       `IMPORTANT: The user is asking for help with a specific task or has pasted a todo item from their list.
       You MUST directly solve their task, not just provide guidance on how to do it.
       DO NOT say phrases like "Here's how to do this" or "Step-by-step way to do this".
       Instead, DIRECTLY give them the solution, exact content, templates, or completed work they need.
       For example:
       - If they need marketing copy, WRITE the actual marketing copy
-      - If they need a business plan, CREATE the actual business plan 
+      - If they need a business plan, CREATE the actual business plan
       - If they need a competitor analysis, PROVIDE the complete analysis
       - If they need a pricing strategy, DEVELOP the full pricing model
-      
+
       Provide the FINISHED WORK they need, not just instructions on how to do it themselves.
-      Include specific information, examples, and completed templates that they can use immediately.` : 
-      `When providing a business overview or summary, keep it concise and to the point (max 150 characters). Focus on the key aspects: business type, main offering, target market, and unique value proposition.`
+      Include specific information, examples, and completed templates that they can use immediately.` :
+      ``
     }`;
 
     // Log details for debugging

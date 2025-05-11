@@ -733,7 +733,7 @@
   /* max-height: 200px; */
   transition: height 0.2s ease;
   line-height: 1.5;
-  max-width: 60%;
+  max-width: 80%;
 }
 
 .message-input::-webkit-scrollbar {
