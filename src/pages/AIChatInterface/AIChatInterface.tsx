@@ -7,6 +7,7 @@ import "./AIChatInterface.css";
 import { motion } from "framer-motion";
 import Navbar from "../../components/Navbar";
 import { FaTrashCan } from "react-icons/fa6";
+import { ecommerceBlueprint } from "../../../lib/mentars/ecom-new-strat";
 import {
   extractBudget,
   extractIncomeGoal,
@@ -89,6 +90,14 @@ interface BusinessStrategy {
 
 type StageKey = keyof BusinessStrategy;
 
+// Interface for prequalification state
+interface PrequalificationState {
+  isPrequalifying: boolean;
+  currentQuestionIndex: number;
+  answers: string[];
+  completed: boolean;
+}
+
 // Helper functions
 const calculateProgress = (
   completedStages: string[],
@@ -146,6 +155,15 @@ function AIChatInterface() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
+  // Add prequalification state
+  const [prequalification, setPrequalification] =
+    useState<PrequalificationState>({
+      isPrequalifying: false,
+      currentQuestionIndex: 0,
+      answers: [],
+      completed: false,
+    });
+
   const messagesContainerStyle = {
     gap: "28px",
   };
@@ -164,7 +182,14 @@ function AIChatInterface() {
     if (newProject) {
       setCurrentProject(newProject);
       fetchUserProjects();
-      fetchProjectMessages(newProject.id);
+
+      // Start prequalification if it's an ecommerce project
+      if (newProject.business_type === "ecommerce") {
+        startPrequalification();
+      } else {
+        fetchProjectMessages(newProject.id);
+      }
+
       // Clear the location state to prevent re-setting on refresh
       window.history.replaceState({}, document.title);
     }
@@ -304,6 +329,16 @@ function AIChatInterface() {
 
       if (messages) {
         setMessages(messages);
+
+        // Check if we need to start prequalification
+        if (
+          currentProject?.business_type === "ecommerce" &&
+          messages.length === 0 &&
+          (!currentProject.outputs?.prequalification ||
+            !currentProject.outputs.prequalification.completed)
+        ) {
+          startPrequalification();
+        }
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -471,6 +506,208 @@ function AIChatInterface() {
     scrollToBottom();
   }, [messages]);
 
+  // Function to start prequalification process
+  const startPrequalification = () => {
+    if (!currentProject) return;
+
+    setPrequalification({
+      isPrequalifying: true,
+      currentQuestionIndex: 0,
+      answers: [],
+      completed: false,
+    });
+
+    // Send first question as AI message with enhanced guidance
+    if (ecommerceBlueprint.preQualification.questions.length > 0) {
+      const firstQuestion = ecommerceBlueprint.preQualification.questions[0];
+      const enhancedQuestion = enhancePrequalificationQuestion(
+        firstQuestion,
+        0
+      );
+      saveMessage(
+        `Welcome to your ecommerce business journey! To help me provide the best guidance for you, I'd like to ask a few important questions:\n\n${enhancedQuestion}`,
+        false
+      );
+    }
+  };
+
+  // Add context and examples to prequalification questions
+  const enhancePrequalificationQuestion = (
+    question: string,
+    index: number
+  ): string => {
+    const enhancedQuestions = [
+      `${question}\n\nFor example, you might say "$500-1000," "$5,000," or "around $10,000 initially."`,
+      `${question}\n\nFor example, "10 hours per week," "3-4 hours daily," or "only weekends."`,
+      `${question}\n\nFor example, "I've never sold online before," "I have a Shopify store but no success yet," or "I've been selling on eBay for 2 years."`,
+      `${question}\n\nOn a scale of 1-10, how would you rate your comfort with these tools? Or you can describe your experience more specifically.`,
+      `${question}\n\nFor example, "I'm good at design," "I enjoy analyzing data," or "I'm strong at organization and planning."`,
+      `${question}\n\nPlease be honest about your risk tolerance and financial readiness for testing different ad strategies.`,
+    ];
+
+    return index < enhancedQuestions.length
+      ? enhancedQuestions[index]
+      : question;
+  };
+
+  // Handle next prequalification question
+  const handleNextPrequalificationQuestion = async (userAnswer: string) => {
+    if (!currentProject || !prequalification.isPrequalifying) return;
+
+    // Save user's answer
+    const newAnswers = [...prequalification.answers, userAnswer];
+    const nextQuestionIndex = prequalification.currentQuestionIndex + 1;
+
+    // Check if we've reached the end of questions
+    if (
+      nextQuestionIndex >= ecommerceBlueprint.preQualification.questions.length
+    ) {
+      // All questions answered, complete prequalification
+      setPrequalification({
+        isPrequalifying: false,
+        currentQuestionIndex: nextQuestionIndex,
+        answers: newAnswers,
+        completed: true,
+      });
+
+      // Save prequalification answers to project metadata
+      const prequalificationData = {
+        questions: ecommerceBlueprint.preQualification.questions,
+        answers: newAnswers,
+        completedAt: new Date().toISOString(),
+      };
+
+      // Create outputs object if it doesn't exist
+      const updatedOutputs = {
+        ...(currentProject.outputs || {}),
+        prequalification: prequalificationData,
+      };
+
+      // Update project with prequalification data
+      const { error } = await supabase
+        .from("projects")
+        .update({
+          outputs: updatedOutputs,
+        })
+        .eq("id", currentProject.id);
+
+      if (error) {
+        console.error("Error saving prequalification data:", error);
+      } else {
+        // Update local state with new outputs
+        setCurrentProject((prev) =>
+          prev ? { ...prev, outputs: updatedOutputs } : null
+        );
+      }
+
+      // Continue with normal flow - ask for budget if not set
+      if (!currentProject.total_budget) {
+        const budgetQuestion =
+          "Great! Thanks for sharing that information. Now, let's set your budget to get started. Please enter your planned investment amount.";
+        await saveMessage(budgetQuestion, false);
+      } else if (!currentProject.income_goal) {
+        const incomeQuestion =
+          "Thanks for the information! Please specify your target monthly income goal to help me tailor the business plan.";
+        await saveMessage(incomeQuestion, false);
+      } else {
+        // Both budget and income already set, send summary message
+        const summary = generatePrequalificationSummary(newAnswers);
+        await saveMessage(summary, false);
+      }
+    } else {
+      // Send next question with enhanced guidance
+      const nextQuestion =
+        ecommerceBlueprint.preQualification.questions[nextQuestionIndex];
+      const enhancedQuestion = enhancePrequalificationQuestion(
+        nextQuestion,
+        nextQuestionIndex
+      );
+      await saveMessage(enhancedQuestion, false);
+
+      // Update prequalification state
+      setPrequalification({
+        isPrequalifying: true,
+        currentQuestionIndex: nextQuestionIndex,
+        answers: newAnswers,
+        completed: false,
+      });
+    }
+  };
+
+  // Generate a summary based on prequalification answers
+  const generatePrequalificationSummary = (answers: string[]): string => {
+    // Evaluate the prequalification answers
+    const evaluation = evaluatePrequalificationAnswers(answers);
+
+    return `Thank you for sharing this information! Based on what you've told me:
+
+1. Your investment capital: ${answers[0]}
+2. Your weekly time commitment: ${answers[1]}
+3. Your experience level: ${answers[2]}
+4. Your comfort with digital tools: ${answers[3]}
+5. Your strengths: ${answers[4]}
+6. Your willingness to invest in ads: ${answers[5]}
+
+${evaluation}
+
+I'll use this information to guide you through your ecommerce journey. Let's get started with building your business plan!`;
+  };
+
+  // Function to evaluate the prequalification answers and provide recommendations
+  const evaluatePrequalificationAnswers = (answers: string[]): string => {
+    let recommendations = "";
+
+    // Simple evaluation logic - can be expanded with more sophisticated analysis
+    const investmentMentioned = answers[0].match(
+      /\$[\d,]+|[\d,]+\s*(?:dollars|USD)/i
+    );
+    const timeMentioned = answers[1].match(/\d+\s*(?:hours?|hrs?)/i);
+    const hasExperience =
+      answers[2].toLowerCase().includes("yes") ||
+      answers[2].toLowerCase().includes("experience") ||
+      !answers[2].toLowerCase().includes("no");
+    const toolComfort =
+      answers[3].toLowerCase().includes("comfortable") ||
+      answers[3].toLowerCase().includes("familiar") ||
+      answers[3].toLowerCase().includes("yes");
+    const willingToInvest = !answers[5].toLowerCase().includes("no");
+
+    // Build recommendations based on answers
+    if (!investmentMentioned) {
+      recommendations +=
+        "Based on your investment capacity, I recommend starting with a focused product selection and minimal overhead. ";
+    }
+
+    if (
+      !timeMentioned ||
+      answers[1].toLowerCase().includes("few") ||
+      answers[1].toLowerCase().includes("little")
+    ) {
+      recommendations +=
+        "Since your time is limited, we'll focus on automation and systems that require minimal daily management. ";
+    }
+
+    if (!hasExperience) {
+      recommendations +=
+        "As you're new to ecommerce, I'll guide you through each step with detailed instructions. Consider starting with a simpler product to learn the basics. ";
+    }
+
+    if (!toolComfort) {
+      recommendations +=
+        "We'll start with the most user-friendly tools and work up to more advanced ones as you gain confidence. ";
+    }
+
+    if (!willingToInvest) {
+      recommendations +=
+        "Since you're cautious about ad spend, we'll focus more on organic growth strategies and smaller, targeted ad tests. ";
+    }
+
+    return (
+      recommendations ||
+      "Your profile shows good alignment with ecommerce business needs. Let's focus on leveraging your strengths while developing areas where you might need more support."
+    );
+  };
+
   // Update the handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -482,6 +719,13 @@ function AIChatInterface() {
 
     try {
       await saveMessage(userMessage, true);
+
+      // Check if we're in prequalification mode
+      if (prequalification.isPrequalifying) {
+        await handleNextPrequalificationQuestion(userMessage);
+        setIsLoading(false);
+        return;
+      }
 
       // Determine if this is a task from the todo list
       const isTodoTask = currentProject.todos?.some(
@@ -626,11 +870,27 @@ function AIChatInterface() {
         }
       }
 
+      // Prepare prequalification context if available
+      let prequalificationContext = "";
+      if (
+        currentProject.business_type === "ecommerce" &&
+        currentProject.outputs?.prequalification &&
+        Array.isArray(currentProject.outputs.prequalification.answers)
+      ) {
+        const questions = ecommerceBlueprint.preQualification.questions;
+        const answers = currentProject.outputs.prequalification.answers;
+
+        prequalificationContext = "\n\nPrequalification Information:\n";
+        for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
+          prequalificationContext += `- ${questions[i]}: ${answers[i]}\n`;
+        }
+      }
+
       // Continue with normal AI response for subsequent messages
       // Use the getAIChatResponse utility function instead of implementing the API call here
       const aiResponse = await getAIChatResponse(
         messages,
-        enhancedUserMessage, // Use the enhanced message for better task handling
+        enhancedUserMessage + prequalificationContext, // Add prequalification context
         currentProject,
         getCombinedPrompt(currentProject.business_type)
       );
@@ -868,9 +1128,25 @@ function AIChatInterface() {
         created_at: new Date().toISOString(),
       }));
 
+      // Prepare prequalification context if available for ecommerce businesses
+      let prequalificationContext = "";
+      if (
+        currentProject.business_type === "ecommerce" &&
+        currentProject.outputs?.prequalification &&
+        Array.isArray(currentProject.outputs.prequalification.answers)
+      ) {
+        const questions = ecommerceBlueprint.preQualification.questions;
+        const answers = currentProject.outputs.prequalification.answers;
+
+        prequalificationContext = "\n\nPrequalification Information:\n";
+        for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
+          prequalificationContext += `- ${questions[i]}: ${answers[i]}\n`;
+        }
+      }
+
       const aiResponse = await getAIChatResponse(
         formattedMessages,
-        userMessage,
+        userMessage + prequalificationContext,
         currentProject,
         getCombinedPrompt(currentProject.business_type)
       );

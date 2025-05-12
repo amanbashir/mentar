@@ -3,6 +3,7 @@ import { saasStrategy } from "../../lib/mentars/saasStrategy";
 import { agencyStrategy } from "../../lib/mentars/agencyStrategy";
 import { ecomStrategy } from "../../lib/mentars/ecomStrategy";
 import { copywritingStrategy } from "../../lib/mentars/copywritingStrategy";
+import { ecommerceBlueprint } from "../../lib/mentars/ecom-new-strat";
 
 // Helper functions for extracting information from messages
 export const extractBudget = (text: string): string | null => {
@@ -141,6 +142,12 @@ export const generateInitialTodos = async (
       throw new Error("API configuration is missing");
     }
 
+    // For ecommerce, use the new blueprint structure
+    if (businessType.toLowerCase() === "ecommerce") {
+      return await generateEcommerceTodos(projectId, budget);
+    }
+
+    // For all other business types, use the original strategy
     const currentStrategy = getStrategyForBusinessType(businessType);
     const stage1Data = currentStrategy.stage_1;
 
@@ -148,7 +155,7 @@ export const generateInitialTodos = async (
       throw new Error("No checklist found for stage 1");
     }
 
-    const todoGenerationPrompt = `As an AI business mentor, generate detailed, 5 actionable  tasks for building a ${businessType} business with a budget of ${budget}.
+    const todoGenerationPrompt = `As an AI business mentor, generate detailed, 5 actionable tasks for building a ${businessType} business with a budget of ${budget}.
     The tasks should be based on the following checklist items:
     ${stage1Data.checklist.join("\n")}
 
@@ -169,73 +176,138 @@ export const generateInitialTodos = async (
     console.log("- Budget:", budget);
     console.log("- Checklist items:", stage1Data.checklist?.length || 0);
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: todoGenerationPrompt,
-          },
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("OpenAI API Error in generateInitialTodos:", {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-      });
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    // Add safety check for parsing JSON
-    let generatedTodos;
-    try {
-      generatedTodos = JSON.parse(data.choices[0].message.content);
-    } catch (error) {
-      console.error("Error parsing JSON from OpenAI response:", error);
-      console.log("Raw response:", data.choices[0].message.content);
-      throw new Error("Failed to parse todos from API response");
-    }
-
-    // Transform the generated todos into the correct format
-    const formattedTodos = generatedTodos.map((todo: any) => ({
-      task: todo.task,
-      completed: false,
-    }));
-
-    // Update project with generated todos
-    const { error: projectUpdateError } = await supabase
-      .from("projects")
-      .update({
-        todos: formattedTodos,
-        tasks_in_progress: [],
-        current_stage: "stage_1",
-        total_budget: budget,
-      })
-      .eq("id", projectId);
-
-    if (projectUpdateError) {
-      throw projectUpdateError;
-    }
-
-    return formattedTodos;
+    return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
   } catch (error) {
     console.error("Error generating todos:", error);
     throw error;
   }
 };
+
+// Helper function to generate ecommerce todos based on the new blueprint
+async function generateEcommerceTodos(projectId: string, budget: string) {
+  // Get the first stage data from ecommerceBlueprint
+  const stage1Data = ecommerceBlueprint.stage_1;
+
+  if (!stage1Data || !stage1Data.steps) {
+    throw new Error("No steps found for stage 1 in ecommerce blueprint");
+  }
+
+  // Create a detailed prompt from the ecommerce blueprint
+  let checklistItems: string[] = [];
+  let deliverables: string[] = [];
+  
+  // Extract checklist items from all steps
+  stage1Data.steps.forEach(step => {
+    if (step.checklist) checklistItems.push(...step.checklist);
+    if (step.validationChecklist) checklistItems.push(...step.validationChecklist);
+    if (step.requirements) checklistItems.push(...step.requirements);
+    if (step.rules) checklistItems.push(...step.rules);
+  });
+  
+  if (stage1Data.deliverables) {
+    deliverables = stage1Data.deliverables;
+  }
+
+  const todoGenerationPrompt = `As an AI ecommerce business mentor, generate 5 detailed, actionable tasks for starting an ecommerce business with a budget of ${budget}.
+
+  Stage 1 Objective: ${stage1Data.objective}
+  
+  These tasks should follow our ecommerce blueprint and focus on:
+  
+  CHECKLIST ITEMS:
+  ${checklistItems.map(item => `- ${item}`).join("\n")}
+  
+  DELIVERABLES:
+  ${deliverables.map(item => `- ${item}`).join("\n")}
+  
+  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve the Stage 1 objective.
+  Each task should include exact websites, tools, or platforms to use with specific steps.
+  
+  For example, instead of "Find products to sell", write "Go to TikTok Creative Center (ads.tiktok.com/business/creativecenter) and search for 'beauty products' to identify 5 trending products with high engagement and low competition. Record these in a spreadsheet with columns for product name, engagement rate, and estimated competition level."
+  
+  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
+  
+  Example format:
+  [
+    {"task": "Go to Facebook Ads Library (facebook.com/ads/library) and search for '[specific niche]'. Identify 5 competitors running ads for at least 30 days. Create a spreadsheet documenting their product angles, pricing, and unique selling propositions.", "completed": false},
+    {"task": "Sign up for a free Canva account (canva.com), select the 'Logo' template, and design 3 different logo options for your brand concept. Export them as PNG files with transparent backgrounds.", "completed": false}
+  ]`;
+
+  console.log("Generating initial ecommerce todos");
+  console.log("- Budget:", budget);
+  console.log("- Checklist items:", checklistItems.length);
+  console.log("- Deliverables:", deliverables.length);
+
+  return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
+}
+
+// Helper function to generate and save todos
+async function generateAndSaveTodos(projectId: string, budget: string, todoGenerationPrompt: string) {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: todoGenerationPrompt,
+        },
+      ],
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error("OpenAI API Error in generateInitialTodos:", {
+      status: response.status,
+      statusText: response.statusText,
+      errorData,
+    });
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  // Add safety check for parsing JSON
+  let generatedTodos;
+  try {
+    generatedTodos = JSON.parse(data.choices[0].message.content);
+  } catch (error) {
+    console.error("Error parsing JSON from OpenAI response:", error);
+    console.log("Raw response:", data.choices[0].message.content);
+    throw new Error("Failed to parse todos from API response");
+  }
+
+  // Transform the generated todos into the correct format
+  const formattedTodos = generatedTodos.map((todo: any) => ({
+    task: todo.task,
+    completed: false,
+  }));
+
+  // Update project with generated todos
+  const { error: projectUpdateError } = await supabase
+    .from("projects")
+    .update({
+      todos: formattedTodos,
+      tasks_in_progress: [],
+      current_stage: "stage_1",
+      total_budget: budget,
+    })
+    .eq("id", projectId);
+
+  if (projectUpdateError) {
+    throw projectUpdateError;
+  }
+
+  return formattedTodos;
+}
 
 // Generate stage introduction
 export const generateStageIntroduction = (
@@ -246,8 +318,78 @@ export const generateStageIntroduction = (
 ): string => {
   const stageData = strategy[stage];
   const stageNumber = stage.replace("stage_", "");
+  
+  // For ecommerce, use the richer information from ecommerceBlueprint
+  if (businessType.toLowerCase() === "ecommerce") {
+    // Check if the stage exists in ecommerceBlueprint
+    const blueprintKey = stage as keyof typeof ecommerceBlueprint;
+    if (!ecommerceBlueprint[blueprintKey] || blueprintKey === 'preQualification') {
+      return getDefaultStageIntroduction(stageNumber, businessType, stageData, budget);
+    }
+    
+    const ecomStage = ecommerceBlueprint[blueprintKey];
+    
+    let stepsContent = "";
+    if ('steps' in ecomStage && Array.isArray(ecomStage.steps)) {
+      stepsContent = ecomStage.steps.map((step: any) => {
+        let stepContent = `### ${step.title}\n`;
+        
+        if (step.goal) stepContent += `**Goal:** ${step.goal}\n\n`;
+        
+        if (step.checklist && Array.isArray(step.checklist)) {
+          stepContent += "**Checklist:**\n" + step.checklist.map((item: string) => `• ${item}`).join("\n") + "\n\n";
+        } else if (step.requirements && Array.isArray(step.requirements)) {
+          stepContent += "**Requirements:**\n" + step.requirements.map((item: string) => `• ${item}`).join("\n") + "\n\n";
+        } else if (step.validationChecklist && Array.isArray(step.validationChecklist)) {
+          stepContent += "**Validation Checklist:**\n" + step.validationChecklist.map((item: string) => `• ${item}`).join("\n") + "\n\n";
+        }
+        
+        return stepContent;
+      }).join("");
+    }
+    
+    let deliverables = "";
+    if ('deliverables' in ecomStage && Array.isArray(ecomStage.deliverables)) {
+      deliverables = "**Deliverables:**\n" + ecomStage.deliverables.map((item: string) => `• ${item}`).join("\n");
+    }
+    
+    let pitfalls = "";
+    if ('pitfalls' in ecomStage && Array.isArray(ecomStage.pitfalls)) {
+      pitfalls = "**Pitfalls to Avoid:**\n" + ecomStage.pitfalls.map((item: string) => `• ${item}`).join("\n");
+    }
+    
+    return `
+Great! I've set your budget to ${budget}. Let me introduce you to Stage ${stageNumber} of building your ecommerce business.
 
-return `
+## Stage ${stageNumber} Objective: 
+${ecomStage.objective}
+
+${stepsContent}
+
+${deliverables}
+
+${pitfalls}
+
+Next Steps:
+1. Review the tasks I've generated for you in the sidebar
+2. Start with the first task and let me know when you complete it
+3. I'll guide you through each step and help you make progress
+
+Would you like to start with the first task? I'm here to help you every step of the way!`;
+  }
+  
+  // For other business types, use the original format
+  return getDefaultStageIntroduction(stageNumber, businessType, stageData, budget);
+};
+
+// Helper function for the default stage introduction format
+function getDefaultStageIntroduction(
+  stageNumber: string,
+  businessType: string,
+  stageData: StageData,
+  budget: string
+): string {
+  return `
 Great! I've set your budget to ${budget}. Let me introduce you to Stage ${stageNumber} of building your ${businessType} business.
 
 Stage ${stageNumber} Objective: ${stageData.objective}
@@ -264,7 +406,7 @@ Pro Tips:
 ${stageData.aiSupport?.map((tip) => `• ${tip}`).join("\n")}
 
 Would you like to start with the first task? I'm here to help you every step of the way!`;
-};
+}
 
 // Get the appropriate strategy based on business type
 export const getStrategyForBusinessType = (businessType: string): BusinessStrategy => {
@@ -273,14 +415,104 @@ export const getStrategyForBusinessType = (businessType: string): BusinessStrate
       return saasStrategy as BusinessStrategy;
     case "agency":
       return agencyStrategy as BusinessStrategy;
-    case "ecommerce":
-      return ecomStrategy as BusinessStrategy;
+    case "ecommerce": {
+      // Convert ecommerceBlueprint to match BusinessStrategy interface
+      const adaptedStrategy: BusinessStrategy = {
+        stage_1: {
+          objective: ecommerceBlueprint.stage_1.objective,
+          checklist: extractChecklistItems(ecommerceBlueprint.stage_1),
+          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_1)
+        },
+        stage_2: {
+          objective: ecommerceBlueprint.stage_2.objective,
+          checklist: extractChecklistItems(ecommerceBlueprint.stage_2),
+          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_2)
+        },
+        stage_3: {
+          objective: ecommerceBlueprint.stage_3.objective,
+          checklist: extractChecklistItems(ecommerceBlueprint.stage_3),
+          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_3)
+        },
+        stage_4: {
+          objective: ecommerceBlueprint.stage_4.objective,
+          checklist: extractChecklistItems(ecommerceBlueprint.stage_4),
+          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_4)
+        },
+        stage_5: {
+          objective: ecommerceBlueprint.stage_5.objective,
+          checklist: extractChecklistItems(ecommerceBlueprint.stage_5),
+          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_5)
+        },
+        scaling: {
+          objective: ecommerceBlueprint.scaling.objective,
+          checklist: extractScalingItems(ecommerceBlueprint.scaling),
+          aiSupport: ecommerceBlueprint.scaling.levers?.map(lever => lever.title) || []
+        }
+      };
+      return adaptedStrategy;
+    }
     case "copywriting":
       return copywritingStrategy as BusinessStrategy;
     default:
       return saasStrategy as BusinessStrategy; // Default to SaaS strategy
   }
 };
+
+// Helper functions to extract checklist and AI support items from ecommerceBlueprint
+function extractChecklistItems(stageData: any): string[] {
+  if (!stageData || !stageData.steps) return [];
+  
+  const items: string[] = [];
+  
+  // Extract checklist items from each step
+  stageData.steps.forEach((step: any) => {
+    if (step.checklist) {
+      items.push(...step.checklist);
+    } else if (step.validationChecklist) {
+      items.push(...step.validationChecklist);
+    } else if (step.requirements) {
+      items.push(...step.requirements);
+    } else if (step.rules) {
+      items.push(...step.rules);
+    } else if (step.structure) {
+      items.push(...step.structure);
+    }
+  });
+  
+  return items.length > 0 ? items : stageData.deliverables || [];
+}
+
+function extractAISupportItems(stageData: any): string[] {
+  if (!stageData) return [];
+  
+  // Extract AI support items or use tips from steps
+  const items: string[] = [];
+  
+  if (stageData.steps) {
+    stageData.steps.forEach((step: any) => {
+      if (step.title) {
+        items.push(`Help with: ${step.title}`);
+      }
+    });
+  }
+  
+  return items;
+}
+
+function extractScalingItems(scalingData: any): string[] {
+  if (!scalingData || !scalingData.levers) return [];
+  
+  const items: string[] = [];
+  
+  // Extract scaling lever actions
+  scalingData.levers.forEach((lever: any) => {
+    if (lever.actions) {
+      items.push(...lever.actions);
+    }
+  });
+  
+  return items.length > 0 ? items : scalingData.deliverables || [];
+}
 
 // Check if a stage is completed
 export const isStageCompleted = (
@@ -313,6 +545,12 @@ export const updateTodosForStage = async (
       throw new Error("API configuration is missing");
     }
     
+    // Special handling for ecommerce business
+    if (currentProject.business_type?.toLowerCase() === "ecommerce") {
+      return await updateEcommerceTodosForStage(stage, currentProject);
+    }
+    
+    // For all other business types, use the original approach
     const currentStrategy = getStrategyForBusinessType(
       currentProject.business_type
     );
@@ -350,77 +588,162 @@ export const updateTodosForStage = async (
 
     console.log(`Generating tasks for stage ${stage} of ${currentProject.business_type} business`);
 
-    const response = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "system",
-              content: todoGenerationPrompt,
-            },
-          ],
-          temperature: 0.7,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("OpenAI API Error in updateTodosForStage:", {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-        stage,
-        businessType: currentProject.business_type
-      });
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    // Add safety check for parsing JSON
-    let generatedTodos;
-    try {
-      generatedTodos = JSON.parse(data.choices[0].message.content);
-    } catch (error) {
-      console.error("Error parsing JSON from OpenAI response:", error);
-      console.log("Raw response:", data.choices[0].message.content);
-      throw new Error("Failed to parse todos from API response");
-    }
-
-    // Transform the generated todos into the correct format
-    const newTodos = generatedTodos.map((todo: any) => ({
-      task: todo.task,
-      completed: false,
-    }));
-
-    // Update project in database
-    const { error } = await supabase
-      .from("projects")
-      .update({
-        todos: newTodos,
-        current_stage: stage,
-      })
-      .eq("id", currentProject.id);
-
-    if (error) {
-      console.error("Error updating todos for stage:", error);
-      return null;
-    }
-
-    return newTodos;
+    return await generateAndSaveStageSpecificTodos(currentProject.id, stage, todoGenerationPrompt);
   } catch (error) {
     console.error("Error updating todos for stage:", error);
     return null;
   }
 };
+
+// Helper function to update ecommerce todos for a specific stage
+async function updateEcommerceTodosForStage(stage: StageKey, currentProject: any) {
+  // Get the specified stage data from ecommerceBlueprint
+  const blueprintKey = stage as keyof typeof ecommerceBlueprint;
+  
+  if (!ecommerceBlueprint[blueprintKey] || blueprintKey === 'preQualification') {
+    console.error(`No data found for stage ${stage} in ecommerce blueprint`);
+    throw new Error(`Invalid stage: ${stage}`);
+  }
+  
+  const stageData = ecommerceBlueprint[blueprintKey];
+  
+  if (!stageData || !('steps' in stageData) || !Array.isArray(stageData.steps)) {
+    console.error(`No steps found for stage ${stage}`);
+    return null;
+  }
+  
+  // Create a detailed prompt from the ecommerce blueprint
+  let steps: string[] = [];
+  let deliverables: string[] = [];
+  let pitfalls: string[] = [];
+  
+  // Extract data from steps
+  stageData.steps.forEach((step: any) => {
+    steps.push(`${step.title}: ${step.goal || ''}`);
+    
+    // Extract checklist items from the step
+    if (step.checklist) steps.push(...step.checklist.map((item: string) => `- ${item}`));
+    if (step.validationChecklist) steps.push(...step.validationChecklist.map((item: string) => `- ${item}`));
+    if (step.requirements) steps.push(...step.requirements.map((item: string) => `- ${item}`));
+    if (step.rules) steps.push(...step.rules.map((item: string) => `- ${item}`));
+    if (step.structure) steps.push(...step.structure.map((item: string) => `- ${item}`));
+  });
+  
+  // Get deliverables and pitfalls if available
+  if ('deliverables' in stageData && Array.isArray(stageData.deliverables)) {
+    deliverables = stageData.deliverables;
+  }
+  
+  if ('pitfalls' in stageData && Array.isArray(stageData.pitfalls)) {
+    pitfalls = stageData.pitfalls;
+  }
+
+  const todoGenerationPrompt = `As an AI ecommerce business mentor, generate 5 detailed, actionable tasks for stage ${stage.replace('stage_', '')} of building an ecommerce business.
+
+  Stage Objective: ${stageData.objective}
+  
+  USER DETAILS:
+  - Budget: ${currentProject.total_budget || "not specified"}
+  - Business Idea: ${currentProject.business_idea || "general ecommerce store"}
+  - Income Goal: ${currentProject.income_goal || "not specified"}
+  
+  STAGE DETAILS:
+  ${steps.join('\n')}
+  
+  DELIVERABLES:
+  ${deliverables.map(item => `- ${item}`).join('\n')}
+  
+  PITFALLS TO AVOID:
+  ${pitfalls.map(item => `- ${item}`).join('\n')}
+  
+  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve this stage's objective.
+  Each task should include exact websites, tools, or platforms to use with specific steps.
+  
+  For example, instead of "Set up your store", write "Sign up for Shopify (shopify.com) using the $1/month starter plan. Choose the 'Dawn' theme, upload your logo, and set your primary color to match. Configure the navigation menu with Home, Products, and Contact pages."
+  
+  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
+  
+  Example format:
+  [
+    {"task": "Sign up for Klaviyo (klaviyo.com) and connect to your Shopify store. Create a welcome email flow with 3 messages: (1) Introduction, (2) Social proof, and (3) Special offer of 15% off first purchase. Schedule these to send 0, 2, and 4 days after signup.", "completed": false},
+    {"task": "Install the Product Reviews app from the Shopify App Store. Configure it to email customers 7 days after purchase asking for a review. Set up an automation to offer a 10% discount code for completed reviews.", "completed": false}
+  ]`;
+
+  console.log(`Generating ecommerce tasks for stage ${stage}`);
+
+  return await generateAndSaveStageSpecificTodos(currentProject.id, stage, todoGenerationPrompt);
+}
+
+// Helper function to generate and save stage-specific todos
+async function generateAndSaveStageSpecificTodos(projectId: string, stage: StageKey, todoGenerationPrompt: string) {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  
+  const response = await fetch(
+    "https://api.openai.com/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: todoGenerationPrompt,
+          },
+        ],
+        temperature: 0.7,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error("OpenAI API Error in updateTodosForStage:", {
+      status: response.status,
+      statusText: response.statusText,
+      errorData,
+      stage,
+    });
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  // Add safety check for parsing JSON
+  let generatedTodos;
+  try {
+    generatedTodos = JSON.parse(data.choices[0].message.content);
+  } catch (error) {
+    console.error("Error parsing JSON from OpenAI response:", error);
+    console.log("Raw response:", data.choices[0].message.content);
+    throw new Error("Failed to parse todos from API response");
+  }
+
+  // Transform the generated todos into the correct format
+  const newTodos = generatedTodos.map((todo: any) => ({
+    task: todo.task,
+    completed: false,
+  }));
+
+  // Update project in database
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      todos: newTodos,
+      current_stage: stage,
+    })
+    .eq("id", projectId);
+
+  if (error) {
+    console.error("Error updating todos for stage:", error);
+    return null;
+  }
+
+  return newTodos;
+}
 
 // Generate business overview summary
 export const generateBusinessOverviewSummary = async (currentProject: any, messages: any[]) => {
