@@ -192,6 +192,34 @@ async function generateEcommerceTodos(projectId: string, budget: string) {
     throw new Error("No steps found for stage 1 in ecommerce blueprint");
   }
 
+  // Get project to check for prequalification data
+  const { data: project, error: getProjectError } = await supabase
+    .from("projects")
+    .select("outputs")
+    .eq("id", projectId)
+    .single();
+
+  if (getProjectError) throw getProjectError;
+
+  // Get prequalification answers if available
+  let prequalificationInfo = "";
+  let launchDateText = "";
+  if (project?.outputs?.prequalification?.answers) {
+    const answers = project.outputs.prequalification.answers;
+    const questions = project.outputs.prequalification.questions || [];
+    
+    // Extract all prequalification info
+    prequalificationInfo = "USER PREQUALIFICATION INFO:\n";
+    for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
+      prequalificationInfo += `${questions[i]}: ${answers[i]}\n`;
+      
+      // Specifically extract launch date question/answer
+      if (questions[i].includes("launch") || questions[i].includes("When do you wish")) {
+        launchDateText = answers[i];
+      }
+    }
+  }
+
   // Create a detailed prompt from the ecommerce blueprint
   let checklistItems: string[] = [];
   let deliverables: string[] = [];
@@ -208,11 +236,15 @@ async function generateEcommerceTodos(projectId: string, budget: string) {
     deliverables = stage1Data.deliverables;
   }
 
-  const todoGenerationPrompt = `As an AI ecommerce business mentor, generate 5 detailed, actionable tasks for starting an ecommerce business with a budget of ${budget}.
+  const todoGenerationPrompt = `As an AI ecommerce business mentor, I need your help with two things:
+  1. Generate 5 specific, actionable tasks for starting an ecommerce business
+  2. Interpret and formalize a launch date from the user's free-form text and today's date ${new Date().toISOString().split('T')[0]}
+
+  BUDGET: ${budget}
 
   Stage 1 Objective: ${stage1Data.objective}
   
-  These tasks should follow our ecommerce blueprint and focus on:
+  Tasks should follow our ecommerce blueprint and focus on:
   
   CHECKLIST ITEMS:
   ${checklistItems.map(item => `- ${item}`).join("\n")}
@@ -220,25 +252,131 @@ async function generateEcommerceTodos(projectId: string, budget: string) {
   DELIVERABLES:
   ${deliverables.map(item => `- ${item}`).join("\n")}
   
-  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve the Stage 1 objective.
-  Each task should include exact websites, tools, or platforms to use with specific steps.
-  
-  For example, instead of "Find products to sell", write "Go to TikTok Creative Center (ads.tiktok.com/business/creativecenter) and search for 'beauty products' to identify 5 trending products with high engagement and low competition. Record these in a spreadsheet with columns for product name, engagement rate, and estimated competition level."
-  
-  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
-  
-  Example format:
-  [
-    {"task": "Go to Facebook Ads Library (facebook.com/ads/library) and search for '[specific niche]'. Identify 5 competitors running ads for at least 30 days. Create a spreadsheet documenting their product angles, pricing, and unique selling propositions.", "completed": false},
-    {"task": "Sign up for a free Canva account (canva.com), select the 'Logo' template, and design 3 different logo options for your brand concept. Export them as PNG files with transparent backgrounds.", "completed": false}
-  ]`;
+  ${prequalificationInfo}
 
-  console.log("Generating initial ecommerce todos");
+  LAUNCH DATE INTERPRETATION:
+  The user has indicated their desired launch timeframe as: "${launchDateText}" and this is today's date: ${new Date().toISOString().split('T')[0]}
+  Please interpret this into a specific calendar date that makes sense based on their statement.
+  
+  FORMAT YOUR RESPONSE AS JSON with this structure:
+  {
+    "tasks": [
+      {"task": "Detailed task description 1", "completed": false},
+      {"task": "Detailed task description 2", "completed": false},
+      ...
+    ],
+    "launchDate": "YYYY-MM-DD",
+    "launchDateExplanation": "Brief explanation of how you interpreted their launch timeframe"
+  }
+
+  IMPORTANT GUIDELINES:
+  - Make each task ultra-specific with exact steps, tools, and websites to use
+  - Generate exactly 5 tasks
+  - For the launch date, choose a reasonable date based on the user's text
+  - If the launch timeframe is vague, use your judgment to select a date 60-90 days in the future
+  - If no launch timeframe was provided, set a date 90 days from today i.e ${new Date().toISOString().split('T')[0]}
+  - The launch date should be a valid ISO date string (YYYY-MM-DD)`;
+
+  console.log("Generating initial ecommerce todos with launch date interpretation");
   console.log("- Budget:", budget);
-  console.log("- Checklist items:", checklistItems.length);
-  console.log("- Deliverables:", deliverables.length);
+  console.log("- Prequalification includes launch date text:", !!launchDateText);
 
-  return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: todoGenerationPrompt,
+        },
+      ],
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error("OpenAI API Error in generateEcommerceTodos:", {
+      status: response.status,
+      statusText: response.statusText,
+      errorData,
+    });
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  // Parse the JSON response from OpenAI
+  let parsedResponse;
+  try {
+    parsedResponse = JSON.parse(data.choices[0].message.content);
+  } catch (error) {
+    console.error("Error parsing JSON from OpenAI response:", error);
+    console.log("Raw response:", data.choices[0].message.content);
+    throw new Error("Failed to parse JSON response from API");
+  }
+
+  // Extract todos and launch date from the parsed response
+  const todos = parsedResponse.tasks || [];
+  const launchDate = parsedResponse.launchDate || null;
+  const launchDateExplanation = parsedResponse.launchDateExplanation || "";
+  
+  console.log("Generated todos:", todos.length);
+  console.log("Interpreted launch date:", launchDate);
+  console.log("Launch date explanation:", launchDateExplanation);
+
+  // Update project with generated todos and launch date
+  try {
+    const updateData: any = {
+      todos: todos,
+      tasks_in_progress: [],
+      current_stage: "stage_1",
+      total_budget: budget,
+    };
+
+    // Only add expected_launch_date if we received one from the API
+    if (launchDate) {
+      // Convert YYYY-MM-DD to full ISO string if needed
+      const isoLaunchDate = launchDate.includes('T') 
+        ? launchDate 
+        : new Date(launchDate).toISOString();
+      
+      updateData.expected_launch_date = isoLaunchDate;
+      
+      // Store the explanation in the project outputs
+      if (project?.outputs) {
+        updateData.outputs = {
+          ...project.outputs,
+          launchDateInterpretation: {
+            originalText: launchDateText,
+            interpretedDate: launchDate,
+            explanation: launchDateExplanation
+          }
+        };
+      }
+    }
+
+    const { error: projectUpdateError } = await supabase
+      .from("projects")
+      .update(updateData)
+      .eq("id", projectId);
+
+    if (projectUpdateError) {
+      throw projectUpdateError;
+    }
+  } catch (error) {
+    console.error("Error updating project with todos and launch date:", error);
+    // Still return the todos even if the database update failed
+  }
+
+  return todos;
 }
 
 // Helper function to generate and save todos
@@ -291,23 +429,113 @@ async function generateAndSaveTodos(projectId: string, budget: string, todoGener
     completed: false,
   }));
 
-  // Update project with generated todos
-  const { error: projectUpdateError } = await supabase
-    .from("projects")
-    .update({
+  try {
+    // Get project to check for prequalification data
+    const { data: project, error: getProjectError } = await supabase
+      .from("projects")
+      .select("outputs")
+      .eq("id", projectId)
+      .single();
+
+    if (getProjectError) throw getProjectError;
+
+    // Check for launch date in prequalification answers
+    if (project?.outputs?.prequalification?.answers) {
+      const answers = project.outputs.prequalification.answers;
+      const launchDateQuestion = "When do you wish to launch your ecommerce business?";
+      const questions = project.outputs.prequalification.questions || [];
+      
+      // Find the launch date question and answer
+      const launchDateQuestionIndex = questions.findIndex((q: string) => q.includes("launch") || q.includes("When do you wish"));
+      if (launchDateQuestionIndex !== -1 && answers[launchDateQuestionIndex]) {
+        const launchDateText = answers[launchDateQuestionIndex];
+        // Since we now use AI to interpret launch date, just log the text we found
+        console.log("Found launch date answer:", launchDateText);
+        // We'll process this in the AI-based todo generation
+      }
+    }
+
+    // Update project with generated todos and launch date if available
+    const updateData: any = {
       todos: formattedTodos,
       tasks_in_progress: [],
       current_stage: "stage_1",
       total_budget: budget,
-    })
-    .eq("id", projectId);
+    };
 
-  if (projectUpdateError) {
-    throw projectUpdateError;
+    const { error: projectUpdateError } = await supabase
+      .from("projects")
+      .update(updateData)
+      .eq("id", projectId);
+
+    if (projectUpdateError) {
+      throw projectUpdateError;
+    }
+  } catch (error) {
+    console.error("Error updating project with todos:", error);
+    // Still return the todos even if we couldn't update the launch date
   }
 
   return formattedTodos;
 }
+
+// Helper function to generate a message announcing the launch date
+export const generateLaunchDateMessage = async (launchDate: string, projectId?: string): Promise<string> => {
+  if (!launchDate) return "";
+  
+  try {
+    const date = new Date(launchDate);
+    const formattedDate = date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+    
+    const today = new Date();
+    const daysUntilLaunch = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilLaunch < 0) {
+      return ""; // Date is in the past, don't show message
+    }
+    
+    let timeframe;
+    if (daysUntilLaunch <= 30) {
+      timeframe = "very soon";
+    } else if (daysUntilLaunch <= 90) {
+      timeframe = "in a few months";
+    } else if (daysUntilLaunch <= 180) {
+      timeframe = "in about 6 months";
+    } else {
+      timeframe = "in the future";
+    }
+    
+    // Get the explanation if available
+    let explanationText = "";
+    
+    // Only try to get the explanation if projectId is provided
+    if (projectId) {
+      try {
+        const { data: project } = await supabase
+          .from("projects")
+          .select("outputs")
+          .eq("id", projectId)
+          .single();
+        
+        if (project?.outputs?.launchDateInterpretation?.explanation) {
+          explanationText = `\n\n**How I interpreted your launch timeframe**: ${project.outputs.launchDateInterpretation.explanation}`;
+        }
+      } catch (error) {
+        console.error("Error fetching launch date explanation:", error);
+      }
+    }
+    
+    return `Based on your prequalification answers, I've set your expected launch date to **${formattedDate}** (${daysUntilLaunch} days from now). I'll help you prepare for launch ${timeframe}. We'll organize your todo items to achieve this target date.${explanationText}`;
+  } catch (error) {
+    console.error("Error formatting launch date:", error);
+    return "";
+  }
+};
 
 // Generate stage introduction
 export const generateStageIntroduction = (
@@ -361,21 +589,19 @@ export const generateStageIntroduction = (
     return `
 Great! I've set your budget to ${budget}. Let me introduce you to Stage ${stageNumber} of building your ecommerce business.
 
-## Stage ${stageNumber} Objective: 
-${ecomStage.objective}
 
-${stepsContent}
-
-${deliverables}
-
-${pitfalls}
+We are at now Stage ${stageNumber} of building your ecommerce business.
+Our objective here is to: ${ecomStage.objective}
 
 Next Steps:
 1. Review the tasks I've generated for you in the sidebar
 2. Start with the first task and let me know when you complete it
 3. I'll guide you through each step and help you make progress
 
-Would you like to start with the first task? I'm here to help you every step of the way!`;
+Would you like to start with the first task? I'm here to help you every step of the way! 
+
+Simple click on "Get Started" on a particular task and I'll guide you through it.`;
+
   }
   
   // For other business types, use the original format
@@ -854,7 +1080,11 @@ export const getAIChatResponse = async (
       userMessage.toLowerCase().includes("how do i") || 
       userMessage.toLowerCase().includes("how to") ||
       userMessage.toLowerCase().includes("could you assist") || 
-      userMessage.toLowerCase().includes("guide me");
+      userMessage.toLowerCase().includes("guide me") ||
+      userMessage.toLowerCase().includes("help me complete this task") ||
+      userMessage.toLowerCase().includes("help me");
+
+
       
     // Check if user has pasted a todo task from the list
     const isExactTodoTask = currentProject.todos?.some((todo: any) => 
@@ -872,11 +1102,14 @@ export const getAIChatResponse = async (
     }.
     The user's income goal is ${currentProject.income_goal || "not set yet"}.
 
+    
+
     IMPORTANT INSTRUCTIONS:
     1. DO NOT ask questions about business type, budget, business idea, or income goals - this information is already provided above.
     2. DO NOT ask for context about the business - use the information provided above.
     3. Only ask specific questions related to the immediate task or problem the user needs help with.
     4. Focus on providing direct, actionable solutions based on the context you already have.
+    5. ALWAYS format your responses using React-Markdown format so they render properly in the interface.
 
     ${isExactTodoTask || isTaskRequest ?
       `IMPORTANT: The user is asking for help with a specific task or has pasted a todo item from their list.
@@ -890,8 +1123,10 @@ export const getAIChatResponse = async (
       - If they need a pricing strategy, DEVELOP the full pricing model
 
       Provide the FINISHED WORK they need, not just instructions on how to do it themselves.
-      Include specific information, examples, and completed templates that they can use immediately.` :
-      ``
+      Include specific information, examples, and completed templates that they can use immediately.
+      
+      Remember to format your response using React-Markdown syntax for proper rendering.` :
+      `Remember to format your response using React-Markdown syntax for proper rendering.`
     }`;
 
     // Log details for debugging

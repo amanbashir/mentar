@@ -8,6 +8,7 @@ export const ecommerceBlueprint = {
       "How comfortable are you with using digital tools like Shopify, Canva, Meta Ads?",
       "Are you more creative, analytical, or operationally strong?",
       "Are you prepared to invest in ads to test products, even if they don't all succeed?",
+      "What are your hobbies and interests that might align with your ecommerce business?",
       "When do you wish to launch your ecommerce business?"
     ],
     actions: [

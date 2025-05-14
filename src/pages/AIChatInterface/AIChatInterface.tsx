@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { type Components } from "react-markdown";
 import { supabase } from "../../lib/supabaseClient";
 import { systemPrompt, getCombinedPrompt } from "../../utils/prompts";
 import "./AIChatInterface.css";
@@ -21,6 +23,7 @@ import {
   getAIChatResponse,
   getNextStage,
   typedSaasStrategy,
+  generateLaunchDateMessage,
 } from "../../utils/openai";
 import DeleteProjectDialog from "../../components/DeleteProjectDialog";
 
@@ -97,6 +100,55 @@ interface PrequalificationState {
   answers: string[];
   completed: boolean;
 }
+
+// Custom components for markdown
+const CodeBlock = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  const language = className ? className.replace(/language-/, "") : "";
+  return (
+    <div className="markdown-code-block">
+      <div className="code-header">
+        {language && <span className="code-language">{language}</span>}
+        <button
+          className="copy-button"
+          onClick={() => {
+            const code = children?.toString() || "";
+            navigator.clipboard.writeText(code);
+          }}
+        >
+          Copy
+        </button>
+      </div>
+      <pre className={className}>
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+};
+
+const MarkdownLink = ({
+  href,
+  children,
+}: {
+  href?: string;
+  children: React.ReactNode;
+}) => {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="markdown-link"
+    >
+      {children}
+    </a>
+  );
+};
 
 // Helper functions
 const calculateProgress = (
@@ -314,9 +366,7 @@ function AIChatInterface() {
 
       // Set initial message based on whether budget is set
       if (!currentProject?.total_budget) {
-        setInitialMessage(
-          `Let's set your budget to get started. Please enter your planned investment amount.`
-        );
+        setInitialMessage(``);
       } else if (!currentProject?.income_goal) {
         setInitialMessage(
           `Please specify your target monthly income goal to help me tailor the business plan.`
@@ -639,6 +689,17 @@ function AIChatInterface() {
     // Evaluate the prequalification answers
     const evaluation = evaluatePrequalificationAnswers(answers);
 
+    // Find the launch date answer if available
+    const questions = ecommerceBlueprint.preQualification.questions;
+    const launchDateQuestionIndex = questions.findIndex(
+      (q: string) => q.includes("launch") || q.includes("When do you wish")
+    );
+
+    let launchDateInfo = "";
+    if (launchDateQuestionIndex !== -1 && answers[launchDateQuestionIndex]) {
+      launchDateInfo = `\n7. Your target launch timeframe: ${answers[launchDateQuestionIndex]}`;
+    }
+
     return `Thank you for sharing this information! Based on what you've told me:
 
 1. Your investment capital: ${answers[0]}
@@ -646,7 +707,7 @@ function AIChatInterface() {
 3. Your experience level: ${answers[2]}
 4. Your comfort with digital tools: ${answers[3]}
 5. Your strengths: ${answers[4]}
-6. Your willingness to invest in ads: ${answers[5]}
+6. Your willingness to invest in ads: ${answers[5]}${launchDateInfo}
 
 ${evaluation}
 
@@ -824,6 +885,16 @@ I'll use this information to guide you through your ecommerce journey. Let's get
 
           if (todosUpdateError) throw todosUpdateError;
 
+          // Fetch the updated project to get the expected_launch_date if it was set
+          const { data: updatedProject, error: fetchUpdateError } =
+            await supabase
+              .from("projects")
+              .select("*")
+              .eq("id", currentProject.id)
+              .single();
+
+          if (fetchUpdateError) throw fetchUpdateError;
+
           // Update local state
           setCurrentProject((prev) =>
             prev
@@ -832,6 +903,7 @@ I'll use this information to guide you through your ecommerce journey. Let's get
                   todos: generatedTodos,
                   tasks_in_progress: [],
                   current_stage: "stage_1",
+                  expected_launch_date: updatedProject.expected_launch_date,
                 }
               : null
           );
@@ -845,12 +917,26 @@ I'll use this information to guide you through your ecommerce journey. Let's get
           );
 
           // Generate detailed stage introduction
-          const aiResponse = generateStageIntroduction(
+          let aiResponse = generateStageIntroduction(
             currentProject.business_type,
             "stage_1",
             currentStrategy,
             currentProject.total_budget
           );
+
+          // Add launch date message if available
+          if (updatedProject.expected_launch_date) {
+            // Get launch date message first since it's now async
+            const launchDateMessage = await generateLaunchDateMessage(
+              updatedProject.expected_launch_date,
+              currentProject.id
+            );
+
+            // Then prepend it to the aiResponse if we got one
+            if (launchDateMessage) {
+              aiResponse = launchDateMessage + "\n\n" + aiResponse;
+            }
+          }
 
           await saveMessage(aiResponse, false);
           setIsLoading(false);
@@ -1218,6 +1304,91 @@ I'll use this information to guide you through your ecommerce journey. Let's get
     }
   }, [messages]);
 
+  // Define markdown components configuration
+  const markdownComponents: Components = {
+    code({ node, className, children, ...props }) {
+      const match = /language-(\w+)/.exec(className || "");
+      const language = match && match[1] ? match[1] : "";
+
+      if (!className) {
+        return (
+          <code className="inline-code" {...props}>
+            {children}
+          </code>
+        );
+      }
+
+      return (
+        <div className="markdown-code-block">
+          <div className="code-header">
+            {language && <span className="code-language">{language}</span>}
+            <button
+              className="copy-button"
+              onClick={() => {
+                const code = String(children).replace(/\n$/, "");
+                navigator.clipboard.writeText(code);
+              }}
+            >
+              Copy
+            </button>
+          </div>
+          <pre className={className}>
+            <code {...props}>{children}</code>
+          </pre>
+        </div>
+      );
+    },
+    a({ node, href, children, ...props }) {
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="markdown-link"
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
+    p({ children }) {
+      return <p className="markdown-paragraph">{children}</p>;
+    },
+    ul({ children }) {
+      return <ul className="markdown-list">{children}</ul>;
+    },
+    ol({ children }) {
+      return <ol className="markdown-list">{children}</ol>;
+    },
+    li({ children }) {
+      return <li className="markdown-list-item">{children}</li>;
+    },
+    h1({ children }) {
+      return <h1 className="markdown-heading markdown-h1">{children}</h1>;
+    },
+    h2({ children }) {
+      return <h2 className="markdown-heading markdown-h2">{children}</h2>;
+    },
+    h3({ children }) {
+      return <h3 className="markdown-heading markdown-h3">{children}</h3>;
+    },
+    h4({ children }) {
+      return <h4 className="markdown-heading markdown-h4">{children}</h4>;
+    },
+    blockquote({ children }) {
+      return (
+        <blockquote className="markdown-blockquote">{children}</blockquote>
+      );
+    },
+    table({ children }) {
+      return (
+        <div className="markdown-table-container">
+          <table className="markdown-table">{children}</table>
+        </div>
+      );
+    },
+  };
+
   return (
     <div className="page-container">
       <Navbar />
@@ -1227,7 +1398,7 @@ I'll use this information to guide you through your ecommerce journey. Let's get
         <div className="todo-generation-overlay">
           <div className="todo-generation-dialog">
             <div className="loading-spinner"></div>
-            <h3>Personalising your Business for you</h3>
+            <h3>Personalising your Business</h3>
             <p>Creating tailored action items for your business plan...</p>
           </div>
         </div>
@@ -1304,33 +1475,36 @@ I'll use this information to guide you through your ecommerce journey. Let's get
                   </div>
                 </div>
               ))}
+              {/* New Project option inside dropdown */}
+              <div
+                className="project-selector-item new-project-item"
+                onClick={() => {
+                  handleNewProject();
+                  setIsProjectSelectorOpen(false);
+                }}
+              >
+                <span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{ marginRight: "8px" }}
+                  >
+                    <path
+                      d="M12 5V19M5 12H19"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  New Project
+                </span>
+              </div>
             </div>
           </div>
-
-          {/* New Project Button */}
-          <motion.button
-            className="new-project-button"
-            onClick={handleNewProject}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 5V19M5 12H19"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            New Project
-          </motion.button>
 
           {/* Business Overview */}
           <div className="overview-container">
@@ -1417,7 +1591,7 @@ I'll use this information to guide you through your ecommerce journey. Let's get
                       month: "long",
                       day: "numeric",
                     })
-                  : "Launch date will be set based on your progress"}
+                  : "Your launch date will be set based on your answer to the prequalification question about when you wish to launch."}
               </div>
               {currentProject?.expected_launch_date && (
                 <div className="countdown-timer">
@@ -1584,7 +1758,12 @@ I'll use this information to guide you through your ecommerce journey. Let's get
                 className={`message ${message.is_user ? "user" : "ai"}`}
               >
                 <div className="message-content">
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
               </div>
             ))}
@@ -1669,7 +1848,12 @@ I'll use this information to guide you through your ecommerce journey. Let's get
               key={index}
               className={`message ${message.isUser ? "user" : "bot"}`}
             >
-              <ReactMarkdown>{message.content}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
           ))}
           {isPopupLoading && (
