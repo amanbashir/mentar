@@ -103,8 +103,5 @@ export const getStrategyPrompt = (businessType: string): string => {
 // Combine prompts for a comprehensive system prompt
 export const getCombinedPrompt = (businessType: string): string => {
   const strategyPrompt = getStrategyPrompt(businessType);
-  return `${systemPrompt}\n\n${userProfilePrompt}\n\n${strategyPrompt}  
-
-  GIVE YOUR RESPONSES IN React Markdown FORMAT only.
-   `;
+  return `${systemPrompt}\n\n${userProfilePrompt}\n\n${strategyPrompt}`;
 }; 

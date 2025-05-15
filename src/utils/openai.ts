@@ -1052,6 +1052,55 @@ export const generateBusinessOverviewSummary = async (currentProject: any, messa
   }
 };
 
+// Helper function to truncate message history to fit within token limits
+export const truncateMessageHistory = (messages: any[], maxTokens: number = 6000): any[] => {
+  if (!messages || messages.length === 0) return [];
+  
+  // Rough token estimation: ~4 chars = 1 token
+  const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
+  
+  // Keep system message and most recent messages
+  const result: any[] = [];
+  let tokenCount = 0;
+  
+  // Process messages from newest to oldest
+  const reversedMessages = [...messages].reverse();
+  
+  // Ensure we always include at least the most recent 3 message pairs
+  const guaranteedMessages = reversedMessages.slice(0, Math.min(6, reversedMessages.length));
+  const remainingMessages = reversedMessages.slice(guaranteedMessages.length);
+  
+  // First add the guaranteed messages (most recent conversation)
+  for (const msg of guaranteedMessages) {
+    const msgTokens = estimateTokens(msg.content);
+    tokenCount += msgTokens;
+    result.unshift(msg);
+  }
+  
+  // Then add as many older messages as possible
+  for (const msg of remainingMessages) {
+    const msgTokens = estimateTokens(msg.content);
+    
+    // If adding this message would exceed our limit, stop adding more
+    if (tokenCount + msgTokens > maxTokens) {
+      break;
+    }
+    
+    tokenCount += msgTokens;
+    result.unshift(msg);
+  }
+  
+  // Add a notice as the first user message if we truncated
+  if (result.length < messages.length) {
+    result.unshift({
+      is_user: true,
+      content: "[Note: Some earlier messages were removed to fit within the conversation limits]"
+    });
+  }
+  
+  return result;
+};
+
 // Get AI chat response
 export const getAIChatResponse = async (
   messages: any[],
@@ -1084,14 +1133,20 @@ export const getAIChatResponse = async (
       userMessage.toLowerCase().includes("help me complete this task") ||
       userMessage.toLowerCase().includes("help me");
 
-
-      
     // Check if user has pasted a todo task from the list
     const isExactTodoTask = currentProject.todos?.some((todo: any) => 
       todo.task.toLowerCase() === userMessage.toLowerCase() ||
       userMessage.toLowerCase().includes(todo.task.toLowerCase())
     );
 
+    // Get information about completed tasks and current stage
+    const completedTaskCount = currentProject.todos?.filter((todo: any) => todo.completed).length || 0;
+    const totalTaskCount = currentProject.todos?.length || 0;
+    const currentStage = currentProject.current_stage || "stage_1";
+    
+    // Find the first incomplete task (the current focus task)
+    const currentFocusTask = currentProject.todos?.find((todo: any) => !todo.completed);
+    
     // Enhanced business context with action-oriented focus
     const businessTypeContext = `You are helping the user build a ${
       currentProject.business_type || "business"
@@ -1101,8 +1156,11 @@ export const getAIChatResponse = async (
       currentProject.business_idea || "not set yet"
     }.
     The user's income goal is ${currentProject.income_goal || "not set yet"}.
-
     
+    Current Progress:
+    - Stage: ${currentStage.replace('_', ' ').toUpperCase()}
+    - Completed Tasks: ${completedTaskCount} of ${totalTaskCount}
+    - Next Task to Focus On: ${currentFocusTask ? currentFocusTask.task : "All tasks completed"}
 
     IMPORTANT INSTRUCTIONS:
     1. DO NOT ask questions about business type, budget, business idea, or income goals - this information is already provided above.
@@ -1110,8 +1168,17 @@ export const getAIChatResponse = async (
     3. Only ask specific questions related to the immediate task or problem the user needs help with.
     4. Focus on providing direct, actionable solutions based on the context you already have.
     5. ALWAYS format your responses using React-Markdown format so they render properly in the interface.
+    6. If a user is trying to work on tasks out of order, encourage them to complete earlier tasks first.
+    7. Always end your responses with a follow-up question to keep the conversation going.
+    8. Make your responses helpful and action-oriented, focusing on helping the user make tangible progress.
+    9. When suggesting personas, customer segments, product ideas, or any other options to the user, ALWAYS provide 3-5 specific choices for them to select from, rather than a single recommendation. For example:
+       - "Here are 4 potential customer personas for your business: [Persona 1], [Persona 2], [Persona 3], [Persona 4]. Which one would you like to focus on?"
+       - "I've identified several marketing approaches: [Approach 1], [Approach 2], [Approach 3]. Which one sounds most aligned with your goals?"
+       - "Consider these product positioning options: [Option 1], [Option 2], [Option 3]. Which resonates most with your vision?"
+    10. Make each option distinct and clearly labeled so the user can easily choose between them.
 
-    ${isExactTodoTask || isTaskRequest ?
+    
+    ${isExactTodoTask || isTaskRequest ? 
       `IMPORTANT: The user is asking for help with a specific task or has pasted a todo item from their list.
       You MUST directly solve their task, not just provide guidance on how to do it.
       DO NOT say phrases like "Here's how to do this" or "Step-by-step way to do this".
@@ -1121,12 +1188,16 @@ export const getAIChatResponse = async (
       - If they need a business plan, CREATE the actual business plan
       - If they need a competitor analysis, PROVIDE the complete analysis
       - If they need a pricing strategy, DEVELOP the full pricing model
+      - If they need customer personas, provide 3-5 detailed personas with distinct characteristics for them to choose from
 
       Provide the FINISHED WORK they need, not just instructions on how to do it themselves.
       Include specific information, examples, and completed templates that they can use immediately.
-      
+      Always present multiple options when suggesting personas, strategies, or approaches.
+
+
       Remember to format your response using React-Markdown syntax for proper rendering.` :
       `Remember to format your response using React-Markdown syntax for proper rendering.`
+      
     }`;
 
     // Log details for debugging
@@ -1136,6 +1207,7 @@ export const getAIChatResponse = async (
     console.log("- System prompt length:", systemPrompt.length);
     console.log("- Is task request:", isTaskRequest);
     console.log("- Is exact todo task:", isExactTodoTask);
+    console.log("- Current focus task:", currentFocusTask?.task || "None");
     
     // Check API key
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -1144,50 +1216,144 @@ export const getAIChatResponse = async (
       return "I apologize, but I can't process your request because the API configuration is missing. Please contact support.";
     }
     
-    const response = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+    // Truncate message history to fit within token limits
+    // Reserve ~2000 tokens for system prompt and latest user message
+    const truncatedMessages = truncateMessageHistory(messages, 6000);
+    console.log(`Truncated message history from ${messages.length} to ${truncatedMessages.length} messages`);
+    
+    // Prepare request body
+    const requestBody = {
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: `${systemPrompt}\n\n${businessTypeContext}`,
         },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [
+        ...truncatedMessages.map((msg) => ({
+          role: msg.is_user ? "user" : "assistant",
+          content: msg.content,
+        })),
+        { role: "user", content: userMessage },
+      ],
+      temperature: 0.7,
+      presence_penalty: 0.6,
+      frequency_penalty: 0.6,
+    };
+
+    // Retry mechanism with exponential backoff
+    const MAX_RETRIES = 5;
+    let retryCount = 0;
+    let lastError = null;
+
+    while (retryCount < MAX_RETRIES) {
+      try {
+        // If this is a retry, add a small delay with exponential backoff
+        if (retryCount > 0) {
+          const delayMs = Math.min(1000 * Math.pow(2, retryCount - 1), 16000); // Capped at 16s
+          console.log(`Retry ${retryCount}/${MAX_RETRIES} - Waiting ${delayMs}ms before retrying...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+
+        const response = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("API response received successfully");
+          const aiResponse = data.choices[0].message.content;
+          return aiResponse;
+        }
+
+        // Handle non-200 responses
+        const errorData = await response.json().catch(() => ({}));
+        console.error("OpenAI API Error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          retry: retryCount + 1,
+        });
+
+        // If we hit a rate limit (429), retry with backoff
+        if (response.status === 429) {
+          console.log("Rate limit hit, will retry with backoff");
+          retryCount++;
+          lastError = new Error(`API Rate Limit Error: ${response.status}`);
+          continue;
+        }
+        
+        // If we hit a token limit error, try with fewer messages
+        if (response.status === 400 && errorData?.error?.code === 'context_length_exceeded') {
+          console.log("Context length exceeded. Trying with minimal context.");
+          // Just keep the most recent 2-3 message pairs
+          const minimalMessages = truncateMessageHistory(messages, 2000);
+          
+          // Update request body with minimal messages
+          requestBody.messages = [
             {
               role: "system",
               content: `${systemPrompt}\n\n${businessTypeContext}`,
             },
-            ...messages.map((msg) => ({
+            ...minimalMessages.map((msg) => ({
               role: msg.is_user ? "user" : "assistant",
               content: msg.content,
             })),
             { role: "user", content: userMessage },
-          ],
-          temperature: 0.7,
-          presence_penalty: 0.6,
-          frequency_penalty: 0.6,
-        }),
+          ];
+          
+          // Try once more with minimal context
+          const retryResponse = await fetch(
+            "https://api.openai.com/v1/chat/completions",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify(requestBody),
+            }
+          );
+          
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            return retryData.choices[0].message.content;
+          } else {
+            throw new Error(`API Retry Error: ${retryResponse.status} ${retryResponse.statusText}`);
+          }
+        }
+        
+        // For other errors, just throw and don't retry
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      } catch (error) {
+        console.error(`Attempt ${retryCount + 1} failed:`, error);
+        lastError = error;
+        
+        // Only retry on network errors or 429 responses (which we handle above)
+        if (!(error instanceof Error && error.message.includes("429"))) {
+          break;
+        }
+        
+        retryCount++;
       }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("OpenAI API Error:", {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-      });
-      
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+    
+    // If we've exhausted retries or had a non-retriable error
+    if (lastError) {
+      throw lastError;
     }
 
-    const data = await response.json();
-    return data.choices[0].message.content;
+    throw new Error("Failed to get AI response after multiple attempts");
   } catch (error) {
     console.error("Error getting AI response:", error);
-    return "I apologize, but I encountered an error with my AI service. Please try again or contact support if the issue persists.";
+    return "I apologize, but I encountered an error with my AI service. The server might be busy. Please try again in a moment or contact support if the issue persists.";
   }
 };
 
@@ -1203,4 +1369,24 @@ export const getNextStage = (currentStage: StageKey): StageKey | null => {
   ];
   const currentIndex = stages.indexOf(currentStage);
   return currentIndex < stages.length - 1 ? stages[currentIndex + 1] : null;
+};
+
+// Check if a task is out of order (attempting to complete without completing previous tasks)
+export const isTaskOutOfOrder = (
+  todoList: any[], // Array of todo items
+  referencedTaskIndex: number // Index of the task being referenced
+): boolean => {
+  // If it's the first task or invalid index, it's not out of order
+  if (referencedTaskIndex <= 0 || referencedTaskIndex >= todoList.length) {
+    return false;
+  }
+
+  // Check if all previous tasks are completed
+  for (let i = 0; i < referencedTaskIndex; i++) {
+    if (!todoList[i].completed) {
+      return true; // Found an incomplete task before the referenced one
+    }
+  }
+
+  return false; // All previous tasks are completed
 }; 

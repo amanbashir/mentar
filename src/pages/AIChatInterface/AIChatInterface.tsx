@@ -6,7 +6,7 @@ import { type Components } from "react-markdown";
 import { supabase } from "../../lib/supabaseClient";
 import { systemPrompt, getCombinedPrompt } from "../../utils/prompts";
 import "./AIChatInterface.css";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../../components/Navbar";
 import { FaTrashCan } from "react-icons/fa6";
 import { ecommerceBlueprint } from "../../../lib/mentars/ecom-new-strat";
@@ -99,6 +99,12 @@ interface PrequalificationState {
   currentQuestionIndex: number;
   answers: string[];
   completed: boolean;
+}
+
+// Add new Toast interface
+interface Toast {
+  id: string;
+  message: string;
 }
 
 // Custom components for markdown
@@ -206,6 +212,7 @@ function AIChatInterface() {
   const popupInputRef = useRef<HTMLTextAreaElement>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Add prequalification state
   const [prequalification, setPrequalification] =
@@ -788,10 +795,46 @@ I'll use this information to guide you through your ecommerce journey. Let's get
         return;
       }
 
-      // Determine if this is a task from the todo list
-      const isTodoTask = currentProject.todos?.some(
-        (todo: TodoItem) => todo.task === userMessage
-      );
+      // Determine if this message references a todo task
+      let referencedTodoTask: TodoItem | null = null;
+      let todoTaskIndex = -1;
+
+      // Check if the message contains or matches any todo task
+      if (currentProject.todos && currentProject.todos.length > 0) {
+        for (let i = 0; i < currentProject.todos.length; i++) {
+          const todo = currentProject.todos[i];
+          if (
+            userMessage.toLowerCase().includes(todo.task.toLowerCase()) ||
+            todo.task.toLowerCase() === userMessage.toLowerCase()
+          ) {
+            referencedTodoTask = todo;
+            todoTaskIndex = i;
+            break;
+          }
+        }
+      }
+
+      // Check if the user is trying to skip ahead
+      if (referencedTodoTask && todoTaskIndex > 0) {
+        // Check if all previous todos are completed
+        const previousTodosCompleted = currentProject.todos
+          ?.slice(0, todoTaskIndex)
+          .every((prevTodo) => prevTodo.completed);
+
+        // If trying to work on a todo when previous ones aren't completed
+        if (!previousTodosCompleted) {
+          const encouragementMessage = await getAIChatResponse(
+            messages,
+            "Generate an encouraging message reminding the user they need to complete previous tasks first. Be motivational and specific about completing tasks in order.",
+            currentProject,
+            "You are Mentar, a business coach helping users build their business by guiding them through tasks in the proper sequence."
+          );
+
+          await saveMessage(encouragementMessage, false);
+          setIsLoading(false);
+          return;
+        }
+      }
 
       // Only generate todos if the project has no todos yet (initial setup)
       if (!currentProject.todos || currentProject.todos.length === 0) {
@@ -938,6 +981,10 @@ I'll use this information to guide you through your ecommerce journey. Let's get
             }
           }
 
+          // Add follow-up question
+          aiResponse +=
+            "\n\nAre you ready to get started with your first task?";
+
           await saveMessage(aiResponse, false);
           setIsLoading(false);
           return;
@@ -946,14 +993,9 @@ I'll use this information to guide you through your ecommerce journey. Let's get
 
       // If the message is a todo item, add a specific prompt to help with task completion
       let enhancedUserMessage = userMessage;
-      if (isTodoTask) {
-        const matchingTodo = currentProject.todos?.find(
-          (todo: TodoItem) => todo.task === userMessage
-        );
-        if (matchingTodo) {
-          // Mark this as a request for completed work, not just guidance
-          enhancedUserMessage = `Complete this task for me: "${userMessage}". Don't tell me how to do it - instead, provide the actual finished work, content, or solution I need. Give me something I can use immediately without further work on my part.`;
-        }
+      if (referencedTodoTask) {
+        // Enhance the prompt specifically for task completion
+        enhancedUserMessage = `Complete this task for me: "${referencedTodoTask.task}". Don't tell me how to do it - instead, provide the actual finished work, content, or solution I need. Give me something I can use immediately without further work on my part.`;
       }
 
       // Prepare prequalification context if available
@@ -974,12 +1016,35 @@ I'll use this information to guide you through your ecommerce journey. Let's get
 
       // Continue with normal AI response for subsequent messages
       // Use the getAIChatResponse utility function instead of implementing the API call here
-      const aiResponse = await getAIChatResponse(
+      let aiResponse = await getAIChatResponse(
         messages,
         enhancedUserMessage + prequalificationContext, // Add prequalification context
         currentProject,
         getCombinedPrompt(currentProject.business_type)
       );
+
+      // Add a follow-up question to every response if it doesn't already end with one
+      if (
+        !aiResponse.endsWith("?") &&
+        !aiResponse.includes("Are you satisfied with")
+      ) {
+        // Check if the most recently referenced todo is completed
+        if (referencedTodoTask && !referencedTodoTask.completed) {
+          aiResponse +=
+            "\n\nDoes this help you complete this task? Or do you need additional assistance?";
+        } else {
+          // Get the first incomplete todo
+          const firstIncompleteTodo = currentProject.todos?.find(
+            (todo) => !todo.completed
+          );
+          if (firstIncompleteTodo) {
+            aiResponse +=
+              "\n\nWould you like to move on to your next task now?";
+          } else {
+            aiResponse += "\n\nIs there anything else you'd like help with?";
+          }
+        }
+      }
 
       await saveMessage(aiResponse, false);
 
@@ -1114,10 +1179,37 @@ I'll use this information to guide you through your ecommerce journey. Let's get
     }
   };
 
+  // Add a function to show toast message
+  const showToast = (message: string) => {
+    const id = Date.now().toString();
+    setToasts((prev) => [...prev, { id, message }]);
+
+    // Remove the toast after 3 seconds
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 3000);
+  };
+
+  // Modify handleTodoChange function to check previous todos
   const handleTodoChange = async (todoItem: TodoItem, isCompleted: boolean) => {
     if (!currentProject) return;
 
     try {
+      // Get the index of the current todo
+      const currentIndex =
+        currentProject.todos?.findIndex((t) => t.task === todoItem.task) || 0;
+
+      // Check if all previous todos are completed
+      const previousTodosCompleted = currentProject.todos
+        ?.slice(0, currentIndex)
+        .every((prevTodo) => prevTodo.completed);
+
+      // If trying to complete a todo when previous ones aren't completed, show toast
+      if (!previousTodosCompleted && isCompleted) {
+        showToast("Complete previous tasks to continue");
+        return;
+      }
+
       // Create updated todos array
       const updatedTodos =
         currentProject.todos?.map((t) =>
@@ -1188,6 +1280,31 @@ I'll use this information to guide you through your ecommerce journey. Let's get
     }
   };
 
+  // Modify the Get Started button click handler
+  const handleGetStarted = (todoItem: TodoItem) => {
+    // Get the index of the current todo
+    const index =
+      currentProject?.todos?.findIndex((t) => t.task === todoItem.task) || 0;
+
+    // Check if all previous todos are completed
+    const previousTodosCompleted = currentProject?.todos
+      ?.slice(0, index)
+      .every((prevTodo) => prevTodo.completed);
+
+    if (!previousTodosCompleted) {
+      showToast("Complete previous tasks to continue");
+      return;
+    }
+
+    setInputMessage(todoItem.task + "\n\nHelp me complete this task");
+    if (inputRef.current) {
+      inputRef.current.focus();
+      setTimeout(() => {
+        adjustTextareaHeight();
+      }, 0);
+    }
+  };
+
   const handlePopupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!popupMessage.trim() || isPopupLoading || !currentProject) return;
@@ -1230,12 +1347,29 @@ I'll use this information to guide you through your ecommerce journey. Let's get
         }
       }
 
-      const aiResponse = await getAIChatResponse(
+      let aiResponse = await getAIChatResponse(
         formattedMessages,
         userMessage + prequalificationContext,
         currentProject,
         getCombinedPrompt(currentProject.business_type)
       );
+
+      // Add a follow-up question to the popup response if not already present
+      if (
+        !aiResponse.endsWith("?") &&
+        !aiResponse.includes("Are you satisfied with")
+      ) {
+        // Get the first incomplete todo
+        const firstIncompleteTodo = currentProject.todos?.find(
+          (todo) => !todo.completed
+        );
+        if (firstIncompleteTodo) {
+          aiResponse +=
+            "\n\nWould you like me to help you with your current task?";
+        } else {
+          aiResponse += "\n\nIs there anything else you'd like help with?";
+        }
+      }
 
       // Add AI response to popup messages
       const aiPopupMessage = {
@@ -1392,6 +1526,24 @@ I'll use this information to guide you through your ecommerce journey. Let's get
   return (
     <div className="page-container">
       <Navbar />
+
+      {/* Toast Container */}
+      <div className="toast-container">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              className="toast"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              transition={{ duration: 0.3 }}
+            >
+              {toast.message}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* Loading Overlay for Todo Generation */}
       {isGeneratingTodos && (
@@ -1706,17 +1858,7 @@ I'll use this information to guide you through your ecommerce journey. Let's get
                     </label>
                     <button
                       className="get-started-button"
-                      onClick={() => {
-                        setInputMessage(
-                          todoItem.task + "\n\nHelp me complete this task"
-                        );
-                        if (inputRef.current) {
-                          inputRef.current.focus();
-                          setTimeout(() => {
-                            adjustTextareaHeight();
-                          }, 0);
-                        }
-                      }}
+                      onClick={() => handleGetStarted(todoItem)}
                     >
                       Get Started
                     </button>
