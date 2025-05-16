@@ -1176,7 +1176,8 @@ export const getAIChatResponse = async (
        - "I've identified several marketing approaches: [Approach 1], [Approach 2], [Approach 3]. Which one sounds most aligned with your goals?"
        - "Consider these product positioning options: [Option 1], [Option 2], [Option 3]. Which resonates most with your vision?"
     10. Make each option distinct and clearly labeled so the user can easily choose between them.
-
+    11. If the user asks about generating images or logos, always respond with a clear and concise message that you don't support image or logo generation right now.
+    12. Dont generate images or logos, only provide text-based content.
     
     ${isExactTodoTask || isTaskRequest ? 
       `IMPORTANT: The user is asking for help with a specific task or has pasted a todo item from their list.

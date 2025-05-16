@@ -27,6 +27,22 @@ import {
 } from "../../utils/openai";
 import DeleteProjectDialog from "../../components/DeleteProjectDialog";
 
+// Helper function to check for image/logo generation requests
+const isImageGenerationRequest = (message: string): boolean => {
+  const lowercaseMsg = message.toLowerCase();
+  return (
+    lowercaseMsg.includes("generate image") ||
+    lowercaseMsg.includes("create image") ||
+    lowercaseMsg.includes("make image") ||
+    lowercaseMsg.includes("design logo") ||
+    lowercaseMsg.includes("create logo") ||
+    lowercaseMsg.includes("generate logo") ||
+    lowercaseMsg.includes("make logo") ||
+    lowercaseMsg.includes("draw") ||
+    (lowercaseMsg.includes("logo") && lowercaseMsg.includes("design"))
+  );
+};
+
 // Types
 interface Project {
   id: string;
@@ -788,6 +804,15 @@ I'll use this information to guide you through your ecommerce journey. Let's get
     try {
       await saveMessage(userMessage, true);
 
+      // Check if the message is about generating images or logos
+      if (isImageGenerationRequest(userMessage)) {
+        const responseMessage =
+          "I'm sorry, but I don't support image or logo generation right now. This feature is coming soon on Mentar AI! In the meantime, I can help you with planning, strategy, and text-based content for your business.";
+        await saveMessage(responseMessage, false);
+        setIsLoading(false);
+        return;
+      }
+
       // Check if we're in prequalification mode
       if (prequalification.isPrequalifying) {
         await handleNextPrequalificationQuestion(userMessage);
@@ -1322,6 +1347,19 @@ I'll use this information to guide you through your ecommerce journey. Let's get
     setPopupMessages((prev) => [...prev, userPopupMessage]);
 
     try {
+      // Check if the message is about generating images or logos
+      if (isImageGenerationRequest(userMessage)) {
+        const aiPopupMessage = {
+          id: Date.now().toString(),
+          content:
+            "I'm sorry, but I don't support image or logo generation right now. This feature is coming soon on Mentar AI! In the meantime, I can help you with planning, strategy, and text-based content for your business.",
+          isUser: false,
+        };
+        setPopupMessages((prev) => [...prev, aiPopupMessage]);
+        setIsPopupLoading(false);
+        return;
+      }
+
       // Use the getAIChatResponse utility function instead of implementing the API call here
       // Convert popup messages to the format expected by getAIChatResponse
       const formattedMessages = popupMessages.map((msg) => ({
