@@ -1173,43 +1173,32 @@ export const getAIChatResponse = async (
     8. Always reference todo items by their number (e.g., "Todo #3") when discussing them.
     9. Always prompt the user with 2-3 specific questions to ensure extreme detail in their task completion.
     10. Make your responses helpful and action-oriented, focusing on helping the user make tangible progress.
-    11. *** ABSOLUTELY CRITICAL INSTRUCTION *** When suggesting ANY type of recommendations (personas, customer segments, product ideas, business names, marketing strategies, etc.), you MUST ALWAYS:
-        a. PROVIDE EXACTLY 3-5 SPECIFIC OPTIONS/SUGGESTIONS (NEVER JUST ONE OPTION - ALWAYS MULTIPLE)
-        b. For EACH option, calculate and display a detailed Success Score (out of 100) broken down as follows:
-           - Low market saturation (0-20 points): Lower score for saturated markets, higher for untapped ones
-           - Low budget requirements (0-20 points): Higher score for lower cost options
-           - High market size over $1B (0-20 points): Higher score for larger addressable markets
-           - Strong unique selling proposition (0-20 points): Higher score for more differentiated options
-           - High cash-flow potential (0-20 points): Higher score for faster/stronger revenue generation
-        c. Format each suggestion with a clear heading and score breakdown
-        d. ALWAYS conclude by recommending the option with the highest Success Score
-        e. Follow this format exactly for each option:
-           
+    11. When suggesting ANY type of recommendations (personas, customer segments, product ideas, business names, marketing strategies, etc.), you MUST ALWAYS:
+        a. Provide exactly 3-5 specific options/suggestions (never more, never less)
+        b. For EACH option, calculate and display a simple success rate percentage (0-100%) based on:
+           - Market saturation
+           - Budget requirements
+           - Market size
+           - Unique selling proposition
+           - Cash flow potential
+        c. Format each suggestion as:
            ### Option 1: [Name/Title]
            [Brief description of the option]
            
-           | Success Factor | Score | Reasoning |
-           |---------------|-------|-----------|
-           | Market Saturation | 15/20 | [Brief explanation] |
-           | Budget Requirements | 18/20 | [Brief explanation] |
-           | Market Size | 16/20 | [Brief explanation] |
-           | Unique Selling Proposition | 14/20 | [Brief explanation] |
-           | Cash-flow Potential | 17/20 | [Brief explanation] |
-           | **TOTAL SCORE** | **80/100** | |
+           **Success Rate: XX%**
            
-           ### Option 2: [Name/Title]
-           [Brief description of the option]
-           
-           | Success Factor | Score | Reasoning |
-           |---------------|-------|-----------|
-           | Market Saturation | 12/20 | [Brief explanation] |
-           | Budget Requirements | 15/20 | [Brief explanation] |
-           | Market Size | 18/20 | [Brief explanation] |
-           | Unique Selling Proposition | 16/20 | [Brief explanation] |
-           | Cash-flow Potential | 14/20 | [Brief explanation] |
-           | **TOTAL SCORE** | **75/100** | |
-    12. If a user proposes a new idea, evaluate it using the same Success Score methodology and compare it with previous options.
-    13. Gently persuade users to pursue options with the highest Success Score.
+           This option has a XX% chance of success based on market analysis, budget requirements, market size, unique selling proposition, and cash flow potential.
+        d. ALWAYS conclude by recommending the option with the highest success rate
+        e. For product ideas specifically, emphasize the success rate prominently in your recommendation
+    12. If a user proposes a new idea, evaluate it using the same success rate methodology and compare it with previous options.
+    13. When a user selects or shows interest in a lower-scoring option (not the highest-scoring one):
+        a. Express diplomatic concern about their choice
+        b. Point out that the higher success rate option offers better chances of success
+        c. ALWAYS include the success rate percentage
+        d. Say something like: "I notice you're interested in [Option X] with a [Y]% success rate. Before proceeding, I'd like to highlight that [Highest Success Rate Option] has a [Z]% success rate, which is [Z-Y]% higher, indicating a stronger potential for success."
+        e. For product ideas, explicitly state the difference in success rates
+        f. Always ASK if they'd like to reconsider their choice
+        g. If they insist on the lower-scoring option, respect their choice but periodically remind them of the challenges
     14. Always keep users focused on completing the current todo item before moving to the next one.
     15. Don't generate images or logos, only provide text-based content.
     
@@ -1223,23 +1212,41 @@ export const getAIChatResponse = async (
       - If they need a business plan, CREATE the actual business plan
       - If they need a competitor analysis, PROVIDE the complete analysis
       - If they need a pricing strategy, DEVELOP the full pricing model
-      - If they need customer personas, PROVIDE 3-5 detailed personas with success scores
+      - If they need customer personas, create 3-5 detailed personas with success rates
+
+      When providing ANY type of recommendations or multiple options (personas, business ideas, marketing strategies, etc.), you MUST ALWAYS:
+      1. Provide exactly 3-5 specific options/suggestions (never more, never less)
+      2. For EACH option, calculate and display a simple success rate percentage (0-100%) based on:
+         - Market saturation
+         - Budget requirements
+         - Market size
+         - Unique selling proposition
+         - Cash flow potential
+      3. Format each suggestion as:
+         ### Option 1: [Name/Title]
+         [Brief description of the option]
+         
+         **Success Rate: XX%**
+         
+         This option has a XX% chance of success based on market analysis, budget requirements, market size, unique selling proposition, and cash flow potential.
+      
+      4. After presenting all options with their success rates, ALWAYS:
+         a. Conclude by STRONGLY recommending the option with the highest success rate
+         b. If they later express interest in a lower-scoring option, diplomatically express concern
+         c. Point out that the higher success rate option offers better chances of success
+         d. ALWAYS include the success rate percentage
+         e. For product ideas, explicitly state the difference in success rates
+         f. Ask if they'd like to reconsider with something like: "I notice you're interested in [Option X] with a [Y]% success rate. Before proceeding, I'd like to highlight that [Highest Success Rate Option] has a [Z]% success rate, which is [Z-Y]% higher, indicating a stronger potential for success. Would you like to reconsider?"
+         g. If they still insist on a lower-scoring option, respect their choice but periodically remind them of the challenges
 
       Provide the FINISHED WORK they need, not just instructions on how to do it themselves.
       Include specific information, examples, and completed templates that they can use immediately.
 
-      CRITICAL: ALWAYS PRESENT MULTIPLE OPTIONS (3-5) WITH SUCCESS SCORES FOR ANY RECOMMENDATIONS.
-
       Remember to format your response using React-Markdown syntax for proper rendering.` :
-      `Remember to format your response using React-Markdown syntax for proper rendering.
-
-      CRITICAL: ALWAYS PRESENT MULTIPLE OPTIONS (3-5) WITH SUCCESS SCORES FOR ANY RECOMMENDATIONS.`
+      `Remember to format your response using React-Markdown syntax for proper rendering.`
       
     }`;
 
-    // Log the instruction for multiple options to confirm it's being sent
-    console.log("CRITICAL INSTRUCTION INCLUDED: ALWAYS PRESENT MULTIPLE OPTIONS (3-5) WITH SUCCESS SCORES");
-    
     // Log details for debugging
     console.log("API Request details:");
     console.log("- Business type:", currentProject.business_type);
@@ -1309,9 +1316,7 @@ export const getAIChatResponse = async (
         if (response.ok) {
           const data = await response.json();
           console.log("API response received successfully");
-        
           const aiResponse = data.choices[0].message.content;
-          console.log(aiResponse)
           return aiResponse;
         }
 
@@ -1481,18 +1486,14 @@ export const calculateSuccessScore = (item: SuccessScoreItem): number => {
 // Format a suggestion with its success score details for display
 export const formatSuggestionWithScore = (item: SuccessScoreItem): string => {
   const totalScore = calculateSuccessScore(item);
+  const successRate = Math.round((totalScore / 100) * 100); // Convert to percentage
   
   return `### ${item.name}
 ${item.description}
 
-| Success Factor | Score | Reasoning |
-|---------------|-------|-----------|
-| Market Saturation | ${item.marketSaturation.score}/20 | ${item.marketSaturation.reason} |
-| Budget Requirements | ${item.budgetRequirements.score}/20 | ${item.budgetRequirements.reason} |
-| Market Size | ${item.marketSize.score}/20 | ${item.marketSize.reason} |
-| Unique Selling Proposition | ${item.uniqueSellingProposition.score}/20 | ${item.uniqueSellingProposition.reason} |
-| Cash-flow Potential | ${item.cashFlowPotential.score}/20 | ${item.cashFlowPotential.reason} |
-| **TOTAL SCORE** | **${totalScore}/100** | |`;
+**Success Rate: ${successRate}%**
+
+This option has a ${successRate}% chance of success based on market analysis, budget requirements, market size, unique selling proposition, and cash flow potential.`;
 };
 
 // Format multiple suggestions with success scores and provide a recommendation
@@ -1514,9 +1515,47 @@ export const formatSuggestionsWithRecommendation = (items: SuccessScoreItem[]): 
   const formattedSuggestions = scoredItems.map(item => formatSuggestionWithScore(item)).join("\n\n");
   
   // Add recommendation
+  const successRate = Math.round((scoredItems[0].totalScore / 100) * 100); // Convert to percentage
+  
   const recommendation = `
 ## Recommendation
-Based on the Success Score analysis, I recommend **${scoredItems[0].name}** with a score of **${scoredItems[0].totalScore}/100** as your best option. This option offers the strongest combination of market opportunity, budget efficiency, and potential for success.`;
+Based on the success rate analysis, I STRONGLY recommend **${scoredItems[0].name}** with a **${successRate}% success rate** as your best option. This option offers the strongest potential for success in your market.
+
+If you choose a different option with a lower success rate, you'll likely face more challenges and a lower probability of success. The higher success rate indicates a more favorable business environment and better alignment with your goals.
+
+**Each 10% difference in success rate roughly translates to a 10% higher chance of success in the real world.**`;
   
   return formattedSuggestions + recommendation;
+};
+
+// Generate a warning message when a user selects a lower-scoring option
+export const generateLowerScoreWarning = (
+  selectedOption: SuccessScoreItem,
+  bestOption: SuccessScoreItem
+): string => {
+  const selectedScore = calculateSuccessScore(selectedOption);
+  const bestScore = calculateSuccessScore(bestOption);
+  
+  // Calculate success rates (as percentages)
+  const selectedSuccessRate = Math.round((selectedScore / 100) * 100);
+  const bestSuccessRate = Math.round((bestScore / 100) * 100);
+  const successRateDifference = bestSuccessRate - selectedSuccessRate;
+  
+  // Craft the message based on the success rate difference
+  let message = `I notice you're interested in **${selectedOption.name}** with a ${selectedSuccessRate}% success rate. `;
+  
+  if (successRateDifference >= 20) {
+    // Significant difference
+    message += `Before proceeding, I'd like to express significant concern about this choice. **${bestOption.name}** has a ${bestSuccessRate}% success rate, which is ${successRateDifference}% higher, indicating a much stronger potential for success.`;
+  } else if (successRateDifference >= 10) {
+    // Moderate difference
+    message += `Before proceeding, I'd like to highlight that **${bestOption.name}** has a ${bestSuccessRate}% success rate, which is ${successRateDifference}% higher, indicating a noticeably better chance of success.`;
+  } else {
+    // Minor difference
+    message += `Before proceeding, I'd like to note that **${bestOption.name}** has a ${bestSuccessRate}% success rate, which is ${successRateDifference}% higher, suggesting somewhat better potential.`;
+  }
+  
+  message += ` Would you like to reconsider your choice?`;
+  
+  return message;
 }; 
