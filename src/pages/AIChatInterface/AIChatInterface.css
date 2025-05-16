@@ -830,7 +830,7 @@
   height: 40px;
   border: 4px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
-  border-top-color: #2b87ff;
+  border-top-color: #0066ff;
   animation: spin 1s ease-in-out infinite;
   margin-bottom: 20px;
 }
@@ -1630,4 +1630,57 @@ button.get-started-button:disabled {
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
   pointer-events: none;
+}
+
+.todo-number {
+  font-weight: 600;
+  margin-right: 5px;
+  color: var(--color-primary);
+}
+
+/* Success Score Styling */
+.success-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary);
+  color: white;
+  border-radius: 50px;
+  padding: 4px 12px;
+  font-weight: 600;
+  margin-left: 8px;
+  font-size: 14px;
+}
+
+.success-score-high {
+  background-color: #4caf50;
+}
+
+.success-score-medium {
+  background-color: #ffc107;
+}
+
+.success-score-low {
+  background-color: #f44336;
+}
+
+.success-score-breakdown {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  background-color: rgba(var(--color-primary-rgb), 0.05);
+}
+
+.success-score-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.success-score-total {
+  font-weight: bold;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }

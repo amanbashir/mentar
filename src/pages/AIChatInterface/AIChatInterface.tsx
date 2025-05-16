@@ -1001,9 +1001,9 @@ I'll use this information to guide you through your ecommerce journey. Let's get
             );
 
             // Then prepend it to the aiResponse if we got one
-            if (launchDateMessage) {
-              aiResponse = launchDateMessage + "\n\n" + aiResponse;
-            }
+            // if (launchDateMessage) {
+            //   aiResponse = launchDateMessage + "\n\n" + aiResponse;
+            // }
           }
 
           // Add follow-up question
@@ -1048,25 +1048,71 @@ I'll use this information to guide you through your ecommerce journey. Let's get
         getCombinedPrompt(currentProject.business_type)
       );
 
+      // Check if the user is attempting to jump ahead in tasks
+      const taskReference = userMessage.match(/todo\s+#?(\d+)/i);
+      if (taskReference && currentProject.todos) {
+        const referencedTaskIndex = parseInt(taskReference[1]) - 1;
+
+        // If task exists and isn't the first incomplete task
+        if (
+          referencedTaskIndex >= 0 &&
+          referencedTaskIndex < currentProject.todos.length
+        ) {
+          // Find index of first incomplete task
+          const firstIncompleteTaskIndex = currentProject.todos.findIndex(
+            (todo) => !todo.completed
+          );
+
+          // If they're trying to skip tasks
+          if (referencedTaskIndex > firstIncompleteTaskIndex) {
+            const tasksThatNeedCompletion = currentProject.todos
+              .slice(firstIncompleteTaskIndex, referencedTaskIndex)
+              .map(
+                (todo, idx) =>
+                  `#${firstIncompleteTaskIndex + idx + 1}: ${todo.task}`
+              )
+              .join("\n");
+
+            aiResponse = `I notice you're trying to work on Todo #${
+              referencedTaskIndex + 1
+            }, but you should complete the earlier tasks first. Please focus on your current task:\n\n**Todo #${
+              firstIncompleteTaskIndex + 1
+            }: ${
+              currentProject.todos[firstIncompleteTaskIndex].task
+            }**\n\nThis structured approach ensures you build your business properly. Would you like me to help you complete this current task instead?`;
+
+            await saveMessage(aiResponse, false);
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
+
       // Add a follow-up question to every response if it doesn't already end with one
       if (
         !aiResponse.endsWith("?") &&
-        !aiResponse.includes("Are you satisfied with")
+        !aiResponse.includes("Are you satisfied with") &&
+        !aiResponse.includes("What do you think")
       ) {
         // Check if the most recently referenced todo is completed
         if (referencedTodoTask && !referencedTodoTask.completed) {
           aiResponse +=
-            "\n\nDoes this help you complete this task? Or do you need additional assistance?";
+            "\n\nDoes this help you complete this task? Or do you need additional assistance with specific details?";
         } else {
           // Get the first incomplete todo
           const firstIncompleteTodo = currentProject.todos?.find(
             (todo) => !todo.completed
           );
           if (firstIncompleteTodo) {
-            aiResponse +=
-              "\n\nWould you like to move on to your next task now?";
+            const incompleteIndex = currentProject.todos?.findIndex(
+              (todo) => !todo.completed
+            );
+            aiResponse += `\n\nWould you like to focus on your current task (Todo #${
+              incompleteIndex + 1
+            })? Or is there something specific about it you'd like me to explain in more detail?`;
           } else {
-            aiResponse += "\n\nIs there anything else you'd like help with?";
+            aiResponse +=
+              "\n\nIs there anything specific you'd like help with for your business?";
           }
         }
       }
@@ -1321,7 +1367,11 @@ I'll use this information to guide you through your ecommerce journey. Let's get
       return;
     }
 
-    setInputMessage(todoItem.task + "\n\nHelp me complete this task");
+    setInputMessage(
+      `I want to work on Todo #${index + 1}: "${
+        todoItem.task
+      }"\n\nHelp me complete this task`
+    );
     if (inputRef.current) {
       inputRef.current.focus();
       setTimeout(() => {
@@ -1891,6 +1941,7 @@ I'll use this information to guide you through your ecommerce journey. Let's get
                           toggleTodoExpansion(todoId);
                         }}
                       >
+                        <span className="todo-number">{index + 1}.</span>{" "}
                         {todoItem.task}
                       </span>
                     </label>

@@ -1160,7 +1160,7 @@ export const getAIChatResponse = async (
     Current Progress:
     - Stage: ${currentStage.replace('_', ' ').toUpperCase()}
     - Completed Tasks: ${completedTaskCount} of ${totalTaskCount}
-    - Next Task to Focus On: ${currentFocusTask ? currentFocusTask.task : "All tasks completed"}
+    - Next Task to Focus On: ${currentFocusTask ? `#${currentProject.todos.findIndex((t: any) => t.task === currentFocusTask.task) + 1} - ${currentFocusTask.task}` : "All tasks completed"}
 
     IMPORTANT INSTRUCTIONS:
     1. DO NOT ask questions about business type, budget, business idea, or income goals - this information is already provided above.
@@ -1169,15 +1169,49 @@ export const getAIChatResponse = async (
     4. Focus on providing direct, actionable solutions based on the context you already have.
     5. ALWAYS format your responses using React-Markdown format so they render properly in the interface.
     6. If a user is trying to work on tasks out of order, encourage them to complete earlier tasks first.
-    7. Always end your responses with a follow-up question to keep the conversation going.
-    8. Make your responses helpful and action-oriented, focusing on helping the user make tangible progress.
-    9. When suggesting personas, customer segments, product ideas, or any other options to the user, ALWAYS provide 3-5 specific choices for them to select from, rather than a single recommendation. For example:
-       - "Here are 4 potential customer personas for your business: [Persona 1], [Persona 2], [Persona 3], [Persona 4]. Which one would you like to focus on?"
-       - "I've identified several marketing approaches: [Approach 1], [Approach 2], [Approach 3]. Which one sounds most aligned with your goals?"
-       - "Consider these product positioning options: [Option 1], [Option 2], [Option 3]. Which resonates most with your vision?"
-    10. Make each option distinct and clearly labeled so the user can easily choose between them.
-    11. If the user asks about generating images or logos, always respond with a clear and concise message that you don't support image or logo generation right now.
-    12. Dont generate images or logos, only provide text-based content.
+    7. DO NOT move to another step or todo until the current one is fully completed and you have confirmation from the user.
+    8. Always reference todo items by their number (e.g., "Todo #3") when discussing them.
+    9. Always prompt the user with 2-3 specific questions to ensure extreme detail in their task completion.
+    10. Make your responses helpful and action-oriented, focusing on helping the user make tangible progress.
+    11. *** ABSOLUTELY CRITICAL INSTRUCTION *** When suggesting ANY type of recommendations (personas, customer segments, product ideas, business names, marketing strategies, etc.), you MUST ALWAYS:
+        a. PROVIDE EXACTLY 3-5 SPECIFIC OPTIONS/SUGGESTIONS (NEVER JUST ONE OPTION - ALWAYS MULTIPLE)
+        b. For EACH option, calculate and display a detailed Success Score (out of 100) broken down as follows:
+           - Low market saturation (0-20 points): Lower score for saturated markets, higher for untapped ones
+           - Low budget requirements (0-20 points): Higher score for lower cost options
+           - High market size over $1B (0-20 points): Higher score for larger addressable markets
+           - Strong unique selling proposition (0-20 points): Higher score for more differentiated options
+           - High cash-flow potential (0-20 points): Higher score for faster/stronger revenue generation
+        c. Format each suggestion with a clear heading and score breakdown
+        d. ALWAYS conclude by recommending the option with the highest Success Score
+        e. Follow this format exactly for each option:
+           
+           ### Option 1: [Name/Title]
+           [Brief description of the option]
+           
+           | Success Factor | Score | Reasoning |
+           |---------------|-------|-----------|
+           | Market Saturation | 15/20 | [Brief explanation] |
+           | Budget Requirements | 18/20 | [Brief explanation] |
+           | Market Size | 16/20 | [Brief explanation] |
+           | Unique Selling Proposition | 14/20 | [Brief explanation] |
+           | Cash-flow Potential | 17/20 | [Brief explanation] |
+           | **TOTAL SCORE** | **80/100** | |
+           
+           ### Option 2: [Name/Title]
+           [Brief description of the option]
+           
+           | Success Factor | Score | Reasoning |
+           |---------------|-------|-----------|
+           | Market Saturation | 12/20 | [Brief explanation] |
+           | Budget Requirements | 15/20 | [Brief explanation] |
+           | Market Size | 18/20 | [Brief explanation] |
+           | Unique Selling Proposition | 16/20 | [Brief explanation] |
+           | Cash-flow Potential | 14/20 | [Brief explanation] |
+           | **TOTAL SCORE** | **75/100** | |
+    12. If a user proposes a new idea, evaluate it using the same Success Score methodology and compare it with previous options.
+    13. Gently persuade users to pursue options with the highest Success Score.
+    14. Always keep users focused on completing the current todo item before moving to the next one.
+    15. Don't generate images or logos, only provide text-based content.
     
     ${isExactTodoTask || isTaskRequest ? 
       `IMPORTANT: The user is asking for help with a specific task or has pasted a todo item from their list.
@@ -1189,18 +1223,23 @@ export const getAIChatResponse = async (
       - If they need a business plan, CREATE the actual business plan
       - If they need a competitor analysis, PROVIDE the complete analysis
       - If they need a pricing strategy, DEVELOP the full pricing model
-      - If they need customer personas, provide 3-5 detailed personas with distinct characteristics for them to choose from
+      - If they need customer personas, PROVIDE 3-5 detailed personas with success scores
 
       Provide the FINISHED WORK they need, not just instructions on how to do it themselves.
       Include specific information, examples, and completed templates that they can use immediately.
-      Always present multiple options when suggesting personas, strategies, or approaches.
 
+      CRITICAL: ALWAYS PRESENT MULTIPLE OPTIONS (3-5) WITH SUCCESS SCORES FOR ANY RECOMMENDATIONS.
 
       Remember to format your response using React-Markdown syntax for proper rendering.` :
-      `Remember to format your response using React-Markdown syntax for proper rendering.`
+      `Remember to format your response using React-Markdown syntax for proper rendering.
+
+      CRITICAL: ALWAYS PRESENT MULTIPLE OPTIONS (3-5) WITH SUCCESS SCORES FOR ANY RECOMMENDATIONS.`
       
     }`;
 
+    // Log the instruction for multiple options to confirm it's being sent
+    console.log("CRITICAL INSTRUCTION INCLUDED: ALWAYS PRESENT MULTIPLE OPTIONS (3-5) WITH SUCCESS SCORES");
+    
     // Log details for debugging
     console.log("API Request details:");
     console.log("- Business type:", currentProject.business_type);
@@ -1270,7 +1309,9 @@ export const getAIChatResponse = async (
         if (response.ok) {
           const data = await response.json();
           console.log("API response received successfully");
+        
           const aiResponse = data.choices[0].message.content;
+          console.log(aiResponse)
           return aiResponse;
         }
 
@@ -1390,4 +1431,92 @@ export const isTaskOutOfOrder = (
   }
 
   return false; // All previous tasks are completed
+};
+
+// Helper function to calculate a success score for a suggestion
+export interface SuccessScoreItem {
+  name: string;
+  description: string;
+  marketSaturation: {
+    score: number;
+    reason: string;
+  };
+  budgetRequirements: {
+    score: number;
+    reason: string;
+  };
+  marketSize: {
+    score: number;
+    reason: string;
+  };
+  uniqueSellingProposition: {
+    score: number;
+    reason: string;
+  };
+  cashFlowPotential: {
+    score: number;
+    reason: string;
+  };
+}
+
+export const calculateSuccessScore = (item: SuccessScoreItem): number => {
+  // Validate scores are within 0-20 range
+  const validateScore = (score: number): number => {
+    if (score < 0) return 0;
+    if (score > 20) return 20;
+    return score;
+  };
+
+  // Calculate the total score
+  const total = 
+    validateScore(item.marketSaturation.score) +
+    validateScore(item.budgetRequirements.score) +
+    validateScore(item.marketSize.score) +
+    validateScore(item.uniqueSellingProposition.score) +
+    validateScore(item.cashFlowPotential.score);
+    
+  return total;
+};
+
+// Format a suggestion with its success score details for display
+export const formatSuggestionWithScore = (item: SuccessScoreItem): string => {
+  const totalScore = calculateSuccessScore(item);
+  
+  return `### ${item.name}
+${item.description}
+
+| Success Factor | Score | Reasoning |
+|---------------|-------|-----------|
+| Market Saturation | ${item.marketSaturation.score}/20 | ${item.marketSaturation.reason} |
+| Budget Requirements | ${item.budgetRequirements.score}/20 | ${item.budgetRequirements.reason} |
+| Market Size | ${item.marketSize.score}/20 | ${item.marketSize.reason} |
+| Unique Selling Proposition | ${item.uniqueSellingProposition.score}/20 | ${item.uniqueSellingProposition.reason} |
+| Cash-flow Potential | ${item.cashFlowPotential.score}/20 | ${item.cashFlowPotential.reason} |
+| **TOTAL SCORE** | **${totalScore}/100** | |`;
+};
+
+// Format multiple suggestions with success scores and provide a recommendation
+export const formatSuggestionsWithRecommendation = (items: SuccessScoreItem[]): string => {
+  if (!items || items.length === 0) {
+    return "No suggestions available.";
+  }
+  
+  // Calculate scores for all items
+  const scoredItems = items.map(item => ({
+    ...item,
+    totalScore: calculateSuccessScore(item)
+  }));
+  
+  // Sort by score (highest first)
+  scoredItems.sort((a, b) => b.totalScore - a.totalScore);
+  
+  // Generate the formatted suggestions
+  const formattedSuggestions = scoredItems.map(item => formatSuggestionWithScore(item)).join("\n\n");
+  
+  // Add recommendation
+  const recommendation = `
+## Recommendation
+Based on the Success Score analysis, I recommend **${scoredItems[0].name}** with a score of **${scoredItems[0].totalScore}/100** as your best option. This option offers the strongest combination of market opportunity, budget efficiency, and potential for success.`;
+  
+  return formattedSuggestions + recommendation;
 }; 
