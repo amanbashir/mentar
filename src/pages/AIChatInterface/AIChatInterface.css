@@ -1410,7 +1410,7 @@
   height: 60px;
   border: 4px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
-  border-top-color: #6366f1;
+  border-top-color: blue;
   animation: spin 1s linear infinite;
 }
 

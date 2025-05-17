@@ -1043,9 +1043,22 @@ I'll use this information to guide you through your ecommerce journey. Let's get
       // Use the getAIChatResponse utility function instead of implementing the API call here
       let aiResponse = await getAIChatResponse(
         messages,
-        enhancedUserMessage + prequalificationContext, // Add prequalification context
+        enhancedUserMessage +
+          prequalificationContext +
+          "\n\nCurrent Todo List:\n" +
+          currentProject.todos
+            ?.map((todo, idx) => `Todo #${idx + 1}: ${todo.task}`)
+            .join("\n"), // Add todo list context
         currentProject,
         getCombinedPrompt(currentProject.business_type)
+      );
+
+      // Get the first incomplete todo
+      const firstIncompleteTodo = currentProject.todos?.find(
+        (todo) => !todo.completed
+      );
+      const firstIncompleteIndex = currentProject.todos?.findIndex(
+        (todo) => !todo.completed
       );
 
       // Check if the user is attempting to jump ahead in tasks
@@ -1056,35 +1069,20 @@ I'll use this information to guide you through your ecommerce journey. Let's get
         // If task exists and isn't the first incomplete task
         if (
           referencedTaskIndex >= 0 &&
-          referencedTaskIndex < currentProject.todos.length
+          referencedTaskIndex < currentProject.todos.length &&
+          referencedTaskIndex > firstIncompleteIndex
         ) {
-          // Find index of first incomplete task
-          const firstIncompleteTaskIndex = currentProject.todos.findIndex(
-            (todo) => !todo.completed
-          );
+          aiResponse = `I notice you're trying to work on Todo #${
+            referencedTaskIndex + 1
+          }, but you should complete the earlier tasks first. Please focus on your current task:\n\n**Todo #${
+            firstIncompleteIndex + 1
+          }: ${
+            currentProject.todos[firstIncompleteIndex].task
+          }**\n\nThis structured approach ensures you build your business properly. Would you like me to help you complete this current task instead?`;
 
-          // If they're trying to skip tasks
-          if (referencedTaskIndex > firstIncompleteTaskIndex) {
-            const tasksThatNeedCompletion = currentProject.todos
-              .slice(firstIncompleteTaskIndex, referencedTaskIndex)
-              .map(
-                (todo, idx) =>
-                  `#${firstIncompleteTaskIndex + idx + 1}: ${todo.task}`
-              )
-              .join("\n");
-
-            aiResponse = `I notice you're trying to work on Todo #${
-              referencedTaskIndex + 1
-            }, but you should complete the earlier tasks first. Please focus on your current task:\n\n**Todo #${
-              firstIncompleteTaskIndex + 1
-            }: ${
-              currentProject.todos[firstIncompleteTaskIndex].task
-            }**\n\nThis structured approach ensures you build your business properly. Would you like me to help you complete this current task instead?`;
-
-            await saveMessage(aiResponse, false);
-            setIsLoading(false);
-            return;
-          }
+          await saveMessage(aiResponse, false);
+          setIsLoading(false);
+          return;
         }
       }
 
@@ -1094,27 +1092,30 @@ I'll use this information to guide you through your ecommerce journey. Let's get
         !aiResponse.includes("Are you satisfied with") &&
         !aiResponse.includes("What do you think")
       ) {
-        // Check if the most recently referenced todo is completed
-        if (referencedTodoTask && !referencedTodoTask.completed) {
-          aiResponse +=
-            "\n\nDoes this help you complete this task? Or do you need additional assistance with specific details?";
+        // Always suggest working on the first incomplete todo using exact task text
+        if (firstIncompleteTodo) {
+          aiResponse += `\n\nWould you like to focus on your current task?\n\n**Todo #${
+            firstIncompleteIndex + 1
+          }: ${
+            firstIncompleteTodo.task
+          }**\n\nI can help you complete this task step by step.`;
         } else {
-          // Get the first incomplete todo
-          const firstIncompleteTodo = currentProject.todos?.find(
-            (todo) => !todo.completed
-          );
-          if (firstIncompleteTodo) {
-            const incompleteIndex = currentProject.todos?.findIndex(
-              (todo) => !todo.completed
-            );
-            aiResponse += `\n\nWould you like to focus on your current task (Todo #${
-              incompleteIndex + 1
-            })? Or is there something specific about it you'd like me to explain in more detail?`;
-          } else {
-            aiResponse +=
-              "\n\nIs there anything specific you'd like help with for your business?";
-          }
+          aiResponse +=
+            "\n\nIs there anything specific you'd like help with for your business?";
         }
+      }
+
+      // Replace any task references in the AI response with the exact task text from the todo list
+      if (currentProject.todos) {
+        currentProject.todos.forEach((todo, index) => {
+          const taskNumber = index + 1;
+          const taskPattern = new RegExp(
+            `Todo #${taskNumber}:\\s*"[^"]*"`,
+            "g"
+          );
+          const exactTaskText = `Todo #${taskNumber}: ${todo.task}`;
+          aiResponse = aiResponse.replace(taskPattern, exactTaskText);
+        });
       }
 
       await saveMessage(aiResponse, false);

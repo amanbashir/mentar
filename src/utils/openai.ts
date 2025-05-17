@@ -132,7 +132,7 @@ export const typedSaasStrategy: BusinessStrategy = saasStrategy as BusinessStrat
 export const generateInitialTodos = async (
   projectId: string,
   budget: string,
-  businessType: string
+  businessType: string,
 ) => {
   try {
     // Check API key
@@ -155,9 +155,12 @@ export const generateInitialTodos = async (
       throw new Error("No checklist found for stage 1");
     }
 
-    const todoGenerationPrompt = `As an AI business mentor, generate detailed, 5 actionable tasks for building a ${businessType} business with a budget of ${budget}.
+    const todoGenerationPrompt = `As an AI business mentor, 
+    generate detailed, 5 actionable tasks for building a ${businessType} business with a budget of ${budget}.
     The tasks should be based on the following checklist items:
-    ${stage1Data.checklist.join("\n")}
+
+    ${stage1Data}
+   
 
     For each checklist item, create a maximum of 5 specific, actionable tasks in total for this stage.
     Make the tasks detailed and specific to their business type and budget.
@@ -175,9 +178,6 @@ export const generateInitialTodos = async (
       {"task": "Create a brand style guide using Canva.com's free templates. Define your primary and secondary colors, typography, and visual elements that will be used across all marketing materials.", "completed": false}
     ]`;
 
-    console.log("Generating initial todos for:", businessType);
-    console.log("- Budget:", budget);
-    console.log("- Checklist items:", stage1Data.checklist?.length || 0);
 
     return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
   } catch (error) {
@@ -1158,6 +1158,9 @@ export const getAIChatResponse = async (
       currentProject.business_idea || "not set yet"
     }.
     The user's income goal is ${currentProject.income_goal || "not set yet"}.
+
+    These are are the user tasks for this stage: ${currentProject.todos?.map((t: any) => t.task).join(", ")}
+    You have to follow the tasks in order and you have to complete the current task before moving to the next one. Please dont suggest other tasks except for the ones in the list.
     
     Current Progress:
     - Stage: ${currentStage.replace('_', ' ').toUpperCase()}
