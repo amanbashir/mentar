@@ -25,9 +25,12 @@ export const ecommerceBlueprint = {
         goal: "Define a specific type of person already spending to solve a problem or reach a goal.",
         checklist: [
           "Persona is easy to describe and find online",
-          "Experiences a clear pain/desire",
+          "Experiences an extreme pain point or desire",
           "Already spending money in the niche",
-          "Found on Reddit, TikTok, FB groups, competitor ads"
+          "Found on Reddit, TikTok, FB groups, competitor ads",
+          "Selling at volumeon TikTok Shop",
+          "Unique, underserved market or idea",
+          "Existing niches that are either expensive, ineffective, or inaccessible",
         ],
         examples: [
           "Men over 30 with chronic back pain",
@@ -44,22 +47,34 @@ export const ecommerceBlueprint = {
           "Facebook Ads Library",
           "Amazon Movers & Shakers",
           "AliExpress & DSers",
-          "Competitor stores via SimilarWeb or myip.ms"
+          "Competitor stores via SimilarWeb or myip.ms",
+          "New exploding trends on explodingtopics.com"
         ],
         validationChecklist: [
-          "2–3+ active competitors",
-          "Solves pain or triggers desire",
-          "Easy to understand",
+          "Not saturated or easily accessible via Amazon",
+          "High perceived value",
+          "High LTV per customer",
+          "Large market size",
+          "2–3+ active competitors, no mass-sold products",
+          "Solves physical or emotionalpain or triggers desire",
           "Visually marketable",
+          "WOW Factor",
           "3x+ markup",
-          "COGS ≤ 30%",
           "Shipping < 14 days",
-          "Room for brand/angle improvement"
+          "Room for brand/angle improvement",
+          "Nothing that requires special licenses or certifications",
+          "Nothing that requires a large initial investment",
+          "Nothing that requires large upfront inventory costs",
+          "Nothing that requires a specialised skillset. Eg. Fashion Design.",
         ],
         redFlags: [
           "Top Amazon/AliExpress listings",
-          "Mass-sold on Shopify with no differentiation",
-          "Lots of negative ad comments"
+          "Mass-sold on Amazon with no differentiation",
+          "Large technical product",
+          "No WOW Factor",
+          "Direct Response Marketing capability",
+          "Requires a large initial investment",
+          "Requires a specialised skillset. Eg. Fashion Design.",
         ]
       },
       {
@@ -68,27 +83,38 @@ export const ecommerceBlueprint = {
           "COGS ≤ 30% of price",
           "Minimum 3x markup",
           "Shipping included in COGS if free",
-          "$15–$60 retail range for ad efficiency"
+          "$40–$200 retail range for ad efficiency"
         ],
         example: {
-          retailPrice: 30,
-          COGS: 10,
+          retailPrice: 60,
+          COGS: 15,
           breakevenROAS: 1.5
         },
-        note: "Avoid products with breakeven ROAS > 2.5"
+        note: "Avoid products with breakeven ROAS > 2"
       },
       {
         title: "Build a Testable Product List",
-        instruction: "Create a spreadsheet with 10–20 products. Track supplier, COGS, pricing, demand, angles, UGC potential.",
+        instruction: "Create a list with 10 products. Track supplier, COGS, pricing, demand, angles, UGC potential.",
         tip: "Don't delete weak ideas. Store in a 'Bench' tab for later."
+      },
+      {
+        title: "Product Sourcing andFulfillment Setup",
+        instruction: "Dropship products from China via AliBaba or specialist agent",
+        process: [
+          "Find products from AliBaba or specialist agent",
+          "Message supplier for costs, quality, saftey, dropship capabilities, and lead time",
+          "Order 5 samples from supplier for content creation and quality check",
+          "Only brand the item once proof of concept is confirmed"
+        ],
+        impact: "Save on large upfront inventory costs by dropshipping product from China."
       },
       {
         title: "Build a Brand Concept (Lightweight)",
         requirements: [
-          "Simple, short brand name",
+          "Simple, short brand name, max 9 letters",
+          "Domain name should be available on Godaddy.com or Namecheap.com",
           "1-line value proposition",
           "Pick tone (wellness, tech, edgy)",
-          "Logo via Canva/AI",
           "Buy .com domain"
         ],
         impact: "Makes your offer feel real, improves conversion & ad creative."
@@ -105,7 +131,8 @@ export const ecommerceBlueprint = {
       "Validated list of 10–20 products",
       "Mapped COGS & pricing",
       "Brand name, logo, and domain",
-      "Clear reason why this product should exist"
+      "Clear reason why this product should exist",
+      "Product supplier confirmed"
     ]
   },
   stage_2: {
@@ -114,7 +141,7 @@ export const ecommerceBlueprint = {
       {
         title: "Shopify Setup",
         checklist: [
-          "Create a Shopify account using $1/month trial",
+          "Create a Shopify account using free trial",
           "Use a business email for signup",
           "Don't overthink the store name (can change later)"
         ]
@@ -146,7 +173,7 @@ export const ecommerceBlueprint = {
           "Headline with problem + solution",
           "Subheadline with credibility + benefit",
           "Image stack: in-use, lifestyle, infographic",
-          "Bullets: 3–5 benefits",
+          "Bullets: 3–5 benefits, 3 main features",
           "Story description: pain → solution → proof → CTA",
           "Offer section with urgency",
           "Trust/guarantee section",
@@ -168,9 +195,8 @@ export const ecommerceBlueprint = {
       },
       {
         title: "Fulfillment Setup",
-        instruction: "Avoid 3rd-party apps; use direct supplier integration.",
+        instruction: "Fulfill orders via supplier",
         process: [
-          "Source via CJ Dropshipping, AliExpress, TikTok Supplier",
           "Send daily CSV to supplier",
           "Receive tracking CSV and upload with MassFulfill"
         ]
@@ -219,6 +245,24 @@ export const ecommerceBlueprint = {
     objective: "Build scroll-stopping, direct-response-style creatives that convert attention into clicks using a repeatable system.",
     steps: [
       {
+        title: "Winning AD Research",
+        process: [
+          "Create an Adspy account",
+          "Search product name or competitor URL in Adspy",
+          "Filter by 'All Ads' and 'All Campaigns' and set the last seen date to 60 days ago",
+          "Sort by 'Most Liked' to find winning creatives with high engagement",
+          "Copy link of winning creative and paste in chat for concept analysis",        
+          "Create a brief for the winning static and video creatives"
+        ],
+        structure: [
+          "Research",
+          "Idea",
+          "Script",
+          "Content",
+          "Edit"
+        ],
+      },
+      {
         title: "Static Ads",
         benefits: [
           "Fastest to produce",
@@ -238,6 +282,15 @@ export const ecommerceBlueprint = {
       },
       {
         title: "UGC & Video Ads",
+        process: [
+          "Order 5 product samples from Amazon if available or supplier if not available",
+          "reate a shotlist based on creative brief for UGC creators",
+          "Shoot 5 videos with the product in use",
+          "Ship other 4 samples to freelancers for UGC",
+          "Use X.com to source UGC creators",
+          "Ensure UGC creators match target persona",
+          "Pay max $120 per UGC video, request 2 hooks per video",
+        ],
         advantages: [
           "Builds trust and relatability",
           "Feels native to social feeds",
@@ -252,35 +305,14 @@ export const ecommerceBlueprint = {
         productionOptions: [
           "CapCut + stock clips + voiceover",
           "TikTok Creative Center",
-          "AI tools like Synthesia"
+          "AI tools like Synthesia, ElevenLabs, Runway"
         ]
       },
-      {
-        title: "Creative Testing & Iteration",
-        testingSteps: [
-          "ABO campaign with 3–5 ad sets",
-          "Use 1 product, 5 creatives",
-          "Budget: $15–30 per ad set",
-          "Run for 24–48 hours"
-        ],
-        metrics: {
-          CTR: "<1% means weak creative",
-          CPC: "> $2 = poor hook",
-          CPM: "> $20 = broad competition",
-          noSales: "Indicates pricing or trust issue",
-          noClicks: "Hook problem"
-        },
-        iterations: [
-          "Make 3 variants of winning creative",
-          "Drop price if no sales",
-          "Swap hook if no clicks"
-        ]
-      }
     ],
     deliverables: [
       "3–5 static ads",
       "3–5 UGC video ads",
-      "3 hook variations each",
+      "2 hook variations each",
       "Meta ad test structure",
       "Clarity on creative performance"
     ]
@@ -288,6 +320,15 @@ export const ecommerceBlueprint = {
   stage_4: {
     objective: "Connect ads, emails, and analytics to track visitors, recover revenue, and monitor key metrics.",
     steps: [
+      {
+        title: "Supplier Confirmation",
+        checklist: [
+          "Check supplier is ready to ship",
+          "Ensure COGs are correctly entered in Shopify",
+          "Ensure territories are correctly targetted in Meta campaigns to avoid extra costs",
+          "Ensure supplier can ship to all target territories"
+        ]
+      },
       {
         title: "Meta Business Manager Setup",
         checklist: [
@@ -341,6 +382,30 @@ export const ecommerceBlueprint = {
           "Google Analytics 4",
           "Tag Manager",
           "Dashboard in Google Sheets"
+        ]
+      },
+      {
+        title: "Creative Testing Setup and Launch + Iteration",
+        important: "Do not use full budget on the first test, only spent 5x Product Price per product test campaign.",
+        testingSteps: [
+          "CBO campaign with 3–5 ad sets",
+          "Set the campagin targeting as broad, the creative does the targeting, not the targeting in the ad set",
+          "Use 1 product, 5 creatives per ad set",
+          "Budget: 1.5x Product Price per ad set",
+          "Run for 24–48 hours",
+          "Schedule every test campaign to start running at midnight for full day results"
+        ],
+        metrics: {
+          CTR: "<1% means weak creative",
+          CPC: "> $2 = poor hook",
+          CPM: "> $20 = broad competition",
+          noSales: "Indicates pricing or trust issue",
+          noClicks: "Hook problem"
+        },
+        iterations: [
+          "Make 3 variants of winning creative",
+          "Drop price if no sales",
+          "Swap hook if no clicks"
         ]
       }
     ],

@@ -989,7 +989,7 @@ I'll use this information to guide you through your ecommerce journey. Let's get
             currentProject.business_type,
             "stage_1",
             currentStrategy,
-            currentProject.total_budget
+            currentProject.total_budget || ""
           );
 
           // Add launch date message if available
@@ -1266,88 +1266,148 @@ I'll use this information to guide you through your ecommerce journey. Let's get
     if (!currentProject) return;
 
     try {
-      // Get the index of the current todo
-      const currentIndex =
-        currentProject.todos?.findIndex((t) => t.task === todoItem.task) || 0;
-
-      // Check if all previous todos are completed
-      const previousTodosCompleted = currentProject.todos
-        ?.slice(0, currentIndex)
-        .every((prevTodo) => prevTodo.completed);
-
-      // If trying to complete a todo when previous ones aren't completed, show toast
-      if (!previousTodosCompleted && isCompleted) {
-        showToast("Complete previous tasks to continue");
-        return;
-      }
-
-      // Create updated todos array
-      const updatedTodos =
-        currentProject.todos?.map((t) =>
-          t.task === todoItem.task ? { ...t, completed: isCompleted } : t
-        ) || [];
-
-      // Get all completed tasks
-      const completedTasks = updatedTodos
-        .filter((t) => t.completed)
-        .map((t) => t.task);
-
-      // Update in database first
-      const { error } = await supabase
-        .from("projects")
-        .update({
-          todos: updatedTodos,
-          tasks_in_progress: completedTasks,
-        })
-        .eq("id", currentProject.id);
-
-      if (error) {
-        console.error("Error updating todo in database:", error);
-        throw error;
-      }
-
-      // Only update local state after successful database update
-      setCurrentProject((prev) =>
-        prev
-          ? {
-              ...prev,
-              todos: updatedTodos,
-              tasks_in_progress: completedTasks,
-            }
-          : null
+      // Update the todo item in the local state
+      const updatedTodos = currentProject.todos.map((todo) =>
+        todo.task === todoItem.task ? { ...todo, completed: isCompleted } : todo
       );
 
-      // Check if all tasks in the current stage are completed
-      const currentStrategy = getStrategyForBusinessType(
-        currentProject.business_type
-      );
+      // Get the number of completed todos before and after this change
+      const previouslyCompletedCount = currentProject.todos.filter(
+        (todo) => todo.completed
+      ).length;
+      const newCompletedCount = updatedTodos.filter(
+        (todo) => todo.completed
+      ).length;
+      const totalTodos = updatedTodos.length;
+
+      // Check if this was the last todo being completed
+      const isLastTodoCompleted =
+        previouslyCompletedCount === totalTodos - 1 &&
+        newCompletedCount === totalTodos;
       const currentStage = currentProject.current_stage as StageKey;
-      const stageCompleted = isStageCompleted(
-        completedTasks,
-        currentStage,
-        currentStrategy,
-        currentProject.todos
-      );
 
-      if (stageCompleted) {
-        // Get next stage
+      // If this was the last todo completed, immediately move to next stage
+      if (isLastTodoCompleted && currentStage) {
+        // Get the next stage
         const nextStage = getNextStage(currentStage);
+
         if (nextStage) {
           // Generate new todos for the next stage
-          await updateTodosForStage(nextStage, currentProject);
+          const newTodos = await updateTodosForStage(nextStage, currentProject);
 
-          // Add a message to inform the user about stage completion
-          const stageCompletionMessage = `Congratulations! You've completed all tasks for ${currentStage
-            .replace("_", " ")
-            .toUpperCase()}. Moving on to ${nextStage
-            .replace("_", " ")
-            .toUpperCase()}...`;
-          await saveMessage(stageCompletionMessage, false);
+          if (newTodos) {
+            // Update the project with new stage and todos
+            const { error: stageUpdateError } = await supabase
+              .from("projects")
+              .update({
+                current_stage: nextStage,
+                todos: newTodos,
+                completed_stages: [
+                  ...(currentProject.completed_stages || []),
+                  currentStage,
+                ],
+              })
+              .eq("id", currentProject.id);
+
+            if (stageUpdateError) throw stageUpdateError;
+
+            // Update local project state
+            setCurrentProject((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                current_stage: nextStage,
+                todos: newTodos,
+                completed_stages: [
+                  ...(prev.completed_stages || []),
+                  currentStage,
+                ],
+              };
+            });
+
+            // Generate and save stage introduction message
+            const stageIntro = generateStageIntroduction(
+              currentProject.business_type,
+              nextStage,
+              getStrategyForBusinessType(currentProject.business_type),
+              currentProject.total_budget || ""
+            );
+
+            // Save the stage introduction message
+            await saveMessage(stageIntro, false);
+
+            // Update business overview after stage change
+            const updatedMessages = [...messages];
+            const businessOverview = await generateBusinessOverviewSummary(
+              { ...currentProject, current_stage: nextStage, todos: newTodos },
+              updatedMessages
+            );
+
+            // Update project with new business overview
+            const { error: overviewError } = await supabase
+              .from("projects")
+              .update({ business_overview_summary: businessOverview })
+              .eq("id", currentProject.id);
+
+            if (overviewError) throw overviewError;
+
+            // Update local project state with new business overview
+            setCurrentProject((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                business_overview_summary: businessOverview,
+              };
+            });
+
+            return; // Exit early since we've already updated everything
+          }
         }
       }
+
+      // If we're not moving to a new stage, just update the todos
+      const { error: updateError } = await supabase
+        .from("projects")
+        .update({ todos: updatedTodos })
+        .eq("id", currentProject.id);
+
+      if (updateError) throw updateError;
+
+      // Update local project state
+      setCurrentProject((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          todos: updatedTodos,
+        };
+      });
+
+      // Update business overview in real time
+      const updatedMessages = [...messages];
+      const businessOverview = await generateBusinessOverviewSummary(
+        { ...currentProject, todos: updatedTodos },
+        updatedMessages
+      );
+
+      // Update project with new business overview
+      const { error: overviewError } = await supabase
+        .from("projects")
+        .update({ business_overview_summary: businessOverview })
+        .eq("id", currentProject.id);
+
+      if (overviewError) throw overviewError;
+
+      // Update local project state with new business overview
+      setCurrentProject((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          business_overview_summary: businessOverview,
+        };
+      });
     } catch (error) {
       console.error("Error updating todo:", error);
-      alert("Failed to update todo. Please try again.");
+      showToast("Failed to update task. Please try again.");
     }
   };
 

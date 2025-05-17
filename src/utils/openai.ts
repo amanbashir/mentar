@@ -161,6 +161,9 @@ export const generateInitialTodos = async (
 
     For each checklist item, create a maximum of 5 specific, actionable tasks in total for this stage.
     Make the tasks detailed and specific to their business type and budget.
+    Each task should include exact websites, tools, or platforms to use, with specific steps.
+    For example, instead of "Set up social media", say "Create a business account on Instagram by downloading the app from App Store/Google Play, clicking 'Sign Up', selecting 'Create a Business Account', and completing your profile with a 150-character bio that highlights your unique value proposition."
+
     Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
 
     MAX 5 TASKS
@@ -168,8 +171,8 @@ export const generateInitialTodos = async (
 
     Example format:
     [
-      {"task": "Research and analyze 3 direct competitors in the [specific niche] market", "completed": false},
-      {"task": "Create a detailed spreadsheet comparing competitor pricing, features, and target audience", "completed": false}
+      {"task": "Go to Ahrefs.com or SEMrush.com (both offer free trials) and research 3 direct competitors in your niche. Create a spreadsheet listing their top 10 ranking keywords, backlink sources, and content topics.", "completed": false},
+      {"task": "Create a brand style guide using Canva.com's free templates. Define your primary and secondary colors, typography, and visual elements that will be used across all marketing materials.", "completed": false}
     ]`;
 
     console.log("Generating initial todos for:", businessType);
@@ -797,8 +800,7 @@ export const updateTodosForStage = async (
 
     Generate a maximum of 5 ultra-specific, actionable tasks that the user must complete for this stage.
     Each task should include exact websites, tools, or platforms to use, with specific steps.
-    For example, instead of "Get a domain name", say "Go to Namecheap.com or GoDaddy.com and purchase a domain name that includes your main keyword. Budget $10-15 for the first year."
-    Instead of "Set up social media", say "Create a business account on Instagram by downloading the app from App Store/Google Play, clicking 'Sign Up', selecting 'Create a Business Account', and completing your profile with your logo and a 150-character bio."
+    For example, instead of "Set up social media", say "Create a business account on Instagram by downloading the app from App Store/Google Play, clicking 'Sign Up', selecting 'Create a Business Account', and completing your profile with a 150-character bio that highlights your unique value proposition."
 
     Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
 
@@ -809,7 +811,7 @@ export const updateTodosForStage = async (
     Example format:
     [
       {"task": "Go to Ahrefs.com or SEMrush.com (both offer free trials) and research 3 direct competitors in your niche. Create a spreadsheet listing their top 10 ranking keywords, backlink sources, and content topics.", "completed": false},
-      {"task": "Sign up for a free Canva.com account, select the 'Logo' template, and design 3 different logo options using your brand colors. Export them as PNG files with transparent backgrounds.", "completed": false}
+      {"task": "Create a brand style guide using Canva.com's free templates. Define your primary and secondary colors, typography, and visual elements that will be used across all marketing materials.", "completed": false}
     ]`;
 
     console.log(`Generating tasks for stage ${stage} of ${currentProject.business_type} business`);
@@ -885,7 +887,7 @@ async function updateEcommerceTodosForStage(stage: StageKey, currentProject: any
   Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve this stage's objective.
   Each task should include exact websites, tools, or platforms to use with specific steps.
   
-  For example, instead of "Set up your store", write "Sign up for Shopify (shopify.com) using the $1/month starter plan. Choose the 'Dawn' theme, upload your logo, and set your primary color to match. Configure the navigation menu with Home, Products, and Contact pages."
+  For example, instead of "Set up your store", write "Sign up for Shopify (shopify.com) using the $1/month starter plan. Choose the 'Dawn' theme, set your primary brand color, and configure the navigation menu with Home, Products, and Contact pages."
   
   Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
   
@@ -1200,52 +1202,7 @@ export const getAIChatResponse = async (
         f. Always ASK if they'd like to reconsider their choice
         g. If they insist on the lower-scoring option, respect their choice but periodically remind them of the challenges
     14. Always keep users focused on completing the current todo item before moving to the next one.
-    15. Don't generate images or logos, only provide text-based content.
-    
-    ${isExactTodoTask || isTaskRequest ? 
-      `IMPORTANT: The user is asking for help with a specific task or has pasted a todo item from their list.
-      You MUST directly solve their task, not just provide guidance on how to do it.
-      DO NOT say phrases like "Here's how to do this" or "Step-by-step way to do this".
-      Instead, DIRECTLY give them the solution, exact content, templates, or completed work they need.
-      For example:
-      - If they need marketing copy, WRITE the actual marketing copy
-      - If they need a business plan, CREATE the actual business plan
-      - If they need a competitor analysis, PROVIDE the complete analysis
-      - If they need a pricing strategy, DEVELOP the full pricing model
-      - If they need customer personas, create 3-5 detailed personas with success rates
-
-      When providing ANY type of recommendations or multiple options (personas, business ideas, marketing strategies, etc.), you MUST ALWAYS:
-      1. Provide exactly 3-5 specific options/suggestions (never more, never less)
-      2. For EACH option, calculate and display a simple success rate percentage (0-100%) based on:
-         - Market saturation
-         - Budget requirements
-         - Market size
-         - Unique selling proposition
-         - Cash flow potential
-      3. Format each suggestion as:
-         ### Option 1: [Name/Title]
-         [Brief description of the option]
-         
-         **Success Rate: XX%**
-         
-         This option has a XX% chance of success based on market analysis, budget requirements, market size, unique selling proposition, and cash flow potential.
-      
-      4. After presenting all options with their success rates, ALWAYS:
-         a. Conclude by STRONGLY recommending the option with the highest success rate
-         b. If they later express interest in a lower-scoring option, diplomatically express concern
-         c. Point out that the higher success rate option offers better chances of success
-         d. ALWAYS include the success rate percentage
-         e. For product ideas, explicitly state the difference in success rates
-         f. Ask if they'd like to reconsider with something like: "I notice you're interested in [Option X] with a [Y]% success rate. Before proceeding, I'd like to highlight that [Highest Success Rate Option] has a [Z]% success rate, which is [Z-Y]% higher, indicating a stronger potential for success. Would you like to reconsider?"
-         g. If they still insist on a lower-scoring option, respect their choice but periodically remind them of the challenges
-
-      Provide the FINISHED WORK they need, not just instructions on how to do it themselves.
-      Include specific information, examples, and completed templates that they can use immediately.
-
-      Remember to format your response using React-Markdown syntax for proper rendering.` :
-      `Remember to format your response using React-Markdown syntax for proper rendering.`
-      
-    }`;
+    15. Don't generate images, only provide text-based content.`;
 
     // Log details for debugging
     console.log("API Request details:");
