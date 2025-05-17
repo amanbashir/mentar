@@ -1,0 +1,100 @@
+.delete-project-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.delete-project-dialog {
+  background: rgba(23, 23, 23, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+}
+
+.delete-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.warning-icon {
+  color: #ff4444;
+  font-size: 24px;
+}
+
+.delete-project-dialog h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.delete-dialog-content {
+  margin-bottom: 24px;
+}
+
+.delete-project-dialog p {
+  margin: 0 0 12px 0;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.warning-text {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 0.9rem !important;
+}
+
+.delete-project-dialog strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.delete-project-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.delete-project-actions button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.cancel-button {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cancel-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.delete-button {
+  background-color: #ff4444;
+  color: white;
+}
+
+.delete-button:hover {
+  background-color: #ff2222;
+}
