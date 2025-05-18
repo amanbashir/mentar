@@ -1,5 +1,6 @@
 export interface StageData {
   objective: string;
+  steps: any[];
   checklist?: string[];
   levers?: string[];
   delegation?: {
@@ -11,4 +12,12 @@ export interface StageData {
     tools: string[];
     templates: string[];
   };
+  metrics?: {
+    CPA: string;
+    retention: string;
+    profitMargin: string;
+    weeklyCalls: string;
+    ROAS: string;
+  };
+  retentionLevers?: string[];
 } 

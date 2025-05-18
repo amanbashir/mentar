@@ -1,6 +1,6 @@
 import { findTopModels } from './scoreCalculator';
 
-export type BusinessModel = 'eCommerce' | 'Copywriting' | 'SMMA' | 'High Ticket Sales' | 'SaaS';
+export type BusinessModel = 'Software' | 'Copywriting' | 'Agency' | 'Ecommerce';
 
 export interface UserAnswers {
   capital?: string;
@@ -66,12 +66,10 @@ export const CLARIFICATION_MESSAGES = {
 };
 
 export const KNOWN_BUSINESS_MODELS = [
+  'software',
+  'agency',
   'ecommerce',
-  'smma',
-  'saas',
-  'copywriting',
-  'high ticket sales',
-  'upgrade'
+  'copywriting'
 ];
 
 export const questions: string[] = [

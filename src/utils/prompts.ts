@@ -50,30 +50,39 @@ They may have some business experience, but they need practical guidance on how 
 They don't have time for abstract theory - they need concrete steps they can take today to make progress on their business goals.`;
 
 // Business strategy prompts for different business types
-export const saasStrategyPrompt = `For SaaS businesses, focus on:
-- Market validation before building
-- Creating a minimum viable product (MVP)
-- User acquisition and feedback loops
-- Pricing models and user retention
-- Technical infrastructure and scalability
-- SaaS metrics (CAC, LTV, churn rate)
-- Funding options if needed
+export const softwareStrategyPrompt = `For software businesses, focus on:
+- Market validation and idea generation using AI tools
+- Building MVPs with no-code and AI tools
+- Setting up landing pages and collecting leads
+- Organic growth through content and community
+- Converting users to paying customers
+- Optimizing key SaaS metrics
+- Scaling with systems and team
 
-Guide the user through methodical product development, iterative improvements based on user feedback, 
-and sustainable growth strategies.`;
+Guide the user through validating ideas, building with modern tools, acquiring users organically, 
+and scaling sustainably.`;
 
-export const agencyStrategyPrompt = `For agency businesses, focus on:
-- Defining clear service offerings
-- Positioning and specialization in the market
-- Client acquisition strategies
-- Project management and service delivery
-- Pricing models (hourly, project-based, retainer)
-- Team building and managing freelancers
-- Creating systems and processes
-- Client retention and upselling
+export const agencyStrategyPrompt = `For SMMA (Social Media Marketing Agency) businesses, focus on:
+- Choosing a high-conviction niche and no-brainer offer
+- Building authority through content and outreach
+- Booking sales calls through cold outreach and value-first content
+- Delivering results with systemized fulfillment
+- Scaling with team and systems
+- Retaining clients and optimizing profitability
 
-Guide the user through building a reputation, securing initial clients, delivering exceptional work, 
-and developing a steady client pipeline.`;
+Guide the user through niching down, creating irresistible offers, acquiring clients through outreach, 
+and building a scalable agency model.`;
+
+export const copywritingStrategyPrompt = `For copywriting businesses, focus on:
+- Evaluating fit and building case studies
+- Learning copywriting structure and formats
+- Landing clients with value-first acquisition
+- Delivering high-converting copy consistently
+- Transitioning to paid work and scaling
+- Building systems and team
+
+Guide the user through building a portfolio, mastering copy formats, acquiring clients, 
+and scaling into a sustainable business.`;
 
 export const ecommerceStrategyPrompt = `For e-commerce businesses, focus on:
 - Product selection and sourcing
@@ -88,24 +97,11 @@ export const ecommerceStrategyPrompt = `For e-commerce businesses, focus on:
 Guide the user through market validation, supply chain management, creating compelling product listings, 
 and establishing efficient fulfillment systems.`;
 
-export const copywritingStrategyPrompt = `For copywriting/content businesses, focus on:
-- Building a specialized portfolio
-- Finding initial clients and projects
-- Setting competitive rates
-- Developing a personal brand
-- Creating content creation processes
-- Scaling through hiring or productizing
-- Creating recurring revenue streams
-- Building client relationships
-
-Guide the user through establishing expertise, finding their niche, attracting the right clients, 
-and scaling beyond trading time for money.`;
-
 // Functions to get the appropriate strategy prompt based on business type
 export const getStrategyPrompt = (businessType: string): string => {
   switch (businessType.toLowerCase()) {
-    case "saas":
-      return saasStrategyPrompt;
+    case "software":
+      return softwareStrategyPrompt;
     case "agency":
       return agencyStrategyPrompt;
     case "ecommerce":
@@ -113,7 +109,7 @@ export const getStrategyPrompt = (businessType: string): string => {
     case "copywriting":
       return copywritingStrategyPrompt;
     default:
-      return saasStrategyPrompt; // Default to SaaS strategy
+      return softwareStrategyPrompt; // Default to software strategy
   }
 };
 

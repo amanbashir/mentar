@@ -1,9 +1,15 @@
 import { supabase } from "../lib/supabaseClient";
-import { saasStrategy } from "../../lib/mentars/saasStrategy";
-import { agencyStrategy } from "../../lib/mentars/agencyStrategy";
-import { ecomStrategy } from "../../lib/mentars/ecomStrategy";
-import { copywritingStrategy } from "../../lib/mentars/copywritingStrategy";
-import { ecommerceBlueprint } from "../../lib/mentars/ecom-new-strat";
+
+
+import {softwareBlueprint} from '../../lib/mentars/software-new-strat';
+import {smmaBlueprint} from '../../lib/mentars/smma-new-strat';
+import {copywritingBlueprint} from '../../lib/mentars/copywriting-new-strat.ts';
+import {ecommerceBlueprint} from '../../lib/mentars/ecom-new-strat.ts';
+import { StageData } from "../types/stage";
+import { Project, StageKey } from '../types/project';
+
+// Helper functions for extracting information from messages
+
 
 // Helper functions for extracting information from messages
 export const extractBudget = (text: string): string | null => {
@@ -100,94 +106,363 @@ interface TodoItem {
   completed: boolean;
 }
 
-interface StageData {
+// Types for SMMA Blueprint
+interface SMMAStep {
+  title: string;
+  criteria?: string[];
+  examples?: string[];
+  lowRiskAngles?: string[];
+  samplePitch?: string;
+}
+
+interface SMMAStage1 {
   objective: string;
-  checklist?: string[];
-  aiSupport?: string[];
-  outreachTypes?: string[];
-  outreachChecklist?: string[];
-  resources?: {
-    tools: string[];
-    templates: string[];
+  steps: SMMAStep[];
+}
+
+interface SMMABlueprint {
+  preQualification: {
+    description: string;
+    questions: string[];
+    guidance: string;
   };
-  metrics?: string[];
-  scaling?: string[];
+  stage_1: SMMAStage1;
+  stage_2: any; // Add proper typing if needed
+  stage_3: any;
+  stage_4: any;
+  stage_5: any;
 }
 
-interface BusinessStrategy {
-  stage_1: StageData;
-  stage_2: StageData;
-  stage_3: StageData;
-  stage_4: StageData;
-  stage_5: StageData;
-  scaling: StageData;
+// Types for Copywriting Blueprint
+interface CopywritingStep {
+  title: string;
+  examples?: string[];
+  tip?: string;
+  process?: string[];
+  freeWorkPriorities?: string[];
+  instructions?: string[];
 }
 
-type StageKey = keyof BusinessStrategy;
+interface CopywritingStage1 {
+  objective: string;
+  steps: CopywritingStep[];
+}
 
-// A typed empty strategy to use for progress calculations
-export const typedSaasStrategy: BusinessStrategy = saasStrategy as BusinessStrategy;
+interface CopywritingBlueprint {
+  preQualification: {
+    description: string;
+    questions: string[];
+    actions: string[];
+  };
+  stage_1: CopywritingStage1;
+  stage_2: any; // Add proper typing if needed
+  stage_3: any;
+  stage_4: any;
+  stage_5: any;
+}
 
-// Generate todos based on business type and budget
-export const generateInitialTodos = async (
-  projectId: string,
-  budget: string,
-  businessType: string,
-) => {
-  try {
-    // Check API key
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      console.error("OpenAI API key is missing in generateInitialTodos");
-      throw new Error("API configuration is missing");
-    }
+// Types for Software Blueprint
+interface SoftwareStep {
+  title: string;
+  tools?: string[] | string;
+  analysis?: string[];
+  outcome?: string;
+  platforms?: string[];
+  strategy?: string;
+  aiPrompt?: string;
+}
 
-    // For ecommerce, use the new blueprint structure
-    if (businessType.toLowerCase() === "ecommerce") {
-      return await generateEcommerceTodos(projectId, budget);
-    }
+interface SoftwareStage1 {
+  objective: string;
+  steps: SoftwareStep[];
+}
 
-    // For all other business types, use the original strategy
-    const currentStrategy = getStrategyForBusinessType(businessType);
-    const stage1Data = currentStrategy.stage_1;
+interface SoftwareBlueprint {
+  preQualification: {
+    description: string;
+    questions: string[];
+    guidance: string;
+  };
+  stage_1: SoftwareStage1;
+  stage_2: any; // Add proper typing if needed
+  stage_3: any;
+  stage_4: any;
+  stage_5: any;
+  stage_6?: any;
+}
 
-    if (!stage1Data?.checklist) {
-      throw new Error("No checklist found for stage 1");
-    }
+// Type assertions for the blueprints
+const typedSMMABlueprint = smmaBlueprint as SMMABlueprint;
+const typedCopywritingBlueprint = copywritingBlueprint as CopywritingBlueprint;
+const typedSoftwareBlueprint = softwareBlueprint as SoftwareBlueprint;
 
-    const todoGenerationPrompt = `As an AI business mentor, 
-    generate detailed, 5 actionable tasks for building a ${businessType} business with a budget of ${budget}.
-    The tasks should be based on the following checklist items:
+// Update the BusinessStrategy interface to include all blueprint types
+export interface BusinessStrategy {
+  preQualification?: {
+    description: string;
+    questions: string[];
+    actions?: string[];
+    guidance?: string;
+  };
+  stage_1: SMMAStage1 | CopywritingStage1 | SoftwareStage1 | any;
+  stage_2: any;
+  stage_3: any;
+  stage_4: any;
+  stage_5: any;
+  stage_6?: any;
+  scaling?: any;
+  [key: string]: any;
+}
 
-    ${stage1Data}
-   
+// Update the typedSaasStrategy to use the proper type
+export const typedSaasStrategy: BusinessStrategy = typedSoftwareBlueprint;
 
-    For each checklist item, create a maximum of 5 specific, actionable tasks in total for this stage.
-    Make the tasks detailed and specific to their business type and budget.
-    Each task should include exact websites, tools, or platforms to use, with specific steps.
-    For example, instead of "Set up social media", say "Create a business account on Instagram by downloading the app from App Store/Google Play, clicking 'Sign Up', selecting 'Create a Business Account', and completing your profile with a 150-character bio that highlights your unique value proposition."
+// Rename old functions to avoid conflicts
+async function generateSMMATodosLegacy(projectId: string, budget: string) {
+  // Get the first stage data from smmaBlueprint with proper typing
+  const stage1Data = typedSMMABlueprint.stage_1;
 
-    Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
-
-    MAX 5 TASKS
-    DONT GENERATE MORE THAN 5 TASKS
-
-    Example format:
-    [
-      {"task": "Go to Ahrefs.com or SEMrush.com (both offer free trials) and research 3 direct competitors in your niche. Create a spreadsheet listing their top 10 ranking keywords, backlink sources, and content topics.", "completed": false},
-      {"task": "Create a brand style guide using Canva.com's free templates. Define your primary and secondary colors, typography, and visual elements that will be used across all marketing materials.", "completed": false}
-    ]`;
-
-
-    return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
-  } catch (error) {
-    console.error("Error generating todos:", error);
-    throw error;
+  if (!stage1Data || !stage1Data.steps) {
+    throw new Error("No steps found for stage 1 in SMMA blueprint");
   }
-};
 
-// Helper function to generate ecommerce todos based on the new blueprint
-async function generateEcommerceTodos(projectId: string, budget: string) {
+  // Get project to check for prequalification data
+  const { data: project, error: getProjectError } = await supabase
+    .from("projects")
+    .select("outputs")
+    .eq("id", projectId)
+    .single();
+
+  if (getProjectError) throw getProjectError;
+
+  // Get prequalification answers if available
+  let prequalificationInfo = "";
+  if (project?.outputs?.prequalification?.answers) {
+    const answers = project.outputs.prequalification.answers;
+    const questions = project.outputs.prequalification.questions || [];
+    
+    // Extract all prequalification info
+    prequalificationInfo = "USER PREQUALIFICATION INFO:\n";
+    for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
+      prequalificationInfo += `${questions[i]}: ${answers[i]}\n`;
+    }
+  }
+
+  // Create a detailed prompt from the SMMA blueprint
+  let steps: string[] = [];
+  let criteria: string[] = [];
+  let examples: string[] = [];
+  
+  // Extract data from steps
+  stage1Data.steps.forEach(step => {
+    if (step.title) steps.push(`${step.title}: ${step.criteria?.join(", ") || ""}`);
+    if (step.criteria) criteria.push(...step.criteria);
+    if (step.examples) examples.push(...step.examples);
+    if (step.lowRiskAngles) examples.push(...step.lowRiskAngles);
+  });
+
+  const todoGenerationPrompt = `As an AI SMMA business mentor, generate 5 specific, actionable tasks for starting a social media marketing agency.
+
+  Stage 1 Objective: ${stage1Data.objective}
+  
+  USER DETAILS:
+  - Budget: ${budget}
+  ${prequalificationInfo}
+  
+  STAGE DETAILS:
+  Steps to Follow:
+  ${steps.join('\n')}
+  
+  Niche Criteria:
+  ${criteria.map(item => `- ${item}`).join('\n')}
+  
+  Offer Examples:
+  ${examples.map(item => `- ${item}`).join('\n')}
+  
+  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve this stage's objective.
+  Each task should include exact websites, tools, or platforms to use with specific steps.
+  
+  For example, instead of "Research your niche", write "Use LinkedIn Sales Navigator (linkedin.com/sales) to find 20 local businesses in the [niche] industry. Create a spreadsheet with their business name, social media handles, current ad spend (if visible), and pain points from their social posts."
+  
+  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
+  
+  Example format:
+  [
+    {"task": "Sign up for Apollo.io (apollo.io) and use their Chrome extension to find 50 business owners in the [niche] industry. Create a spreadsheet with their name, business, email, and LinkedIn profile. Filter for businesses with 5-50 employees and active social media presence.", "completed": false},
+    {"task": "Create a free Canva.com account and design 3 different ad mockups for [niche] businesses. Include a lead magnet offer, social proof section, and clear CTA. Save these as templates for future client pitches.", "completed": false}
+  ]`;
+
+  console.log("Generating initial SMMA todos");
+  console.log("- Budget:", budget);
+  console.log("- Prequalification info available:", !!prequalificationInfo);
+
+  return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
+}
+
+async function generateCopywritingTodosLegacy(projectId: string, budget: string) {
+  // Get the first stage data from copywritingBlueprint with proper typing
+  const stage1Data = typedCopywritingBlueprint.stage_1;
+
+  if (!stage1Data || !stage1Data.steps) {
+    throw new Error("No steps found for stage 1 in copywriting blueprint");
+  }
+
+  // Get project to check for prequalification data
+  const { data: project, error: getProjectError } = await supabase
+    .from("projects")
+    .select("outputs")
+    .eq("id", projectId)
+    .single();
+
+  if (getProjectError) throw getProjectError;
+
+  // Get prequalification answers if available
+  let prequalificationInfo = "";
+  if (project?.outputs?.prequalification?.answers) {
+    const answers = project.outputs.prequalification.answers;
+    const questions = project.outputs.prequalification.questions || [];
+    
+    // Extract all prequalification info
+    prequalificationInfo = "USER PREQUALIFICATION INFO:\n";
+    for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
+      prequalificationInfo += `${questions[i]}: ${answers[i]}\n`;
+    }
+  }
+
+  // Create a detailed prompt from the copywriting blueprint
+  let steps: string[] = [];
+  let examples: string[] = [];
+  let priorities: string[] = [];
+  
+  // Extract data from steps
+  stage1Data.steps.forEach(step => {
+    if (step.title) steps.push(`${step.title}: ${step.tip || ""}`);
+    if (step.examples) examples.push(...step.examples);
+    if (step.freeWorkPriorities) priorities.push(...step.freeWorkPriorities);
+    if (step.process) steps.push(...step.process);
+  });
+
+  const todoGenerationPrompt = `As an AI copywriting business mentor, generate 5 specific, actionable tasks for starting a copywriting business.
+
+  Stage 1 Objective: ${stage1Data.objective}
+  
+  USER DETAILS:
+  - Budget: ${budget}
+  ${prequalificationInfo}
+  
+  STAGE DETAILS:
+  Steps to Follow:
+  ${steps.join('\n')}
+  
+  Niche Examples:
+  ${examples.map(item => `- ${item}`).join('\n')}
+  
+  Portfolio Priorities:
+  ${priorities.map(item => `- ${item}`).join('\n')}
+  
+  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve this stage's objective.
+  Each task should include exact websites, tools, or platforms to use with specific steps.
+  
+  For example, instead of "Create a portfolio", write "Sign up for Notion (notion.so) and create a portfolio page with 3 sections: (1) Before/After examples, (2) Testimonials, and (3) Services. Use their free templates to create a professional layout and add a contact form."
+  
+  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
+  
+  Example format:
+  [
+    {"task": "Create a free account on Upwork (upwork.com) and complete your profile with a compelling bio that highlights your copywriting focus. Write 3 sample proposals for email sequence projects in your chosen niche, including your approach and pricing strategy.", "completed": false},
+    {"task": "Sign up for Hunter.io (hunter.io) and use their free credits to find 20 business owners in your niche. Create a spreadsheet with their name, business, email, and website. Prepare a personalized outreach template offering a free email sequence rewrite.", "completed": false}
+  ]`;
+
+  console.log("Generating initial copywriting todos");
+  console.log("- Budget:", budget);
+  console.log("- Prequalification info available:", !!prequalificationInfo);
+
+  return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
+}
+
+async function generateSoftwareTodosLegacy(projectId: string, budget: string) {
+  // Get the first stage data from softwareBlueprint with proper typing
+  const stage1Data = typedSoftwareBlueprint.stage_1;
+
+  if (!stage1Data || !stage1Data.steps) {
+    throw new Error("No steps found for stage 1 in software blueprint");
+  }
+
+  // Get project to check for prequalification data
+  const { data: project, error: getProjectError } = await supabase
+    .from("projects")
+    .select("outputs")
+    .eq("id", projectId)
+    .single();
+
+  if (getProjectError) throw getProjectError;
+
+  // Get prequalification answers if available
+  let prequalificationInfo = "";
+  if (project?.outputs?.prequalification?.answers) {
+    const answers = project.outputs.prequalification.answers;
+    const questions = project.outputs.prequalification.questions || [];
+    
+    // Extract all prequalification info
+    prequalificationInfo = "USER PREQUALIFICATION INFO:\n";
+    for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
+      prequalificationInfo += `${questions[i]}: ${answers[i]}\n`;
+    }
+  }
+
+  // Create a detailed prompt from the software blueprint
+  let steps: string[] = [];
+  let tools: string[] = [];
+  let analysis: string[] = [];
+  
+  // Extract data from steps
+  stage1Data.steps.forEach(step => {
+    if (step.title) steps.push(`${step.title}: ${step.outcome || ""}`);
+    if (step.tools) tools.push(...(Array.isArray(step.tools) ? step.tools : [step.tools]));
+    if (step.analysis) analysis.push(...step.analysis);
+    if (step.platforms) tools.push(...step.platforms);
+    if (step.strategy) steps.push(step.strategy);
+  });
+
+  const todoGenerationPrompt = `As an AI software business mentor, generate 5 specific, actionable tasks for starting a SaaS business.
+
+  Stage 1 Objective: ${stage1Data.objective}
+  
+  USER DETAILS:
+  - Budget: ${budget}
+  ${prequalificationInfo}
+  
+  STAGE DETAILS:
+  Steps to Follow:
+  ${steps.join('\n')}
+  
+  Tools to Use:
+  ${tools.map(item => `- ${item}`).join('\n')}
+  
+  Analysis Points:
+  ${analysis.map(item => `- ${item}`).join('\n')}
+  
+  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve this stage's objective.
+  Each task should include exact websites, tools, or platforms to use with specific steps.
+  
+  For example, instead of "Research competitors", write "Create a free account on G2 (g2.com) and search for [your category] software. Create a spreadsheet comparing the top 5 competitors' features, pricing, and user reviews. Use their comparison tool to export the data."
+  
+  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
+  
+  Example format:
+  [
+    {"task": "Sign up for Product Hunt (producthunt.com) and use their search to find 10 trending SaaS products in your target category. Create a spreadsheet analyzing their launch date, pricing, features, and user comments. Look for common pain points in the comments.", "completed": false},
+    {"task": "Create a free account on BuiltWith (builtwith.com) and use their technology lookup to analyze 5 successful competitors. Document their tech stack, integrations, and marketing tools. Create a list of must-have features based on their common technologies.", "completed": false}
+  ]`;
+
+  console.log("Generating initial software todos");
+  console.log("- Budget:", budget);
+  console.log("- Prequalification info available:", !!prequalificationInfo);
+
+  return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
+}
+
+async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
   // Get the first stage data from ecommerceBlueprint
   const stage1Data = ecommerceBlueprint.stage_1;
 
@@ -382,6 +657,119 @@ async function generateEcommerceTodos(projectId: string, budget: string) {
   return todos;
 }
 
+// Update references to use the legacy functions
+export async function generateTodosForProject(
+  projectId: string,
+  businessType: string,
+  budget: string
+) {
+  switch (businessType) {
+    case "ecommerce":
+      return await generateEcommerceTodosLegacy(projectId, budget);
+    case "agency":
+      return await generateSMMATodosLegacy(projectId, budget);
+    case "copywriting":
+      return await generateCopywritingTodosLegacy(projectId, budget);
+    case "software":
+      return await generateSoftwareTodosLegacy(projectId, budget);
+    default:
+      throw new Error(`Unsupported business type: ${businessType}`);
+  }
+}
+
+// Keep the new exported functions
+export const generateEcommerceTodos = async (
+  stage: StageKey,
+  project: Project
+): Promise<any[] | null> => {
+  try {
+    // Get the appropriate strategy based on the stage
+    const strategy = getStrategyForBusinessType('ecommerce');
+    const stageData = strategy[stage];
+    
+    if (!stageData) {
+      console.error('Invalid stage for ecommerce:', stage);
+      return null;
+    }
+
+    // Generate todos based on stage data
+    const todos = stageData.todos || [];
+    return todos;
+  } catch (error) {
+    console.error('Error generating ecommerce todos:', error);
+    return null;
+  }
+};
+
+export const generateSoftwareTodos = async (
+  stage: StageKey,
+  project: Project
+): Promise<any[] | null> => {
+  try {
+    // Get the appropriate strategy based on the stage
+    const strategy = getStrategyForBusinessType('software');
+    const stageData = strategy[stage];
+    
+    if (!stageData) {
+      console.error('Invalid stage for software:', stage);
+      return null;
+    }
+
+    // Generate todos based on stage data
+    const todos = stageData.todos || [];
+    return todos;
+  } catch (error) {
+    console.error('Error generating software todos:', error);
+    return null;
+  }
+};
+
+export const generateSMMATodos = async (
+  stage: StageKey,
+  project: Project
+): Promise<any[] | null> => {
+  try {
+    // Get the appropriate strategy based on the stage
+    const strategy = getStrategyForBusinessType('agency');
+    const stageData = strategy[stage];
+    
+    if (!stageData) {
+      console.error('Invalid stage for agency:', stage);
+      return null;
+    }
+
+    // Generate todos based on stage data
+    const todos = stageData.todos || [];
+    return todos;
+  } catch (error) {
+    console.error('Error generating agency todos:', error);
+    return null;
+  }
+};
+
+export const generateCopywritingTodos = async (
+  stage: StageKey,
+  project: Project
+): Promise<any[] | null> => {
+  try {
+    // Get the appropriate strategy based on the stage
+    const strategy = getStrategyForBusinessType('copywriting');
+    const stageData = strategy[stage];
+    
+    if (!stageData) {
+      console.error('Invalid stage for copywriting:', stage);
+      return null;
+    }
+
+    // Generate todos based on stage data
+    const todos = stageData.todos || [];
+    return todos;
+  } catch (error) {
+    console.error('Error generating copywriting todos:', error);
+    return null;
+  }
+};
+
 // Helper function to generate and save todos
 async function generateAndSaveTodos(projectId: string, budget: string, todoGenerationPrompt: string) {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -540,150 +928,21 @@ export const generateLaunchDateMessage = async (launchDate: string, projectId?: 
   }
 };
 
-// Generate stage introduction
-export const generateStageIntroduction = (
-  businessType: string,
-  stage: StageKey,
-  strategy: BusinessStrategy,
-  budget: string
-): string => {
-  const stageData = strategy[stage];
-  const stageNumber = stage.replace("stage_", "");
-  
-  // For ecommerce, use the richer information from ecommerceBlueprint
-  if (businessType.toLowerCase() === "ecommerce") {
-    // Check if the stage exists in ecommerceBlueprint
-    const blueprintKey = stage as keyof typeof ecommerceBlueprint;
-    if (!ecommerceBlueprint[blueprintKey] || blueprintKey === 'preQualification') {
-      return getDefaultStageIntroduction(stageNumber, businessType, stageData, budget);
-    }
-    
-    const ecomStage = ecommerceBlueprint[blueprintKey];
-    
-    let stepsContent = "";
-    if ('steps' in ecomStage && Array.isArray(ecomStage.steps)) {
-      stepsContent = ecomStage.steps.map((step: any) => {
-        let stepContent = `### ${step.title}\n`;
-        
-        if (step.goal) stepContent += `**Goal:** ${step.goal}\n\n`;
-        
-        if (step.checklist && Array.isArray(step.checklist)) {
-          stepContent += "**Checklist:**\n" + step.checklist.map((item: string) => `• ${item}`).join("\n") + "\n\n";
-        } else if (step.requirements && Array.isArray(step.requirements)) {
-          stepContent += "**Requirements:**\n" + step.requirements.map((item: string) => `• ${item}`).join("\n") + "\n\n";
-        } else if (step.validationChecklist && Array.isArray(step.validationChecklist)) {
-          stepContent += "**Validation Checklist:**\n" + step.validationChecklist.map((item: string) => `• ${item}`).join("\n") + "\n\n";
-        }
-        
-        return stepContent;
-      }).join("");
-    }
-    
-    let deliverables = "";
-    if ('deliverables' in ecomStage && Array.isArray(ecomStage.deliverables)) {
-      deliverables = "**Deliverables:**\n" + ecomStage.deliverables.map((item: string) => `• ${item}`).join("\n");
-    }
-    
-    let pitfalls = "";
-    if ('pitfalls' in ecomStage && Array.isArray(ecomStage.pitfalls)) {
-      pitfalls = "**Pitfalls to Avoid:**\n" + ecomStage.pitfalls.map((item: string) => `• ${item}`).join("\n");
-    }
-    
-    return `
-Great! I've set your budget to ${budget}. Let me introduce you to Stage ${stageNumber} of building your ecommerce business.
 
-
-We are at now Stage ${stageNumber} of building your ecommerce business.
-Our objective here is to: ${ecomStage.objective}
-
-Next Steps:
-1. Review the tasks I've generated for you in the sidebar
-2. Start with the first task and let me know when you complete it
-3. I'll guide you through each step and help you make progress
-
-Would you like to start with the first task? I'm here to help you every step of the way! 
-
-Simple click on "Get Started" on a particular task and I'll guide you through it.`;
-
-  }
-  
-  // For other business types, use the original format
-  return getDefaultStageIntroduction(stageNumber, businessType, stageData, budget);
-};
-
-// Helper function for the default stage introduction format
-function getDefaultStageIntroduction(
-  stageNumber: string,
-  businessType: string,
-  stageData: StageData,
-  budget: string
-): string {
-  return `
-Great! I've set your budget to ${budget}. Let me introduce you to Stage ${stageNumber} of building your ${businessType} business.
-
-Stage ${stageNumber} Objective: ${stageData.objective}
-
-Your Action Plan:
-${stageData.checklist?.map((item) => `• ${item}`).join("\n")}
-
-Next Steps:
-1. Review the tasks I've generated for you in the sidebar
-2. Start with the first task and let me know when you complete it
-3. I'll guide you through each step and help you make progress
-
-Pro Tips:
-${stageData.aiSupport?.map((tip) => `• ${tip}`).join("\n")}
-
-Would you like to start with the first task? I'm here to help you every step of the way!`;
-}
 
 // Get the appropriate strategy based on business type
 export const getStrategyForBusinessType = (businessType: string): BusinessStrategy => {
   switch (businessType.toLowerCase()) {
-    case "saas":
-      return saasStrategy as BusinessStrategy;
-    case "agency":
-      return agencyStrategy as BusinessStrategy;
-    case "ecommerce": {
-      // Convert ecommerceBlueprint to match BusinessStrategy interface
-      const adaptedStrategy: BusinessStrategy = {
-        stage_1: {
-          objective: ecommerceBlueprint.stage_1.objective,
-          checklist: extractChecklistItems(ecommerceBlueprint.stage_1),
-          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_1)
-        },
-        stage_2: {
-          objective: ecommerceBlueprint.stage_2.objective,
-          checklist: extractChecklistItems(ecommerceBlueprint.stage_2),
-          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_2)
-        },
-        stage_3: {
-          objective: ecommerceBlueprint.stage_3.objective,
-          checklist: extractChecklistItems(ecommerceBlueprint.stage_3),
-          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_3)
-        },
-        stage_4: {
-          objective: ecommerceBlueprint.stage_4.objective,
-          checklist: extractChecklistItems(ecommerceBlueprint.stage_4),
-          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_4)
-        },
-        stage_5: {
-          objective: ecommerceBlueprint.stage_5.objective,
-          checklist: extractChecklistItems(ecommerceBlueprint.stage_5),
-          aiSupport: extractAISupportItems(ecommerceBlueprint.stage_5)
-        },
-        scaling: {
-          objective: ecommerceBlueprint.scaling.objective,
-          checklist: extractScalingItems(ecommerceBlueprint.scaling),
-          aiSupport: ecommerceBlueprint.scaling.levers?.map(lever => lever.title) || []
-        }
-      };
-      return adaptedStrategy;
-    }
-    case "copywriting":
-      return copywritingStrategy as BusinessStrategy;
+    case 'software':
+      return softwareBlueprint as unknown as BusinessStrategy;
+    case 'agency':
+      return smmaBlueprint as unknown as BusinessStrategy;
+    case 'copywriting':
+      return copywritingBlueprint as unknown as BusinessStrategy;
+    case 'ecommerce':
+      return ecommerceBlueprint as unknown as BusinessStrategy;
     default:
-      return saasStrategy as BusinessStrategy; // Default to SaaS strategy
+      return softwareBlueprint as unknown as BusinessStrategy;
   }
 };
 
@@ -1367,13 +1626,17 @@ export const getAIChatResponse = async (
 // Get next stage
 export const getNextStage = (currentStage: StageKey): StageKey | null => {
   const stages: StageKey[] = [
-    "stage_1",
-    "stage_2",
-    "stage_3",
-    "stage_4",
-    "stage_5",
-    "scaling",
+    'preStartFitCheck',
+    'preStartEvaluation',
+    'preQualification',
+    'stage_1',
+    'stage_2',
+    'stage_3',
+    'stage_4',
+    'stage_5',
+    'scaling'
   ];
+  
   const currentIndex = stages.indexOf(currentStage);
   return currentIndex < stages.length - 1 ? stages[currentIndex + 1] : null;
 };

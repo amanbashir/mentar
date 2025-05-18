@@ -23,4 +23,20 @@ export interface Project {
 export interface TodoItem {
   task: string;
   completed: boolean;
-} 
+}
+
+export type StageKey = 
+  | 'preStartFitCheck'
+  | 'preStartEvaluation'
+  | 'preQualification'
+  | 'stage_1'
+  | 'stage_2'
+  | 'stage_3'
+  | 'stage_4'
+  | 'stage_5'
+  | 'stage_6'
+  | 'stage_7'
+  | 'stage_8'
+  | 'stage_9'
+  | 'stage_10'
+  | 'scaling'; 

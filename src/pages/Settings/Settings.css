@@ -210,7 +210,11 @@
 }
 
 .profile-section {
-  max-width: 800px;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
   width: 100%;
 }
 
@@ -235,6 +239,8 @@
   background: rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 32px;
+  width: 100%;
+  max-width: 800px;
 }
 
 .profile-picture {
@@ -254,12 +260,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  object-fit: contain;
+}
+
+.profile-title {
+  text-align: left;
 }
 
 .avatar img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .avatar-placeholder {

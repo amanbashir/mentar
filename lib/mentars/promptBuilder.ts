@@ -1,59 +1,70 @@
 import { systemPrompt } from './systemPrompt';
-import { saasStrategy } from './saasStrategy';
-import { copywritingStrategy } from './copywritingStrategy';
+import { softwareBlueprint } from './software-new-strat';
+import { copywritingBlueprint } from './copywriting-new-strat';
+import { smmaBlueprint } from './smma-new-strat';
+import { ecommerceBlueprint } from './ecom-new-strat';
 import { userProfile } from './userProfile';
 import { conversationFlow } from './conversationFlow';
-import { ecomStrategy } from './ecomStrategy';
-import { agencyStrategy } from './agencyStrategy';
 
-export type BusinessType = 'ecommerce' | 'agency' | 'software' | 'copywriting';
+export type BusinessType = 'software' | 'agency' | 'ecommerce' | 'copywriting';
 
 interface BaseStageInfo {
   objective: string;
-  aiSupport: string[];
+  [key: string]: any; // Allow any additional properties for different stage types
 }
 
 interface RegularStageInfo extends BaseStageInfo {
-  checklist: string[];
-  validationChecklist?: string[];
-  pageChecklist?: string[];
-  testingChecklist?: string[];
-  dailyRoutine?: string[];
-  outreachChecklist?: string[];
-  outreachTypes?: string[];
+  pitfalls?: string[];
+  delivery?: string[];
+  aiSupport?: string[];
 }
 
 interface OutreachStageInfo extends BaseStageInfo {
-  outreachChecklist: string[];
-  outreachTypes: string[];
+  criteria?: string[];
+  examples?: string[];
+  lowRiskAngles?: string[];
+  samplePitch?: string;
 }
 
 interface DeliveryStageInfo extends BaseStageInfo {
-  clientDeliverySteps: string[];
+  process?: string[];
+  freeWorkPriorities?: string[];
+  instructions?: string[];
 }
 
 interface SystemsStageInfo extends BaseStageInfo {
-  dailySystems: string[];
-  tools: string[];
+  tools?: string[];
+  analysis?: string[];
+  aiPrompt?: string;
 }
 
 interface ScalingStageInfo extends BaseStageInfo {
-  levers: string[];
-  delegation: {
-    phase1: string[];
-    phase2: string[];
-  };
+  levers?: string[];
+  delegation?: string[];
+  aiSupport?: string[];
 }
 
+interface PreQualificationInfo {
+  description: string;
+  questions: string[];
+  actions?: string[];
+  guidance?: string;
+}
+
+type StageInfo = BaseStageInfo;
+
 interface Strategy {
-  [key: string]: RegularStageInfo | OutreachStageInfo | DeliveryStageInfo | SystemsStageInfo | ScalingStageInfo;
+  preStartFitCheck?: PreQualificationInfo;
+  preStartEvaluation?: PreQualificationInfo;
+  preQualification?: PreQualificationInfo;
+  [key: string]: StageInfo | PreQualificationInfo | undefined;
 }
 
 const strategyMap: Record<BusinessType, Strategy> = {
-  ecommerce: ecomStrategy,
-  agency: agencyStrategy,
-  software: saasStrategy,
-  copywriting: copywritingStrategy
+  software: softwareBlueprint,
+  agency: smmaBlueprint,
+  ecommerce: ecommerceBlueprint,
+  copywriting: copywritingBlueprint
 };
 
 export const stepPrompts: Record<string, string> = {
@@ -67,50 +78,24 @@ export const stepPrompts: Record<string, string> = {
   businessReason: "Why did you choose this business model?"
 };
 
-export const buildPrompt = (businessType: string, stage: string, data: any) => {
-  // Always use the provided businessType, no fallback
-  if (!businessType) {
-    console.error('No business type provided to buildPrompt');
-    return systemPrompt;
-  }
-
-  const strategy = strategyMap[businessType as BusinessType];
-  
-  if (!strategy) {
-    console.error(`No strategy found for model: ${businessType}`);
-    return systemPrompt;
-  }
-
+export function buildPrompt(businessType: BusinessType, stage: string, userInput: string): string {
+  const strategy = strategyMap[businessType];
   const stageInfo = strategy[stage];
-  
+
   if (!stageInfo) {
-    console.error(`No stage info found for stage: ${stage}`);
-    return systemPrompt;
+    return `I don't have specific guidance for ${stage} in the ${businessType} strategy. Please let me know what you'd like to focus on.`;
   }
 
-  const aiSupportText = stageInfo.aiSupport?.map((a: string) => `🧠 ${a}`).join("\n") || "";
+  const { objective } = stageInfo;
+  const aiSupport = stageInfo.aiSupport || [];
+  const checklist = stageInfo.checklist || [];
+  const validationChecklist = stageInfo.validationChecklist || [];
+  const outreachChecklist = stageInfo.outreachChecklist || [];
+  const clientDeliverySteps = stageInfo.clientDeliverySteps || [];
+  const dailySystems = stageInfo.dailySystems || [];
+
+  const aiSupportText = aiSupport.map((a: string) => `🧠 ${a}`).join("\n") || "";
   
-  // Handle different stage types
-  let checklist: string[] = [];
-  if (stage === 'scaling') {
-    checklist = (stageInfo as ScalingStageInfo).levers || [];
-  } else if ('outreachChecklist' in stageInfo) {
-    checklist = (stageInfo as OutreachStageInfo).outreachChecklist || [];
-  } else if ('clientDeliverySteps' in stageInfo) {
-    checklist = (stageInfo as DeliveryStageInfo).clientDeliverySteps || [];
-  } else if ('dailySystems' in stageInfo) {
-    checklist = (stageInfo as SystemsStageInfo).dailySystems || [];
-  } else {
-    const regularStage = stageInfo as RegularStageInfo;
-    checklist = regularStage.checklist ||
-      regularStage.validationChecklist ||
-      regularStage.pageChecklist ||
-      regularStage.testingChecklist ||
-      regularStage.dailyRoutine ||
-      regularStage.outreachChecklist ||
-      [];
-  }
-
   const formattedChecklist = checklist.length
     ? checklist.map((c: string) => `• ${c}`).join("\n")
     : "• No checklist available for this step.";
@@ -123,24 +108,24 @@ export const buildPrompt = (businessType: string, stage: string, data: any) => {
       
       Please review the following aspects of the business plan:
       1. Business Idea Confirmation
-         - Current idea: ${data.ideaConfirmation || 'Not confirmed'}
-         - Validation status: ${data.validationStatus || 'Pending'}
-         - Market fit: ${data.marketFit || 'To be assessed'}
+         - Current idea: ${userInput.ideaConfirmation || 'Not confirmed'}
+         - Validation status: ${userInput.validationStatus || 'Pending'}
+         - Market fit: ${userInput.marketFit || 'To be assessed'}
       
       2. Action Steps
-         - Next immediate actions: ${data.actionSteps || 'To be determined'}
-         - Dependencies: ${data.dependencies || 'None identified'}
-         - Timeline: ${data.timeline || 'To be established'}
+         - Next immediate actions: ${userInput.actionSteps || 'To be determined'}
+         - Dependencies: ${userInput.dependencies || 'None identified'}
+         - Timeline: ${userInput.timeline || 'To be established'}
       
       3. Progress Tracking
-         - Completed steps: ${data.completedSteps || 'None'}
-         - Current focus: ${data.currentFocus || 'Initial setup'}
-         - Blockers: ${data.blockers || 'None identified'}
+         - Completed steps: ${userInput.completedSteps || 'None'}
+         - Current focus: ${userInput.currentFocus || 'Initial setup'}
+         - Blockers: ${userInput.blockers || 'None identified'}
       
       4. Next Actions
-         - Immediate next steps: ${data.nextActions || 'To be determined'}
-         - Resources needed: ${data.resourcesNeeded || 'To be identified'}
-         - Support required: ${data.supportRequired || 'None identified'}
+         - Immediate next steps: ${userInput.nextActions || 'To be determined'}
+         - Resources needed: ${userInput.resourcesNeeded || 'To be identified'}
+         - Support required: ${userInput.supportRequired || 'None identified'}
       
       Please provide:
       1. Confirmation of the business idea and any adjustments needed
@@ -159,7 +144,7 @@ This user has already chosen their business type. If they provide a number in th
 
 🧠 Current Business Model: ${businessType.toUpperCase()}
 📍 Stage: ${stage}, Step: ${stage}
-🎯 Stage Objective: ${stageInfo.objective || "N/A"}
+🎯 Stage Objective: ${objective || "N/A"}
 🔧 AI Support Recommendations: ${aiSupportText}
 
 📌 Stage Checklist:
@@ -169,7 +154,7 @@ Prompt the user to solve the current step. Use a high-context, workshop-style qu
 
 Prompt: ${stepPrompt}
 `;
-};
+}
 
 // Add UserData type
 export interface UserData {
