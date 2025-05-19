@@ -84,6 +84,7 @@ interface Project {
       answers: string[];
       completedAt: string;
       completed?: boolean;
+      rawLaunchDate?: string | null; // Update to allow null
     };
     [key: string]: any;
   };
@@ -233,6 +234,42 @@ const calculateProgress = (
   return Math.round((stageProgress + taskProgress) / 2);
 };
 
+// Add helper function to parse launch date
+const parseLaunchDate = (dateInput: string): string | null => {
+  if (!dateInput) return null;
+
+  // Try to parse relative dates like "2 months", "3 weeks", etc.
+  const relativeDateMatch = dateInput.match(/(\d+)\s+(month|week|day)s?/i);
+  if (relativeDateMatch) {
+    const [_, amount, unit] = relativeDateMatch;
+    const date = new Date();
+    switch (unit.toLowerCase()) {
+      case "month":
+        date.setMonth(date.getMonth() + parseInt(amount));
+        break;
+      case "week":
+        date.setDate(date.getDate() + parseInt(amount) * 7);
+        break;
+      case "day":
+        date.setDate(date.getDate() + parseInt(amount));
+        break;
+    }
+    return date.toISOString().split("T")[0]; // Return YYYY-MM-DD format
+  }
+
+  // Try to parse specific dates
+  try {
+    const date = new Date(dateInput);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split("T")[0]; // Return YYYY-MM-DD format
+    }
+  } catch (e) {
+    console.error("Error parsing date:", e);
+  }
+
+  return null;
+};
+
 function AIChatInterface() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -299,6 +336,10 @@ function AIChatInterface() {
     if (newProject) {
       setCurrentProject(newProject);
       fetchUserProjects();
+
+      // Show intro message first
+      const introMessage = getBusinessIntroMessage(newProject.business_type);
+      saveMessage(introMessage, false);
 
       // Start prequalification if it's an ecommerce project
       if (newProject.business_type === "ecommerce") {
@@ -628,122 +669,19 @@ function AIChatInterface() {
   const getBusinessIntroMessage = (businessType: string): string => {
     switch (businessType.toLowerCase()) {
       case "ecommerce":
-        return `Welcome to your ecommerce journey! I'm here to help you build a successful online store from scratch. Together, we'll:
-• Find profitable products with strong margins
-• Build a high-converting Shopify store
-• Create effective marketing campaigns
-• Scale your business sustainably
-
-Let's start by understanding your goals and resources.`;
-
-      case "software":
-        return `Welcome to your SaaS journey! I'm here to help you build a scalable software business. Together, we'll:
-• Validate and develop your SaaS idea
-• Build an MVP using modern tools
-• Create a compelling landing page
-• Launch and scale your product
-
-Let's start by understanding your goals and resources.`;
-
+        return `Welcome to your ecommerce journey! I'll help you build a successful online store from scratch. We'll focus on finding the right product, setting up your store, and scaling your business through effective marketing. Let's start by understanding your goals and resources.`;
       case "agency":
-        return `Welcome to your SMMA journey! I'm here to help you build a successful social media marketing agency. Together, we'll:
-• Create a high-converting offer
-• Build a client acquisition system
-• Deliver consistent results
-• Scale your agency with systems
-
-Let's start by understanding your goals and resources.`;
-
+        return `Welcome to your Social Media Marketing Agency (SMMA) journey! I'll guide you through building a results-driven agency that helps businesses grow through social media marketing. We'll focus on client acquisition, service delivery, and scaling your operations. Let's begin by assessing your fit for this business model.`;
+      case "software":
+        return `Welcome to your SaaS business journey! I'll help you build a scalable software product that solves real problems and generates recurring revenue. We'll focus on idea validation, MVP development, and growth strategies. Let's start by evaluating your readiness for this venture.`;
       case "copywriting":
-        return `Welcome to your copywriting journey! I'm here to help you build a profitable copywriting business. Together, we'll:
-• Build your portfolio with strategic free work
-• Create high-converting offers
-• Land your first paying clients
-• Scale your business with systems
-
-Let's start by understanding your goals and resources.`;
-
+        return `Welcome to your copywriting business journey! I'll help you build a successful copywriting service that delivers high-converting content for businesses. We'll focus on building your portfolio, finding clients, and delivering results. Let's begin by assessing your fit for this business model.`;
       default:
-        return "Welcome! I'm here to help you build your business. Let's get started!";
+        return `Welcome to your business journey! I'll help you build and grow your business step by step. Let's start by understanding your goals and resources.`;
     }
   };
 
-  // Add function to generate business overview
-  const generateBusinessOverview = async (
-    project: Project,
-    messages: Message[]
-  ): Promise<string> => {
-    const businessType = project.business_type;
-    const budget = project.total_budget;
-    const incomeGoal = project.income_goal;
-    const launchDate = project.expected_launch_date;
-
-    let overview = `## Business Overview\n\n`;
-
-    // Add business type specific overview
-    switch (businessType.toLowerCase()) {
-      case "ecommerce":
-        overview += `• Business Model: E-commerce Store
-• Target: Online retail with focus on product selection and marketing
-• Platform: Shopify-based store
-• Revenue Model: Product sales with subscription potential\n\n`;
-        break;
-
-      case "software":
-        overview += `• Business Model: Software as a Service (SaaS)
-• Target: Recurring revenue through subscription model
-• Platform: Web-based application
-• Revenue Model: Monthly/Annual subscriptions\n\n`;
-        break;
-
-      case "agency":
-        overview += `• Business Model: Social Media Marketing Agency
-• Target: Businesses needing social media growth
-• Services: Paid ads, content creation, strategy
-• Revenue Model: Monthly retainer + performance bonuses\n\n`;
-        break;
-
-      case "copywriting":
-        overview += `• Business Model: Copywriting Services
-• Target: Businesses needing conversion-focused copy
-• Services: Email sequences, landing pages, ads
-• Revenue Model: Project-based + retainer options\n\n`;
-        break;
-    }
-
-    // Add common metrics
-    overview += `## Key Metrics\n`;
-    overview += `• Initial Budget: $${budget || "To be determined"}\n`;
-    overview += `• Target Monthly Income: $${
-      incomeGoal || "To be determined"
-    }\n`;
-    if (launchDate) {
-      overview += `• Target Launch Date: ${new Date(
-        launchDate
-      ).toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })}\n`;
-    }
-
-    // Add current progress
-    const completedStages = project.completed_stages || [];
-    const currentStage = project.current_stage;
-    overview += `\n## Progress\n`;
-    overview += `• Completed Stages: ${completedStages.length}\n`;
-    overview += `• Current Stage: ${
-      currentStage ? renderStageTitle(currentStage) : "Not started"
-    }\n`;
-    overview += `• Tasks Completed: ${
-      project.todos?.filter((todo) => todo.completed).length || 0
-    }/${project.todos?.length || 0}\n`;
-
-    return overview;
-  };
-
-  // Update the startPrequalification function to use business-specific questions
+  // Update the startPrequalification function
   const startPrequalification = () => {
     if (!currentProject) return;
 
@@ -763,50 +701,27 @@ Let's start by understanding your goals and resources.`;
       completed: false,
     });
 
-    // Send intro message first
-    const introMessage = getBusinessIntroMessage(currentProject.business_type);
-    saveMessage(introMessage, false);
-
-    // Then send first question
+    // Send first question without examples
     const firstQuestion = strategy.preQualification.questions[0];
-    const enhancedQuestion = enhancePrequalificationQuestion(firstQuestion, 0);
-    saveMessage(enhancedQuestion, false);
+    saveMessage(firstQuestion, false);
   };
 
-  // Update handleNextPrequalificationQuestion to handle launch date
+  // Update handleNextPrequalificationQuestion to store raw launch date
   const handleNextPrequalificationQuestion = async (userAnswer: string) => {
     if (!currentProject || !prequalification.isPrequalifying) return;
 
+    // Get the appropriate blueprint based on business type
     const strategy = getStrategyForBusinessType(currentProject.business_type);
-    if (!strategy.preQualification?.questions) return;
+    if (!strategy.preQualification?.questions) {
+      console.error(
+        `No prequalification questions found for ${currentProject.business_type}`
+      );
+      return;
+    }
 
+    // Save user's answer
     const newAnswers = [...prequalification.answers, userAnswer];
     const nextQuestionIndex = prequalification.currentQuestionIndex + 1;
-
-    // Check if this was the launch date question
-    const isLaunchDateQuestion = strategy.preQualification.questions[
-      prequalification.currentQuestionIndex
-    ]
-      .toLowerCase()
-      .includes("when do you wish to launch");
-
-    if (isLaunchDateQuestion) {
-      // Try to extract a date from the answer
-      const launchDate = extractLaunchDate(userAnswer);
-      if (launchDate) {
-        // Update project with launch date
-        const { error } = await supabase
-          .from("projects")
-          .update({ expected_launch_date: launchDate })
-          .eq("id", currentProject.id);
-
-        if (!error) {
-          setCurrentProject((prev) =>
-            prev ? { ...prev, expected_launch_date: launchDate } : null
-          );
-        }
-      }
-    }
 
     // Check if we've reached the end of questions
     if (nextQuestionIndex >= strategy.preQualification.questions.length) {
@@ -818,11 +733,22 @@ Let's start by understanding your goals and resources.`;
         completed: true,
       });
 
+      // Find launch date answer
+      const launchDateQuestionIndex =
+        strategy.preQualification.questions.findIndex(
+          (q: string) => q.includes("launch") || q.includes("When do you wish")
+        );
+      const rawLaunchDate =
+        launchDateQuestionIndex !== -1
+          ? newAnswers[launchDateQuestionIndex]
+          : null;
+
       // Save prequalification answers to project metadata
       const prequalificationData = {
         questions: strategy.preQualification.questions,
         answers: newAnswers,
         completedAt: new Date().toISOString(),
+        rawLaunchDate: rawLaunchDate, // Store the raw launch date in the outputs
       };
 
       // Create outputs object if it doesn't exist
@@ -834,9 +760,7 @@ Let's start by understanding your goals and resources.`;
       // Update project with prequalification data
       const { error } = await supabase
         .from("projects")
-        .update({
-          outputs: updatedOutputs,
-        })
+        .update({ outputs: updatedOutputs })
         .eq("id", currentProject.id);
 
       if (error) {
@@ -866,14 +790,10 @@ Let's start by understanding your goals and resources.`;
         await saveMessage(summary, false);
       }
     } else {
-      // Send next question with enhanced guidance
+      // Send next question without examples
       const nextQuestion =
         strategy.preQualification.questions[nextQuestionIndex];
-      const enhancedQuestion = enhancePrequalificationQuestion(
-        nextQuestion,
-        nextQuestionIndex
-      );
-      await saveMessage(enhancedQuestion, false);
+      await saveMessage(nextQuestion, false);
 
       // Update prequalification state
       setPrequalification({
@@ -883,103 +803,6 @@ Let's start by understanding your goals and resources.`;
         completed: false,
       });
     }
-  };
-
-  // Add helper function to extract launch date
-  const extractLaunchDate = (text: string): string | null => {
-    // Try to find common date formats
-    const dateRegex = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/;
-    const match = text.match(dateRegex);
-
-    if (match) {
-      const [_, month, day, year] = match;
-      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-    }
-
-    // Try to find relative dates
-    const relativeDateRegex =
-      /(\d+)\s+(day|week|month|year)s?\s+(from now|later)/i;
-    const relativeMatch = text.match(relativeDateRegex);
-
-    if (relativeMatch) {
-      const [_, amount, unit, _2] = relativeMatch;
-      const date = new Date();
-
-      switch (unit.toLowerCase()) {
-        case "day":
-          date.setDate(date.getDate() + parseInt(amount));
-          break;
-        case "week":
-          date.setDate(date.getDate() + parseInt(amount) * 7);
-          break;
-        case "month":
-          date.setMonth(date.getMonth() + parseInt(amount));
-          break;
-        case "year":
-          date.setFullYear(date.getFullYear() + parseInt(amount));
-          break;
-      }
-
-      return date.toISOString().split("T")[0];
-    }
-
-    return null;
-  };
-
-  // Update generateTodosForProject to include launch date generation
-  const generateTodosForProject = async (
-    projectId: string,
-    budget: string | null,
-    businessType: string
-  ): Promise<any[]> => {
-    // ... existing code ...
-
-    // After generating todos, if there's no launch date set, generate one based on the business type
-    if (!currentProject?.expected_launch_date) {
-      const defaultLaunchDate = new Date();
-
-      // Set default launch date based on business type
-      switch (businessType.toLowerCase()) {
-        case "ecommerce":
-          defaultLaunchDate.setDate(defaultLaunchDate.getDate() + 30); // 30 days for ecommerce
-          break;
-        case "software":
-          defaultLaunchDate.setDate(defaultLaunchDate.getDate() + 90); // 90 days for software
-          break;
-        case "agency":
-          defaultLaunchDate.setDate(defaultLaunchDate.getDate() + 45); // 45 days for agency
-          break;
-        case "copywriting":
-          defaultLaunchDate.setDate(defaultLaunchDate.getDate() + 15); // 15 days for copywriting
-          break;
-      }
-
-      const launchDate = defaultLaunchDate.toISOString().split("T")[0];
-
-      // Update project with launch date
-      const { error } = await supabase
-        .from("projects")
-        .update({ expected_launch_date: launchDate })
-        .eq("id", projectId);
-
-      if (!error) {
-        setCurrentProject((prev) =>
-          prev ? { ...prev, expected_launch_date: launchDate } : null
-        );
-      }
-    }
-
-    return todos;
-  };
-
-  // ... rest of the existing code ...
-
-  // Simplify the enhancePrequalificationQuestion function to just return the question
-  const enhancePrequalificationQuestion = (
-    question: string,
-    index: number
-  ): string => {
-    return question;
   };
 
   // Generate a summary based on prequalification answers
@@ -1187,9 +1010,11 @@ I'll use this information to guide you through your ${currentProject?.business_t
     );
   };
 
-  // Update handleSubmit function
+  // Update handleSubmit to let AI handle date formatting
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Early return if conditions not met
     if (!inputMessage.trim() || isLoading || !currentProject) return;
 
     const userMessage = inputMessage.trim();
@@ -1197,262 +1022,57 @@ I'll use this information to guide you through your ${currentProject?.business_t
     setIsLoading(true);
 
     try {
+      // Save user message to chat history
       await saveMessage(userMessage, true);
 
-      // Check if we're in prequalification mode
+      // Handle prequalification flow
       if (prequalification.isPrequalifying) {
         await handleNextPrequalificationQuestion(userMessage);
         setIsLoading(false);
         return;
       }
 
-      // Get current stage and step data
+      // Get current stage and step data for context
       const currentStageData = getCurrentStageData(currentProject);
       const currentStepData = getCurrentStepData(currentProject);
 
-      // If no todos exist, we need to initialize the project
+      // Initialize project if no todos exist
       if (!currentProject.todos || currentProject.todos.length === 0) {
-        if (!currentProject.total_budget) {
-          const budget = extractBudget(userMessage);
-          if (!budget) {
-            const helpMessage =
-              "Please specify your budget for this business. For example: 'My budget is $5,000' or 'I have $2,500 to invest'.";
-            await saveMessage(helpMessage, false);
-            setIsLoading(false);
-            return;
-          }
-
-          // Update project with budget
-          const { error: budgetUpdateError } = await supabase
-            .from("projects")
-            .update({ total_budget: budget })
-            .eq("id", currentProject.id);
-
-          if (budgetUpdateError) throw budgetUpdateError;
-
-          // Update local state
-          setCurrentProject((prev) =>
-            prev ? { ...prev, total_budget: budget } : null
-          );
-
-          // Get income goal based on business type
-          const strategy = getStrategyForBusinessType(
-            currentProject.business_type
-          );
-          const incomeGoalPrompt =
-            strategy.preQualification?.questions?.find(
-              (q) =>
-                q.toLowerCase().includes("income") ||
-                q.toLowerCase().includes("revenue")
-            ) ||
-            `What's your target monthly income goal for this ${currentProject.business_type} business?`;
-
-          await saveMessage(incomeGoalPrompt, false);
-          setIsLoading(false);
-          return;
-        }
-
-        // Handle income goal
-        const incomeGoal = extractIncomeGoal(userMessage);
-        if (!incomeGoal) {
-          const helpMessage =
-            "Please specify your monthly income goal. For example: 'I want to earn $5,000 per month' or 'My target is $2,500 monthly'.";
-          await saveMessage(helpMessage, false);
-          setIsLoading(false);
-          return;
-        }
-
-        // Update project with income goal as string
-        const { error: incomeGoalUpdateError } = await supabase
-          .from("projects")
-          .update({ income_goal: incomeGoal.toString() })
-          .eq("id", currentProject.id);
-
-        if (incomeGoalUpdateError) throw incomeGoalUpdateError;
-
-        // Update local state with string type
-        setCurrentProject((prev) =>
-          prev ? { ...prev, income_goal: incomeGoal.toString() } : null
+        await handleProjectInitialization(
+          userMessage,
+          currentProject,
+          currentStageData
         );
-
-        // Show todo generation loading overlay
-        setIsGeneratingTodos(true);
-
-        // Generate initial todos based on business type
-        const generatedTodos = await generateTodosForProject(
-          currentProject.id,
-          currentProject.total_budget,
-          currentProject.business_type
-        );
-
-        // Update project with todos and initial stage
-        const { error: todosUpdateError } = await supabase
-          .from("projects")
-          .update({
-            todos: generatedTodos,
-            tasks_in_progress: [],
-            current_stage: "stage_1",
-            current_step: currentStageData?.steps?.[0]?.title || null,
-          })
-          .eq("id", currentProject.id);
-
-        if (todosUpdateError) throw todosUpdateError;
-
-        // Fetch updated project
-        const { data: updatedProject, error: fetchUpdateError } = await supabase
-          .from("projects")
-          .select("*")
-          .eq("id", currentProject.id)
-          .single();
-
-        if (fetchUpdateError) throw fetchUpdateError;
-
-        // Update local state
-        setCurrentProject((prev) =>
-          prev
-            ? {
-                ...prev,
-                todos: generatedTodos,
-                tasks_in_progress: [],
-                current_stage: "stage_1",
-                current_step: currentStageData?.steps?.[0]?.title || null,
-                expected_launch_date: updatedProject.expected_launch_date,
-              }
-            : null
-        );
-
-        // Hide todo generation loading overlay
-        setIsGeneratingTodos(false);
-
-        // Generate stage introduction with blueprint context
-        const stageIntro = `## Stage 1: ${
-          currentStageData?.objective || "Getting Started"
-        }
-
-${currentStageData?.description || ""}
-
-${currentStageData?.steps?.[0]?.description || ""}
-
-Your first task is ready. Would you like to get started?`;
-
-        // Add launch date message if available
-        if (updatedProject.expected_launch_date) {
-          const launchDateMessage = await generateLaunchDateMessage(
-            updatedProject.expected_launch_date,
-            currentProject.id
-          );
-          if (launchDateMessage) {
-            await saveMessage(launchDateMessage, false);
-          }
-        }
-
-        await saveMessage(stageIntro, false);
         setIsLoading(false);
         return;
       }
 
       // Handle todo task completion
-      const referencedTodoTask = currentProject.todos?.find(
-        (todo) =>
-          userMessage.toLowerCase().includes(todo.task.toLowerCase()) ||
-          todo.task.toLowerCase() === userMessage.toLowerCase()
+      const referencedTodoTask = findReferencedTodoTask(
+        userMessage,
+        currentProject
       );
-
       if (referencedTodoTask) {
-        const todoIndex = currentProject.todos.findIndex(
-          (t) => t.task === referencedTodoTask.task
-        );
-
-        // Check if trying to skip ahead
-        const previousTodosCompleted = currentProject.todos
-          .slice(0, todoIndex)
-          .every((todo) => todo.completed);
-
-        if (!previousTodosCompleted) {
-          const encouragementMessage = await getAIChatResponse(
-            messages,
-            "Generate an encouraging message reminding the user they need to complete previous tasks first. Reference the specific current task they should focus on.",
-            currentProject,
-            "You are Mentar, a business coach helping users build their business by guiding them through tasks in the proper sequence."
-          );
-          await saveMessage(encouragementMessage, false);
-          setIsLoading(false);
-          return;
-        }
-
-        // Enhance the prompt with blueprint context
-        const enhancedPrompt = `Help the user complete this task from their ${
-          currentProject.business_type
-        } business blueprint:
-
-Current Stage: ${currentProject.current_stage}
-Stage Objective: ${currentStageData?.objective || ""}
-Current Step: ${currentStepData?.title || ""}
-Step Details: ${currentStepData?.description || ""}
-
-Task to Complete: "${referencedTodoTask.task}"
-
-Provide specific, actionable guidance to help them complete this task. Include:
-1. Exact steps to follow
-2. Tools or platforms to use
-3. Examples or templates if relevant
-4. Success criteria for the task
-
-Format your response in markdown with clear sections and bullet points.`;
-
-        const aiResponse = await getAIChatResponse(
-          messages,
-          enhancedPrompt,
+        await handleTodoTaskCompletion(
+          referencedTodoTask,
           currentProject,
-          getCombinedPrompt(currentProject.business_type)
+          currentStageData,
+          currentStepData
         );
-
-        await saveMessage(aiResponse, false);
         setIsLoading(false);
         return;
       }
 
       // Handle general conversation with blueprint context
-      const conversationPrompt = `You are helping the user with their ${
-        currentProject.business_type
-      } business.
-
-Current Stage: ${currentProject.current_stage}
-Stage Objective: ${currentStageData?.objective || ""}
-Current Step: ${currentStepData?.title || ""}
-Step Details: ${currentStepData?.description || ""}
-
-User Message: ${userMessage}
-
-Provide guidance that aligns with their current stage and step in the business blueprint.`;
-
-      const aiResponse = await getAIChatResponse(
-        messages,
-        conversationPrompt,
+      await handleGeneralConversation(
+        userMessage,
         currentProject,
-        getCombinedPrompt(currentProject.business_type)
+        currentStageData,
+        currentStepData
       );
-
-      await saveMessage(aiResponse, false);
 
       // Update business overview
-      const businessOverview = await generateBusinessOverview(
-        currentProject,
-        messages
-      );
-
-      // Update project with new overview
-      const { error: overviewError } = await supabase
-        .from("projects")
-        .update({ business_overview_summary: businessOverview })
-        .eq("id", currentProject.id);
-
-      if (overviewError) throw overviewError;
-
-      // Update local state
-      setCurrentProject((prev) =>
-        prev ? { ...prev, business_overview_summary: businessOverview } : null
-      );
+      await updateBusinessOverview(currentProject);
     } catch (error) {
       console.error("Error in chat:", error);
       await saveMessage(
@@ -1469,69 +1089,188 @@ Provide guidance that aligns with their current stage and step in the business b
     }
   };
 
-  const handleGoalEdit = async (newGoal: string) => {
-    if (!currentProject) return;
-
-    try {
-      const { error } = await supabase
-        .from("projects")
-        .update({ income_goal: newGoal })
-        .eq("id", currentProject.id);
-
-      if (error) throw error;
-
-      // Update local state
-      setCurrentProject((prev) =>
-        prev ? { ...prev, income_goal: newGoal } : null
-      );
-
-      showToast("Income goal updated successfully!");
-    } catch (error) {
-      console.error("Error updating income goal:", error);
-      showToast("Failed to update income goal. Please try again.");
-    }
+  // Helper function to find referenced todo task
+  const findReferencedTodoTask = (
+    userMessage: string,
+    currentProject: Project
+  ) => {
+    return currentProject.todos?.find(
+      (todo) =>
+        userMessage.toLowerCase().includes(todo.task.toLowerCase()) ||
+        todo.task.toLowerCase() === userMessage.toLowerCase()
+    );
   };
 
-  const handleBudgetEdit = async (newBudget: string) => {
-    if (!currentProject) return;
-    try {
-      const budgetNumber = parseFloat(newBudget);
-      if (isNaN(budgetNumber)) {
-        throw new Error("Invalid budget amount");
+  // Helper function to handle project initialization
+  const handleProjectInitialization = async (
+    userMessage: string,
+    currentProject: Project,
+    currentStageData: StageData | null
+  ) => {
+    // Handle budget setting
+    if (!currentProject.total_budget) {
+      const budget = extractBudget(userMessage);
+      if (!budget) {
+        await saveMessage(
+          "Please specify your budget for this business. For example: 'My budget is $5,000' or 'I have $2,500 to invest'.",
+          false
+        );
+        return;
       }
 
-      const { error } = await supabase
-        .from("projects")
-        .update({ total_budget: budgetNumber })
-        .eq("id", currentProject.id);
-
-      if (error) throw error;
-
-      setCurrentProject({
-        ...currentProject,
-        total_budget: budgetNumber.toString(),
-      });
-      setIsEditingBudget(false);
-    } catch (error) {
-      console.error("Error updating budget:", error);
+      await updateProjectBudget(currentProject, budget);
+      await promptForIncomeGoal(currentProject);
+      return;
     }
+
+    // Handle income goal setting
+    const incomeGoal = extractIncomeGoal(userMessage);
+    if (!incomeGoal) {
+      await saveMessage(
+        "Please specify your monthly income goal. For example: 'I want to earn $5,000 per month' or 'My target is $2,500 monthly'.",
+        false
+      );
+      return;
+    }
+
+    await updateProjectIncomeGoal(currentProject, incomeGoal);
+    await generateInitialTodos(currentProject, currentStageData);
   };
 
-  const handleLaunchDateEdit = async (newDate: string) => {
-    if (!currentProject) return;
-    try {
-      const { error } = await supabase
-        .from("projects")
-        .update({ expected_launch_date: newDate })
-        .eq("id", currentProject.id);
+  // Helper function to handle todo task completion
+  const handleTodoTaskCompletion = async (
+    todoTask: TodoItem,
+    currentProject: Project,
+    currentStageData: StageData | null,
+    currentStepData: any
+  ) => {
+    const todoIndex = currentProject.todos.findIndex(
+      (t) => t.task === todoTask.task
+    );
 
-      if (error) throw error;
+    // Check if trying to skip ahead
+    const previousTodosCompleted = currentProject.todos
+      .slice(0, todoIndex)
+      .every((todo) => todo.completed);
 
-      setCurrentProject({ ...currentProject, expected_launch_date: newDate });
-      setIsEditingLaunchDate(false);
-    } catch (error) {
-      console.error("Error updating launch date:", error);
+    if (!previousTodosCompleted) {
+      const encouragementMessage = await getAIChatResponse(
+        messages,
+        "Generate an encouraging message reminding the user they need to complete previous tasks first. Reference the specific current task they should focus on.",
+        currentProject,
+        "You are Mentar, a business coach helping users build their business by guiding them through tasks in the proper sequence."
+      );
+      await saveMessage(encouragementMessage, false);
+      return;
     }
+
+    // Generate enhanced prompt with blueprint context
+    const enhancedPrompt = generateEnhancedPrompt(
+      currentProject,
+      currentStageData,
+      currentStepData,
+      todoTask
+    );
+
+    const aiResponse = await getAIChatResponse(
+      messages,
+      enhancedPrompt,
+      currentProject,
+      getCombinedPrompt(currentProject.business_type)
+    );
+
+    await saveMessage(aiResponse, false);
+  };
+
+  // Helper function to handle general conversation
+  const handleGeneralConversation = async (
+    userMessage: string,
+    currentProject: Project,
+    currentStageData: StageData | null,
+    currentStepData: any
+  ) => {
+    const conversationPrompt = generateConversationPrompt(
+      userMessage,
+      currentProject,
+      currentStageData,
+      currentStepData
+    );
+
+    const aiResponse = await getAIChatResponse(
+      messages,
+      conversationPrompt,
+      currentProject,
+      getCombinedPrompt(currentProject.business_type)
+    );
+
+    await saveMessage(aiResponse, false);
+  };
+
+  // Helper function to update business overview
+  const updateBusinessOverview = async (currentProject: Project) => {
+    const businessOverview = await generateBusinessOverviewSummary(
+      currentProject,
+      messages
+    );
+
+    const { error: overviewError } = await supabase
+      .from("projects")
+      .update({ business_overview_summary: businessOverview })
+      .eq("id", currentProject.id);
+
+    if (overviewError) throw overviewError;
+
+    setCurrentProject((prev) =>
+      prev ? { ...prev, business_overview_summary: businessOverview } : null
+    );
+  };
+
+  // Helper function to generate enhanced prompt
+  const generateEnhancedPrompt = (
+    currentProject: Project,
+    currentStageData: StageData | null,
+    currentStepData: any,
+    todoTask: TodoItem
+  ) => {
+    return `Help the user complete this task from their ${
+      currentProject.business_type
+    } business blueprint:
+
+Current Stage: ${currentProject.current_stage}
+Stage Objective: ${currentStageData?.objective || ""}
+Current Step: ${currentStepData?.title || ""}
+Step Details: ${currentStepData?.description || ""}
+
+Task to Complete: "${todoTask.task}"
+
+Provide specific, actionable guidance to help them complete this task. Include:
+1. Exact steps to follow
+2. Tools or platforms to use
+3. Examples or templates if relevant
+4. Success criteria for the task
+
+Format your response in markdown with clear sections and bullet points.`;
+  };
+
+  // Helper function to generate conversation prompt
+  const generateConversationPrompt = (
+    userMessage: string,
+    currentProject: Project,
+    currentStageData: StageData | null,
+    currentStepData: any
+  ) => {
+    return `You are helping the user with their ${
+      currentProject.business_type
+    } business.
+
+Current Stage: ${currentProject.current_stage}
+Stage Objective: ${currentStageData?.objective || ""}
+Current Step: ${currentStepData?.title || ""}
+Step Details: ${currentStepData?.description || ""}
+
+User Message: ${userMessage}
+
+Provide guidance that aligns with their current stage and step in the business blueprint.`;
   };
 
   // Add a function to show toast message
@@ -1618,7 +1357,7 @@ Provide guidance that aligns with their current stage and step in the business b
 
             // Update business overview after stage change
             const updatedMessages = [...messages];
-            const businessOverview = await generateBusinessOverview(
+            const businessOverview = await generateBusinessOverviewSummary(
               { ...currentProject, current_stage: nextStage, todos: newTodos },
               updatedMessages
             );
@@ -1664,7 +1403,7 @@ Provide guidance that aligns with their current stage and step in the business b
 
       // Update business overview in real time
       const updatedMessages = [...messages];
-      const businessOverview = await generateBusinessOverview(
+      const businessOverview = await generateBusinessOverviewSummary(
         { ...currentProject, todos: updatedTodos },
         updatedMessages
       );
@@ -1710,7 +1449,7 @@ Provide guidance that aligns with their current stage and step in the business b
     setInputMessage(
       `I want to work on Todo #${index + 1}: "${
         todoItem.task
-      }"\n\nHelp me complete this task`
+      }"\n\nPlease execute this task`
     );
     if (inputRef.current) {
       inputRef.current.focus();
@@ -2076,6 +1815,165 @@ Let's get started with the following tasks:`;
     // Update UI state
     setTodos(updatedTodos);
     setCurrentStep(null);
+  };
+
+  // Helper function to update project budget
+  const updateProjectBudget = async (
+    currentProject: Project,
+    budget: string | null
+  ) => {
+    if (!budget) {
+      throw new Error("Budget cannot be null");
+    }
+
+    const budgetString = budget.toString();
+    const { error: budgetUpdateError } = await supabase
+      .from("projects")
+      .update({ total_budget: budgetString })
+      .eq("id", currentProject.id);
+
+    if (budgetUpdateError) throw budgetUpdateError;
+
+    setCurrentProject((prev) =>
+      prev ? { ...prev, total_budget: budgetString } : null
+    );
+  };
+
+  // Helper function to prompt for income goal
+  const promptForIncomeGoal = async (currentProject: Project) => {
+    const strategy = getStrategyForBusinessType(currentProject.business_type);
+    const incomeGoalPrompt =
+      strategy.preQualification?.questions?.find(
+        (q) =>
+          q.toLowerCase().includes("income") ||
+          q.toLowerCase().includes("revenue")
+      ) ||
+      `What's your target monthly income goal for this ${currentProject.business_type} business?`;
+
+    await saveMessage(incomeGoalPrompt, false);
+  };
+
+  // Helper function to update project income goal
+  const updateProjectIncomeGoal = async (
+    currentProject: Project,
+    incomeGoal: string | number | null
+  ) => {
+    if (incomeGoal === null) {
+      throw new Error("Income goal cannot be null");
+    }
+
+    const incomeGoalString = incomeGoal.toString();
+    const { error: incomeGoalUpdateError } = await supabase
+      .from("projects")
+      .update({ income_goal: incomeGoalString })
+      .eq("id", currentProject.id);
+
+    if (incomeGoalUpdateError) throw incomeGoalUpdateError;
+
+    setCurrentProject((prev) =>
+      prev ? { ...prev, income_goal: incomeGoalString } : null
+    );
+  };
+
+  // Helper function to generate initial todos
+  const generateInitialTodos = async (
+    currentProject: Project,
+    currentStageData: StageData | null
+  ) => {
+    setIsGeneratingTodos(true);
+
+    try {
+      // Validate business type
+      const validBusinessTypes = [
+        "ecommerce",
+        "software",
+        "agency",
+        "copywriting",
+      ];
+      if (
+        !validBusinessTypes.includes(currentProject.business_type.toLowerCase())
+      ) {
+        throw new Error(
+          `Invalid business type: ${
+            currentProject.business_type
+          }. Must be one of: ${validBusinessTypes.join(", ")}`
+        );
+      }
+
+      // Generate initial todos
+      const generatedTodos = await generateTodosForProject(
+        currentProject.id,
+        currentProject.business_type.toLowerCase(),
+        currentProject.total_budget
+      );
+
+      // Update project with todos and initial stage
+      const { error: todosUpdateError } = await supabase
+        .from("projects")
+        .update({
+          todos: generatedTodos,
+          tasks_in_progress: [],
+          current_stage: "stage_1",
+          current_step: currentStageData?.steps?.[0]?.title || null,
+        })
+        .eq("id", currentProject.id);
+
+      if (todosUpdateError) throw todosUpdateError;
+
+      // Fetch updated project
+      const { data: updatedProject, error: fetchUpdateError } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", currentProject.id)
+        .single();
+
+      if (fetchUpdateError) throw fetchUpdateError;
+
+      // Update local state
+      setCurrentProject((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          todos: generatedTodos || [],
+          tasks_in_progress: [],
+          current_stage: "stage_1",
+          current_step: currentStageData?.steps?.[0]?.title || null,
+          expected_launch_date: updatedProject.expected_launch_date,
+        };
+      });
+
+      // Generate stage introduction
+      const stageIntro = `We are stage ${
+        currentProject?.current_stage
+      } of building your successful business
+
+${currentStageData?.objective || ""}
+
+${currentStageData?.steps?.[0]?.title || ""}
+
+Your first task is ready. Would you like to get started?`;
+
+      // Add launch date message if available
+      if (updatedProject.expected_launch_date) {
+        const launchDateMessage = await generateLaunchDateMessage(
+          updatedProject.expected_launch_date,
+          currentProject.id
+        );
+        if (launchDateMessage) {
+          await saveMessage(launchDateMessage, false);
+        }
+      }
+
+      await saveMessage(stageIntro, false);
+    } catch (error) {
+      console.error("Error generating todos:", error);
+      await saveMessage(
+        "I apologize, but I encountered an error while generating your business plan. Please try again or contact support if the issue persists.",
+        false
+      );
+    } finally {
+      setIsGeneratingTodos(false);
+    }
   };
 
   return (

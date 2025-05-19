@@ -113,11 +113,22 @@ interface SMMAStep {
   examples?: string[];
   lowRiskAngles?: string[];
   samplePitch?: string;
+  process?: string[];
+  tools?: string[];
+  setup?: string[];
+  roles?: string[];
+  contents?: string[];
+  metrics?: Record<string, string>;
+  checklist?: string[];
+  validationChecklist?: string[];
+  requirements?: string[];
+  rules?: string[];
 }
 
 interface SMMAStage1 {
   objective: string;
   steps: SMMAStep[];
+  deliverables?: string[];
 }
 
 interface SMMABlueprint {
@@ -141,11 +152,21 @@ interface CopywritingStep {
   process?: string[];
   freeWorkPriorities?: string[];
   instructions?: string[];
+  offers?: Array<{
+    name: string;
+    description: string;
+  }>;
+  structure?: string[];
+  checklist?: string[];
+  validationChecklist?: string[];
+  requirements?: string[];
+  rules?: string[];
 }
 
 interface CopywritingStage1 {
   objective: string;
   steps: CopywritingStep[];
+  deliverables?: string[];
 }
 
 interface CopywritingBlueprint {
@@ -170,11 +191,19 @@ interface SoftwareStep {
   platforms?: string[];
   strategy?: string;
   aiPrompt?: string;
+  template?: string;
+  validation?: string[];
+  greenlight?: string;
+  checklist?: string[];
+  validationChecklist?: string[];
+  requirements?: string[];
+  rules?: string[];
 }
 
 interface SoftwareStage1 {
   objective: string;
   steps: SoftwareStep[];
+  deliverables?: string[];
 }
 
 interface SoftwareBlueprint {
@@ -218,256 +247,38 @@ export interface BusinessStrategy {
 export const typedSaasStrategy: BusinessStrategy = typedSoftwareBlueprint;
 
 // Rename old functions to avoid conflicts
-async function generateSMMATodosLegacy(projectId: string, budget: string) {
-  // Get the first stage data from smmaBlueprint with proper typing
-  const stage1Data = typedSMMABlueprint.stage_1;
-
-  if (!stage1Data || !stage1Data.steps) {
-    throw new Error("No steps found for stage 1 in SMMA blueprint");
-  }
-
-  // Get project to check for prequalification data
-  const { data: project, error: getProjectError } = await supabase
-    .from("projects")
-    .select("outputs")
-    .eq("id", projectId)
-    .single();
-
-  if (getProjectError) throw getProjectError;
-
-  // Get prequalification answers if available
-  let prequalificationInfo = "";
-  if (project?.outputs?.prequalification?.answers) {
-    const answers = project.outputs.prequalification.answers;
-    const questions = project.outputs.prequalification.questions || [];
-    
-    // Extract all prequalification info
-    prequalificationInfo = "USER PREQUALIFICATION INFO:\n";
-    for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
-      prequalificationInfo += `${questions[i]}: ${answers[i]}\n`;
-    }
-  }
-
-  // Create a detailed prompt from the SMMA blueprint
-  let steps: string[] = [];
-  let criteria: string[] = [];
-  let examples: string[] = [];
-  
-  // Extract data from steps
-  stage1Data.steps.forEach(step => {
-    if (step.title) steps.push(`${step.title}: ${step.criteria?.join(", ") || ""}`);
-    if (step.criteria) criteria.push(...step.criteria);
-    if (step.examples) examples.push(...step.examples);
-    if (step.lowRiskAngles) examples.push(...step.lowRiskAngles);
-  });
-
-  const todoGenerationPrompt = `As an AI SMMA business mentor, generate 5 specific, actionable tasks for starting a social media marketing agency.
-
-  Stage 1 Objective: ${stage1Data.objective}
-  
-  USER DETAILS:
-  - Budget: ${budget}
-  ${prequalificationInfo}
-  
-  STAGE DETAILS:
-  Steps to Follow:
-  ${steps.join('\n')}
-  
-  Niche Criteria:
-  ${criteria.map(item => `- ${item}`).join('\n')}
-  
-  Offer Examples:
-  ${examples.map(item => `- ${item}`).join('\n')}
-  
-  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve this stage's objective.
-  Each task should include exact websites, tools, or platforms to use with specific steps.
-  
-  For example, instead of "Research your niche", write "Use LinkedIn Sales Navigator (linkedin.com/sales) to find 20 local businesses in the [niche] industry. Create a spreadsheet with their business name, social media handles, current ad spend (if visible), and pain points from their social posts."
-  
-  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
-  
-  Example format:
-  [
-    {"task": "Sign up for Apollo.io (apollo.io) and use their Chrome extension to find 50 business owners in the [niche] industry. Create a spreadsheet with their name, business, email, and LinkedIn profile. Filter for businesses with 5-50 employees and active social media presence.", "completed": false},
-    {"task": "Create a free Canva.com account and design 3 different ad mockups for [niche] businesses. Include a lead magnet offer, social proof section, and clear CTA. Save these as templates for future client pitches.", "completed": false}
-  ]`;
-
-  console.log("Generating initial SMMA todos");
-  console.log("- Budget:", budget);
-  console.log("- Prequalification info available:", !!prequalificationInfo);
-
-  return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
+export async function generateTodosForProject(
+  projectId: string,
+  businessType: string,
+  budget: string
+) {
+  const blueprint = getStrategyForBusinessType(businessType);
+  return generateTodos(projectId, budget, businessType, blueprint);
 }
 
-async function generateCopywritingTodosLegacy(projectId: string, budget: string) {
-  // Get the first stage data from copywritingBlueprint with proper typing
-  const stage1Data = typedCopywritingBlueprint.stage_1;
-
-  if (!stage1Data || !stage1Data.steps) {
-    throw new Error("No steps found for stage 1 in copywriting blueprint");
-  }
-
-  // Get project to check for prequalification data
-  const { data: project, error: getProjectError } = await supabase
-    .from("projects")
-    .select("outputs")
-    .eq("id", projectId)
-    .single();
-
-  if (getProjectError) throw getProjectError;
-
-  // Get prequalification answers if available
-  let prequalificationInfo = "";
-  if (project?.outputs?.prequalification?.answers) {
-    const answers = project.outputs.prequalification.answers;
-    const questions = project.outputs.prequalification.questions || [];
-    
-    // Extract all prequalification info
-    prequalificationInfo = "USER PREQUALIFICATION INFO:\n";
-    for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
-      prequalificationInfo += `${questions[i]}: ${answers[i]}\n`;
-    }
-  }
-
-  // Create a detailed prompt from the copywriting blueprint
-  let steps: string[] = [];
-  let examples: string[] = [];
-  let priorities: string[] = [];
-  
-  // Extract data from steps
-  stage1Data.steps.forEach(step => {
-    if (step.title) steps.push(`${step.title}: ${step.tip || ""}`);
-    if (step.examples) examples.push(...step.examples);
-    if (step.freeWorkPriorities) priorities.push(...step.freeWorkPriorities);
-    if (step.process) steps.push(...step.process);
-  });
-
-  const todoGenerationPrompt = `As an AI copywriting business mentor, generate 5 specific, actionable tasks for starting a copywriting business.
-
-  Stage 1 Objective: ${stage1Data.objective}
-  
-  USER DETAILS:
-  - Budget: ${budget}
-  ${prequalificationInfo}
-  
-  STAGE DETAILS:
-  Steps to Follow:
-  ${steps.join('\n')}
-  
-  Niche Examples:
-  ${examples.map(item => `- ${item}`).join('\n')}
-  
-  Portfolio Priorities:
-  ${priorities.map(item => `- ${item}`).join('\n')}
-  
-  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve this stage's objective.
-  Each task should include exact websites, tools, or platforms to use with specific steps.
-  
-  For example, instead of "Create a portfolio", write "Sign up for Notion (notion.so) and create a portfolio page with 3 sections: (1) Before/After examples, (2) Testimonials, and (3) Services. Use their free templates to create a professional layout and add a contact form."
-  
-  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
-  
-  Example format:
-  [
-    {"task": "Create a free account on Upwork (upwork.com) and complete your profile with a compelling bio that highlights your copywriting focus. Write 3 sample proposals for email sequence projects in your chosen niche, including your approach and pricing strategy.", "completed": false},
-    {"task": "Sign up for Hunter.io (hunter.io) and use their free credits to find 20 business owners in your niche. Create a spreadsheet with their name, business, email, and website. Prepare a personalized outreach template offering a free email sequence rewrite.", "completed": false}
-  ]`;
-
-  console.log("Generating initial copywriting todos");
-  console.log("- Budget:", budget);
-  console.log("- Prequalification info available:", !!prequalificationInfo);
-
-  return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
+// Add type for step parameter
+interface BlueprintStep {
+  checklist?: string[];
+  validationChecklist?: string[];
+  requirements?: string[];
+  rules?: string[];
+  title?: string;
+  goal?: string;
 }
 
-async function generateSoftwareTodosLegacy(projectId: string, budget: string) {
-  // Get the first stage data from softwareBlueprint with proper typing
-  const stage1Data = typedSoftwareBlueprint.stage_1;
+// Generic function to generate todos for any business type
+export const generateTodos = async (
+  projectId: string,
+  budget: string,
+  businessType: string,
+  blueprint: BusinessStrategy,
+  stage: StageKey = 'stage_1'
+): Promise<any[] | null> => {
+  // Get the stage data from blueprint
+  const stageData = blueprint[stage];
 
-  if (!stage1Data || !stage1Data.steps) {
-    throw new Error("No steps found for stage 1 in software blueprint");
-  }
-
-  // Get project to check for prequalification data
-  const { data: project, error: getProjectError } = await supabase
-    .from("projects")
-    .select("outputs")
-    .eq("id", projectId)
-    .single();
-
-  if (getProjectError) throw getProjectError;
-
-  // Get prequalification answers if available
-  let prequalificationInfo = "";
-  if (project?.outputs?.prequalification?.answers) {
-    const answers = project.outputs.prequalification.answers;
-    const questions = project.outputs.prequalification.questions || [];
-    
-    // Extract all prequalification info
-    prequalificationInfo = "USER PREQUALIFICATION INFO:\n";
-    for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
-      prequalificationInfo += `${questions[i]}: ${answers[i]}\n`;
-    }
-  }
-
-  // Create a detailed prompt from the software blueprint
-  let steps: string[] = [];
-  let tools: string[] = [];
-  let analysis: string[] = [];
-  
-  // Extract data from steps
-  stage1Data.steps.forEach(step => {
-    if (step.title) steps.push(`${step.title}: ${step.outcome || ""}`);
-    if (step.tools) tools.push(...(Array.isArray(step.tools) ? step.tools : [step.tools]));
-    if (step.analysis) analysis.push(...step.analysis);
-    if (step.platforms) tools.push(...step.platforms);
-    if (step.strategy) steps.push(step.strategy);
-  });
-
-  const todoGenerationPrompt = `As an AI software business mentor, generate 5 specific, actionable tasks for starting a SaaS business.
-
-  Stage 1 Objective: ${stage1Data.objective}
-  
-  USER DETAILS:
-  - Budget: ${budget}
-  ${prequalificationInfo}
-  
-  STAGE DETAILS:
-  Steps to Follow:
-  ${steps.join('\n')}
-  
-  Tools to Use:
-  ${tools.map(item => `- ${item}`).join('\n')}
-  
-  Analysis Points:
-  ${analysis.map(item => `- ${item}`).join('\n')}
-  
-  Generate exactly 5 ultra-specific, actionable tasks that will help the user achieve this stage's objective.
-  Each task should include exact websites, tools, or platforms to use with specific steps.
-  
-  For example, instead of "Research competitors", write "Create a free account on G2 (g2.com) and search for [your category] software. Create a spreadsheet comparing the top 5 competitors' features, pricing, and user reviews. Use their comparison tool to export the data."
-  
-  Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
-  
-  Example format:
-  [
-    {"task": "Sign up for Product Hunt (producthunt.com) and use their search to find 10 trending SaaS products in your target category. Create a spreadsheet analyzing their launch date, pricing, features, and user comments. Look for common pain points in the comments.", "completed": false},
-    {"task": "Create a free account on BuiltWith (builtwith.com) and use their technology lookup to analyze 5 successful competitors. Document their tech stack, integrations, and marketing tools. Create a list of must-have features based on their common technologies.", "completed": false}
-  ]`;
-
-  console.log("Generating initial software todos");
-  console.log("- Budget:", budget);
-  console.log("- Prequalification info available:", !!prequalificationInfo);
-
-  return await generateAndSaveTodos(projectId, budget, todoGenerationPrompt);
-}
-
-async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
-  // Get the first stage data from ecommerceBlueprint
-  const stage1Data = ecommerceBlueprint.stage_1;
-
-  if (!stage1Data || !stage1Data.steps) {
-    throw new Error("No steps found for stage 1 in ecommerce blueprint");
+  if (!stageData || !stageData.steps) {
+    throw new Error(`No steps found for ${stage} in ${businessType} blueprint`);
   }
 
   // Get project to check for prequalification data
@@ -486,43 +297,45 @@ async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
     const answers = project.outputs.prequalification.answers;
     const questions = project.outputs.prequalification.questions || [];
     
-    // Extract all prequalification info
     prequalificationInfo = "USER PREQUALIFICATION INFO:\n";
     for (let i = 0; i < Math.min(questions.length, answers.length); i++) {
       prequalificationInfo += `${questions[i]}: ${answers[i]}\n`;
       
-      // Specifically extract launch date question/answer
       if (questions[i].includes("launch") || questions[i].includes("When do you wish")) {
         launchDateText = answers[i];
       }
     }
   }
 
-  // Create a detailed prompt from the ecommerce blueprint
+  console.log('Using Blueprint:', blueprint);
+console.log('Using PREQUALIFICATION INFO' , prequalificationInfo)
+
+
+
+  // Create a detailed prompt from the blueprint
   let checklistItems: string[] = [];
   let deliverables: string[] = [];
   
-  // Extract checklist items from all steps
-  stage1Data.steps.forEach(step => {
+  stageData.steps.forEach((step: BlueprintStep) => {
     if (step.checklist) checklistItems.push(...step.checklist);
     if (step.validationChecklist) checklistItems.push(...step.validationChecklist);
     if (step.requirements) checklistItems.push(...step.requirements);
     if (step.rules) checklistItems.push(...step.rules);
   });
   
-  if (stage1Data.deliverables) {
-    deliverables = stage1Data.deliverables;
+  if (stageData.deliverables) {
+    deliverables = stageData.deliverables;
   }
 
-  const todoGenerationPrompt = `As an AI ecommerce business mentor, I need your help with two things:
-  1. Generate 5 specific, actionable tasks for starting an ecommerce business
+  const todoGenerationPrompt = `As an AI ${businessType} business mentor, I need your help with two things:
+  1. Generate 5 specific, actionable tasks for starting a ${businessType} business
   2. Interpret and formalize a launch date from the user's free-form text and today's date ${new Date().toISOString().split('T')[0]}
 
   BUDGET: ${budget}
 
-  Stage 1 Objective: ${stage1Data.objective}
+  Stage Objective: ${stageData.objective}
   
-  Tasks should follow our ecommerce blueprint and focus on:
+  Tasks should follow our ${businessType} blueprint and focus on:
   
   CHECKLIST ITEMS:
   ${checklistItems.map(item => `- ${item}`).join("\n")}
@@ -550,12 +363,13 @@ async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
   IMPORTANT GUIDELINES:
   - Make each task ultra-specific with exact steps, tools, and websites to use
   - Generate exactly 5 tasks
+  - Avoid Adding numbers to the task titles
   - For the launch date, choose a reasonable date based on the user's text
   - If the launch timeframe is vague, use your judgment to select a date 60-90 days in the future
   - If no launch timeframe was provided, set a date 90 days from today i.e ${new Date().toISOString().split('T')[0]}
   - The launch date should be a valid ISO date string (YYYY-MM-DD)`;
 
-  console.log("Generating initial ecommerce todos with launch date interpretation");
+  console.log(`Generating initial ${businessType} todos with launch date interpretation`);
   console.log("- Budget:", budget);
   console.log("- Prequalification includes launch date text:", !!launchDateText);
 
@@ -581,7 +395,7 @@ async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    console.error("OpenAI API Error in generateEcommerceTodos:", {
+    console.error(`OpenAI API Error in generate${businessType}Todos:`, {
       status: response.status,
       statusText: response.statusText,
       errorData,
@@ -591,7 +405,6 @@ async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
 
   const data = await response.json();
   
-  // Parse the JSON response from OpenAI
   let parsedResponse;
   try {
     parsedResponse = JSON.parse(data.choices[0].message.content);
@@ -601,7 +414,6 @@ async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
     throw new Error("Failed to parse JSON response from API");
   }
 
-  // Extract todos and launch date from the parsed response
   const todos = parsedResponse.tasks || [];
   const launchDate = parsedResponse.launchDate || null;
   const launchDateExplanation = parsedResponse.launchDateExplanation || "";
@@ -610,25 +422,21 @@ async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
   console.log("Interpreted launch date:", launchDate);
   console.log("Launch date explanation:", launchDateExplanation);
 
-  // Update project with generated todos and launch date
   try {
     const updateData: any = {
       todos: todos,
       tasks_in_progress: [],
-      current_stage: "stage_1",
+      current_stage: stage,
       total_budget: budget,
     };
 
-    // Only add expected_launch_date if we received one from the API
     if (launchDate) {
-      // Convert YYYY-MM-DD to full ISO string if needed
       const isoLaunchDate = launchDate.includes('T') 
         ? launchDate 
         : new Date(launchDate).toISOString();
       
       updateData.expected_launch_date = isoLaunchDate;
       
-      // Store the explanation in the project outputs
       if (project?.outputs) {
         updateData.outputs = {
           ...project.outputs,
@@ -651,279 +459,19 @@ async function generateEcommerceTodosLegacy(projectId: string, budget: string) {
     }
   } catch (error) {
     console.error("Error updating project with todos and launch date:", error);
-    // Still return the todos even if the database update failed
   }
 
   return todos;
-}
-
-// Update references to use the legacy functions
-export async function generateTodosForProject(
-  projectId: string,
-  businessType: string,
-  budget: string
-) {
-  switch (businessType) {
-    case "ecommerce":
-      return await generateEcommerceTodosLegacy(projectId, budget);
-    case "agency":
-      return await generateSMMATodosLegacy(projectId, budget);
-    case "copywriting":
-      return await generateCopywritingTodosLegacy(projectId, budget);
-    case "software":
-      return await generateSoftwareTodosLegacy(projectId, budget);
-    default:
-      throw new Error(`Unsupported business type: ${businessType}`);
-  }
-}
-
-// Keep the new exported functions
-export const generateEcommerceTodos = async (
-  stage: StageKey,
-  project: Project
-): Promise<any[] | null> => {
-  try {
-    // Get the appropriate strategy based on the stage
-    const strategy = getStrategyForBusinessType('ecommerce');
-    const stageData = strategy[stage];
-    
-    if (!stageData) {
-      console.error('Invalid stage for ecommerce:', stage);
-      return null;
-    }
-
-    // Generate todos based on stage data
-    const todos = stageData.todos || [];
-    return todos;
-  } catch (error) {
-    console.error('Error generating ecommerce todos:', error);
-    return null;
-  }
 };
-
-export const generateSoftwareTodos = async (
-  stage: StageKey,
-  project: Project
-): Promise<any[] | null> => {
-  try {
-    // Get the appropriate strategy based on the stage
-    const strategy = getStrategyForBusinessType('software');
-    const stageData = strategy[stage];
-    
-    if (!stageData) {
-      console.error('Invalid stage for software:', stage);
-      return null;
-    }
-
-    // Generate todos based on stage data
-    const todos = stageData.todos || [];
-    return todos;
-  } catch (error) {
-    console.error('Error generating software todos:', error);
-    return null;
-  }
-};
-
-export const generateSMMATodos = async (
-  stage: StageKey,
-  project: Project
-): Promise<any[] | null> => {
-  try {
-    // Get the appropriate strategy based on the stage
-    const strategy = getStrategyForBusinessType('agency');
-    const stageData = strategy[stage];
-    
-    if (!stageData) {
-      console.error('Invalid stage for agency:', stage);
-      return null;
-    }
-
-    // Generate todos based on stage data
-    const todos = stageData.todos || [];
-    return todos;
-  } catch (error) {
-    console.error('Error generating agency todos:', error);
-    return null;
-  }
-};
-
-export const generateCopywritingTodos = async (
-  stage: StageKey,
-  project: Project
-): Promise<any[] | null> => {
-  try {
-    // Get the appropriate strategy based on the stage
-    const strategy = getStrategyForBusinessType('copywriting');
-    const stageData = strategy[stage];
-    
-    if (!stageData) {
-      console.error('Invalid stage for copywriting:', stage);
-      return null;
-    }
-
-    // Generate todos based on stage data
-    const todos = stageData.todos || [];
-    return todos;
-  } catch (error) {
-    console.error('Error generating copywriting todos:', error);
-    return null;
-  }
-};
-
-// Helper function to generate and save todos
-async function generateAndSaveTodos(projectId: string, budget: string, todoGenerationPrompt: string) {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: todoGenerationPrompt,
-        },
-      ],
-      temperature: 0.7,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    console.error("OpenAI API Error in generateInitialTodos:", {
-      status: response.status,
-      statusText: response.statusText,
-      errorData,
-    });
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  
-  // Add safety check for parsing JSON
-  let generatedTodos;
-  try {
-    generatedTodos = JSON.parse(data.choices[0].message.content);
-  } catch (error) {
-    console.error("Error parsing JSON from OpenAI response:", error);
-    console.log("Raw response:", data.choices[0].message.content);
-    throw new Error("Failed to parse todos from API response");
-  }
-
-  // Transform the generated todos into the correct format
-  const formattedTodos = generatedTodos.map((todo: any) => ({
-    task: todo.task,
-    completed: false,
-  }));
-
-  try {
-    // Get project to check for prequalification data
-    const { data: project, error: getProjectError } = await supabase
-      .from("projects")
-      .select("outputs")
-      .eq("id", projectId)
-      .single();
-
-    if (getProjectError) throw getProjectError;
-
-    // Check for launch date in prequalification answers
-    if (project?.outputs?.prequalification?.answers) {
-      const answers = project.outputs.prequalification.answers;
-      const launchDateQuestion = "When do you wish to launch your ecommerce business?";
-      const questions = project.outputs.prequalification.questions || [];
-      
-      // Find the launch date question and answer
-      const launchDateQuestionIndex = questions.findIndex((q: string) => q.includes("launch") || q.includes("When do you wish"));
-      if (launchDateQuestionIndex !== -1 && answers[launchDateQuestionIndex]) {
-        const launchDateText = answers[launchDateQuestionIndex];
-        // Since we now use AI to interpret launch date, just log the text we found
-        console.log("Found launch date answer:", launchDateText);
-        // We'll process this in the AI-based todo generation
-      }
-    }
-
-    // Update project with generated todos and launch date if available
-    const updateData: any = {
-      todos: formattedTodos,
-      tasks_in_progress: [],
-      current_stage: "stage_1",
-      total_budget: budget,
-    };
-
-    const { error: projectUpdateError } = await supabase
-      .from("projects")
-      .update(updateData)
-      .eq("id", projectId);
-
-    if (projectUpdateError) {
-      throw projectUpdateError;
-    }
-  } catch (error) {
-    console.error("Error updating project with todos:", error);
-    // Still return the todos even if we couldn't update the launch date
-  }
-
-  return formattedTodos;
-}
 
 // Helper function to generate a message announcing the launch date
 export const generateLaunchDateMessage = async (launchDate: string, projectId?: string): Promise<string> => {
   if (!launchDate) return "";
   
   try {
-    const date = new Date(launchDate);
-    const formattedDate = date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric"
-    });
-    
-    const today = new Date();
-    const daysUntilLaunch = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysUntilLaunch < 0) {
-      return ""; // Date is in the past, don't show message
-    }
-    
-    let timeframe;
-    if (daysUntilLaunch <= 30) {
-      timeframe = "very soon";
-    } else if (daysUntilLaunch <= 90) {
-      timeframe = "in a few months";
-    } else if (daysUntilLaunch <= 180) {
-      timeframe = "in about 6 months";
-    } else {
-      timeframe = "in the future";
-    }
-    
-    // Get the explanation if available
-    let explanationText = "";
-    
-    // Only try to get the explanation if projectId is provided
-    if (projectId) {
-      try {
-        const { data: project } = await supabase
-          .from("projects")
-          .select("outputs")
-          .eq("id", projectId)
-          .single();
-        
-        if (project?.outputs?.launchDateInterpretation?.explanation) {
-          explanationText = `\n\n**How I interpreted your launch timeframe**: ${project.outputs.launchDateInterpretation.explanation}`;
-        }
-      } catch (error) {
-        console.error("Error fetching launch date explanation:", error);
-      }
-    }
-    
-    return `Based on your prequalification answers, I've set your expected launch date to **${formattedDate}** (${daysUntilLaunch} days from now). I'll help you prepare for launch ${timeframe}. We'll organize your todo items to achieve this target date.${explanationText}`;
+    return `Thank you for completing the prequalification questions! 🎉 Your personalized tasks are now ready in the sidebar. Click on "Get Started" to begin your journey. Would you like to start with your first task?`;
   } catch (error) {
-    console.error("Error formatting launch date:", error);
+    console.error("Error formatting launch date message:", error);
     return "";
   }
 };
@@ -946,61 +494,9 @@ export const getStrategyForBusinessType = (businessType: string): BusinessStrate
   }
 };
 
-// Helper functions to extract checklist and AI support items from ecommerceBlueprint
-function extractChecklistItems(stageData: any): string[] {
-  if (!stageData || !stageData.steps) return [];
-  
-  const items: string[] = [];
-  
-  // Extract checklist items from each step
-  stageData.steps.forEach((step: any) => {
-    if (step.checklist) {
-      items.push(...step.checklist);
-    } else if (step.validationChecklist) {
-      items.push(...step.validationChecklist);
-    } else if (step.requirements) {
-      items.push(...step.requirements);
-    } else if (step.rules) {
-      items.push(...step.rules);
-    } else if (step.structure) {
-      items.push(...step.structure);
-    }
-  });
-  
-  return items.length > 0 ? items : stageData.deliverables || [];
-}
 
-function extractAISupportItems(stageData: any): string[] {
-  if (!stageData) return [];
-  
-  // Extract AI support items or use tips from steps
-  const items: string[] = [];
-  
-  if (stageData.steps) {
-    stageData.steps.forEach((step: any) => {
-      if (step.title) {
-        items.push(`Help with: ${step.title}`);
-      }
-    });
-  }
-  
-  return items;
-}
 
-function extractScalingItems(scalingData: any): string[] {
-  if (!scalingData || !scalingData.levers) return [];
-  
-  const items: string[] = [];
-  
-  // Extract scaling lever actions
-  scalingData.levers.forEach((lever: any) => {
-    if (lever.actions) {
-      items.push(...lever.actions);
-    }
-  });
-  
-  return items.length > 0 ? items : scalingData.deliverables || [];
-}
+
 
 // Check if a stage is completed
 export const isStageCompleted = (
@@ -1370,6 +866,7 @@ export const getAIChatResponse = async (
   systemPrompt: string
 ) => {
   try {
+    // Input validation
     if (!currentProject) {
       console.error("No current project provided to getAIChatResponse");
       return "I'm sorry, but I couldn't process your request because no project information was provided.";
@@ -1380,12 +877,26 @@ export const getAIChatResponse = async (
       return "I'm sorry, but I couldn't process your previous messages correctly.";
     }
 
-    if (!userMessage) {
+    if (!userMessage?.trim()) {
       console.error("No user message provided to getAIChatResponse");
       return "I'm sorry, but I couldn't process an empty message.";
     }
 
-    // Check if the user message is about a todo task or help request
+    // API key validation
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("OpenAI API key is missing");
+      return "I apologize, but I can't process your request because the API configuration is missing. Please contact support.";
+    }
+
+    // Get current task information
+    const completedTaskCount = currentProject.todos?.filter((todo: any) => todo.completed).length || 0;
+    const totalTaskCount = currentProject.todos?.length || 0;
+    const currentStage = currentProject.current_stage || "stage_1";
+    const currentFocusTask = currentProject.todos?.find((todo: any) => !todo.completed);
+    const currentFocusTaskIndex = currentProject.todos?.findIndex((todo: any) => !todo.completed) ?? -1;
+
+    // Check for task jumping
     const isTaskRequest = userMessage.toLowerCase().includes("can you help") ||
       userMessage.toLowerCase().includes("how do i") || 
       userMessage.toLowerCase().includes("how to") ||
@@ -1394,232 +905,141 @@ export const getAIChatResponse = async (
       userMessage.toLowerCase().includes("help me complete this task") ||
       userMessage.toLowerCase().includes("help me");
 
-    // Check if user has pasted a todo task from the list
-    const isExactTodoTask = currentProject.todos?.some((todo: any) => 
-      todo.task.toLowerCase() === userMessage.toLowerCase() ||
-      userMessage.toLowerCase().includes(todo.task.toLowerCase())
-    );
+    if (isTaskRequest) {
+      const requestedTaskIndex = currentProject.todos?.findIndex((todo: any) => 
+        userMessage.toLowerCase().includes(todo.task.toLowerCase())
+      ) ?? -1;
 
-    // Get information about completed tasks and current stage
-    const completedTaskCount = currentProject.todos?.filter((todo: any) => todo.completed).length || 0;
-    const totalTaskCount = currentProject.todos?.length || 0;
-    const currentStage = currentProject.current_stage || "stage_1";
-    
-    // Find the first incomplete task (the current focus task)
-    const currentFocusTask = currentProject.todos?.find((todo: any) => !todo.completed);
-    
-    // Enhanced business context with action-oriented focus
-    const businessTypeContext = `You are helping the user build a ${
-      currentProject.business_type || "business"
-    } business.
-    The user's budget is ${currentProject.total_budget || "not set yet"}.
-    The user's business idea is ${
-      currentProject.business_idea || "not set yet"
-    }.
-    The user's income goal is ${currentProject.income_goal || "not set yet"}.
+      if (requestedTaskIndex > currentFocusTaskIndex) {
+        return `I notice you're asking about a future task. To maintain proper progress and ensure success, we need to complete the current task first:
 
-    These are are the user tasks for this stage: ${currentProject.todos?.map((t: any) => t.task).join(", ")}
-    You have to follow the tasks in order and you have to complete the current task before moving to the next one. Please dont suggest other tasks except for the ones in the list.
-    
-    Current Progress:
-    - Stage: ${currentStage.replace('_', ' ').toUpperCase()}
-    - Completed Tasks: ${completedTaskCount} of ${totalTaskCount}
-    - Next Task to Focus On: ${currentFocusTask ? `#${currentProject.todos.findIndex((t: any) => t.task === currentFocusTask.task) + 1} - ${currentFocusTask.task}` : "All tasks completed"}
+**Current Task #${currentFocusTaskIndex + 1}**: ${currentFocusTask?.task}
 
-    IMPORTANT INSTRUCTIONS:
-    1. DO NOT ask questions about business type, budget, business idea, or income goals - this information is already provided above.
-    2. DO NOT ask for context about the business - use the information provided above.
-    3. Only ask specific questions related to the immediate task or problem the user needs help with.
-    4. Focus on providing direct, actionable solutions based on the context you already have.
-    5. ALWAYS format your responses using React-Markdown format so they render properly in the interface.
-    6. If a user is trying to work on tasks out of order, encourage them to complete earlier tasks first.
-    7. DO NOT move to another step or todo until the current one is fully completed and you have confirmation from the user.
-    8. Always reference todo items by their number (e.g., "Todo #3") when discussing them.
-    9. Always prompt the user with 2-3 specific questions to ensure extreme detail in their task completion.
-    10. Make your responses helpful and action-oriented, focusing on helping the user make tangible progress.
-    11. When suggesting ANY type of recommendations (personas, customer segments, product ideas, business names, marketing strategies, etc.), you MUST ALWAYS:
-        a. Provide exactly 3-5 specific options/suggestions (never more, never less)
-        b. For EACH option, calculate and display a simple success rate percentage (0-100%) based on:
-           - Market saturation
-           - Budget requirements
-           - Market size
-           - Unique selling proposition
-           - Cash flow potential
-        c. Format each suggestion as:
-           ### Option 1: [Name/Title]
-           [Brief description of the option]
-           
-           **Success Rate: XX%**
-           
-           This option has a XX% chance of success based on market analysis, budget requirements, market size, unique selling proposition, and cash flow potential.
-        d. ALWAYS conclude by recommending the option with the highest success rate
-        e. For product ideas specifically, emphasize the success rate prominently in your recommendation
-    12. If a user proposes a new idea, evaluate it using the same success rate methodology and compare it with previous options.
-    13. When a user selects or shows interest in a lower-scoring option (not the highest-scoring one):
-        a. Express diplomatic concern about their choice
-        b. Point out that the higher success rate option offers better chances of success
-        c. ALWAYS include the success rate percentage
-        d. Say something like: "I notice you're interested in [Option X] with a [Y]% success rate. Before proceeding, I'd like to highlight that [Highest Success Rate Option] has a [Z]% success rate, which is [Z-Y]% higher, indicating a stronger potential for success."
-        e. For product ideas, explicitly state the difference in success rates
-        f. Always ASK if they'd like to reconsider their choice
-        g. If they insist on the lower-scoring option, respect their choice but periodically remind them of the challenges
-    14. Always keep users focused on completing the current todo item before moving to the next one.
-    15. Don't generate images, only provide text-based content.`;
-
-    // Log details for debugging
-    console.log("API Request details:");
-    console.log("- Business type:", currentProject.business_type);
-    console.log("- Message count:", messages.length);
-    console.log("- System prompt length:", systemPrompt.length);
-    console.log("- Is task request:", isTaskRequest);
-    console.log("- Is exact todo task:", isExactTodoTask);
-    console.log("- Current focus task:", currentFocusTask?.task || "None");
-    
-    // Check API key
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      console.error("OpenAI API key is missing");
-      return "I apologize, but I can't process your request because the API configuration is missing. Please contact support.";
-    }
-    
-    // Truncate message history to fit within token limits
-    // Reserve ~2000 tokens for system prompt and latest user message
-    const truncatedMessages = truncateMessageHistory(messages, 6000);
-    console.log(`Truncated message history from ${messages.length} to ${truncatedMessages.length} messages`);
-    
-    // Prepare request body
-    const requestBody = {
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `${systemPrompt}\n\n${businessTypeContext}`,
-        },
-        ...truncatedMessages.map((msg) => ({
-          role: msg.is_user ? "user" : "assistant",
-          content: msg.content,
-        })),
-        { role: "user", content: userMessage },
-      ],
-      temperature: 0.7,
-      presence_penalty: 0.6,
-      frequency_penalty: 0.6,
-    };
-
-    // Retry mechanism with exponential backoff
-    const MAX_RETRIES = 5;
-    let retryCount = 0;
-    let lastError = null;
-
-    while (retryCount < MAX_RETRIES) {
-      try {
-        // If this is a retry, add a small delay with exponential backoff
-        if (retryCount > 0) {
-          const delayMs = Math.min(1000 * Math.pow(2, retryCount - 1), 16000); // Capped at 16s
-          console.log(`Retry ${retryCount}/${MAX_RETRIES} - Waiting ${delayMs}ms before retrying...`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
-
-        const response = await fetch(
-          "https://api.openai.com/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("API response received successfully");
-          const aiResponse = data.choices[0].message.content;
-          return aiResponse;
-        }
-
-        // Handle non-200 responses
-        const errorData = await response.json().catch(() => ({}));
-        console.error("OpenAI API Error:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          retry: retryCount + 1,
-        });
-
-        // If we hit a rate limit (429), retry with backoff
-        if (response.status === 429) {
-          console.log("Rate limit hit, will retry with backoff");
-          retryCount++;
-          lastError = new Error(`API Rate Limit Error: ${response.status}`);
-          continue;
-        }
-        
-        // If we hit a token limit error, try with fewer messages
-        if (response.status === 400 && errorData?.error?.code === 'context_length_exceeded') {
-          console.log("Context length exceeded. Trying with minimal context.");
-          // Just keep the most recent 2-3 message pairs
-          const minimalMessages = truncateMessageHistory(messages, 2000);
-          
-          // Update request body with minimal messages
-          requestBody.messages = [
-            {
-              role: "system",
-              content: `${systemPrompt}\n\n${businessTypeContext}`,
-            },
-            ...minimalMessages.map((msg) => ({
-              role: msg.is_user ? "user" : "assistant",
-              content: msg.content,
-            })),
-            { role: "user", content: userMessage },
-          ];
-          
-          // Try once more with minimal context
-          const retryResponse = await fetch(
-            "https://api.openai.com/v1/chat/completions",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`,
-              },
-              body: JSON.stringify(requestBody),
-            }
-          );
-          
-          if (retryResponse.ok) {
-            const retryData = await retryResponse.json();
-            return retryData.choices[0].message.content;
-          } else {
-            throw new Error(`API Retry Error: ${retryResponse.status} ${retryResponse.statusText}`);
-          }
-        }
-        
-        // For other errors, just throw and don't retry
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-      } catch (error) {
-        console.error(`Attempt ${retryCount + 1} failed:`, error);
-        lastError = error;
-        
-        // Only retry on network errors or 429 responses (which we handle above)
-        if (!(error instanceof Error && error.message.includes("429"))) {
-          break;
-        }
-        
-        retryCount++;
+Would you like help with this task? Once we complete it, we can move on to the next one.`;
       }
     }
+
+    // Construct the system context
+    const systemContext = {
+      role: "system",
+      content: `${systemPrompt}
+
+You are an AI business assistant actively executing tasks for the user's ${currentProject.business_type} business.
+
+CURRENT STATE:
+- Current Stage: ${currentStage.replace('_', ' ').toUpperCase()}
+- Progress: ${completedTaskCount} of ${totalTaskCount} tasks completed
+- Current Task: ${currentFocusTask ? `#${currentFocusTaskIndex + 1} - ${currentFocusTask.task}` : "All tasks completed"}
+
+TASK EXECUTION RULES:
+1. NEVER suggest or discuss future tasks until current task is completed
+2. NEVER provide generic advice - execute the specific task at hand
+3. NEVER ask for information already provided in the context
+4. ALWAYS execute tasks in exact sequence
+5. ALWAYS provide specific, actionable steps
+6. ALWAYS include exact tools, websites, and resources to use
+7. ALWAYS show your work and results in real-time
+8. ALWAYS format responses in React-Markdown
+
+EXECUTION APPROACH:
+1. For the current task:
+   - Execute immediately without asking for permission
+   - If specific information is needed, ask ONLY for that
+   - Complete as much as possible automatically
+   - Show work and results in real-time
+   - Only ask for user confirmation after showing results
+
+2. For research tasks:
+   - Perform the actual research
+   - Present specific findings with data
+   - Include exact examples and metrics
+   - Make concrete recommendations
+   - Show success metrics
+
+3. For planning tasks:
+   - Create complete, actionable plans
+   - Include specific tools and resources
+   - Provide exact steps with timelines
+   - Calculate costs and ROI
+   - Show success probability
+
+4. For execution tasks:
+   - Create the actual content or setup
+   - Provide ready-to-use materials
+   - Include all technical details
+   - Show example outputs
+   - Provide success criteria
+
+CRITICAL INSTRUCTIONS:
+1. DO NOT suggest or discuss future tasks
+2. DO NOT provide generic advice
+3. DO NOT ask "how would you like to proceed"
+4. DO NOT ask for information already provided
+5. DO NOT allow task jumping
+6. DO execute the current task completely
+7. DO show all work and calculations
+8. DO provide specific metrics
+9. DO maintain strict task order
+10. DO reference tasks by number
+
+When user asks about a task:
+1. If it's the current task - execute it immediately
+2. If it's a future task - remind them to complete current task first
+3. If it's a past task - confirm it's completed before proceeding
+
+When executing tasks:
+1. DO NOT ask for permission to start
+2. DO NOT provide generic steps
+3. DO NOT suggest alternatives
+4. DO execute the task completely
+5. DO show all work and results`
+    };
+
+    // Truncate message history to fit within token limits
+    const truncatedMessages = truncateMessageHistory(messages, 6000);
     
-    // If we've exhausted retries or had a non-retriable error
-    if (lastError) {
-      throw lastError;
+    // Prepare the messages array for the API
+    const apiMessages = [
+      systemContext,
+      ...truncatedMessages.map((msg) => ({
+        role: msg.is_user ? "user" : "assistant",
+        content: msg.content,
+      })),
+      { role: "user", content: userMessage.trim() }
+    ];
+
+    // Make the API call
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages: apiMessages,
+        temperature: 0.7,
+        presence_penalty: 0.6,
+        frequency_penalty: 0.6,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("OpenAI API Error:", {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+      });
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
-    throw new Error("Failed to get AI response after multiple attempts");
+    const data = await response.json();
+    return data.choices[0].message.content;
+
   } catch (error) {
-    console.error("Error getting AI response:", error);
-    return "I apologize, but I encountered an error with my AI service. The server might be busy. Please try again in a moment or contact support if the issue persists.";
+    console.error("Error in getAIChatResponse:", error);
+    return "I apologize, but I encountered an error with my AI service. Please try again in a moment or contact support if the issue persists.";
   }
 };
 
@@ -1781,4 +1201,68 @@ export const generateLowerScoreWarning = (
   message += ` Would you like to reconsider your choice?`;
   
   return message;
+};
+
+// Update the todo generation functions to use the typed blueprints
+export async function generateTodosForStage(stage: StageKey, currentProject: any) {
+  if (!currentProject) {
+    console.error("No current project provided to generateTodosForStage");
+    return null;
+  }
+
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) {
+    console.error("OpenAI API key is missing in generateTodosForStage");
+    return null;
+  }
+
+  try {
+    const { business_type, id: projectId, total_budget: budget } = currentProject;
+
+    switch (business_type) {
+      case 'ecommerce':
+        return await generateEcommerceTodos(projectId, budget);
+      case 'agency':
+        return await generateSMMATodos(projectId, budget);
+      case 'copywriting':
+        return await generateCopywritingTodos(projectId, budget);
+      case 'software':
+        return await generateSoftwareTodos(projectId, budget);
+      default:
+        console.error(`Unsupported business type: ${business_type}`);
+        return null;
+    }
+  } catch (error) {
+    console.error("Error in generateTodosForStage:", error);
+    return null;
+  }
+}
+
+// Business-specific todo generation functions
+export const generateSMMATodos = async (
+  projectId: string,
+  budget: string
+): Promise<any[] | null> => {
+  return generateTodos(projectId, budget, 'SMMA', typedSMMABlueprint);
+};
+
+export const generateCopywritingTodos = async (
+  projectId: string,
+  budget: string
+): Promise<any[] | null> => {
+  return generateTodos(projectId, budget, 'Copywriting', typedCopywritingBlueprint);
+};
+
+export const generateSoftwareTodos = async (
+  projectId: string,
+  budget: string
+): Promise<any[] | null> => {
+  return generateTodos(projectId, budget, 'Software', typedSoftwareBlueprint);
+};
+
+export const generateEcommerceTodos = async (
+  projectId: string,
+  budget: string
+): Promise<any[] | null> => {
+  return generateTodos(projectId, budget, 'Ecommerce', ecommerceBlueprint);
 }; 
