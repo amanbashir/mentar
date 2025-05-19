@@ -116,5 +116,5 @@ export const getStrategyPrompt = (businessType: string): string => {
 // Combine prompts for a comprehensive system prompt
 export const getCombinedPrompt = (businessType: string): string => {
   const strategyPrompt = getStrategyPrompt(businessType);
-  return ``;
+  return `${systemPrompt}\n\n${strategyPrompt}`;
 }; 
