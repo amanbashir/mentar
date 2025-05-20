@@ -887,6 +887,16 @@ export const getBusinessTypePersonas = (businessType: string) => {
       name: "Growth Strategist",
       icon: "📈",
       message: `By completing this task, you've unlocked new potential for your business. This accomplishment puts you ahead of 80% of entrepreneurs who often skip these essential foundation-building steps. The work you've done here will compound over time, creating long-term value for your business.`
+    },
+    {
+      name: "Market Analyst",
+      icon: "🔍",
+      message: `From a market analysis perspective, this task gives you valuable insights into your competitive landscape. Understanding where your business stands in relation to market needs and competitor offerings is essential for strategic positioning. This foundation will help you make informed decisions moving forward.`
+    },
+    {
+      name: "Business Consultant",
+      icon: "📊",
+      message: `As a business consultant, I can tell you that identifying and addressing these gaps is precisely what separates successful businesses from those that struggle. You now have a clear roadmap of priorities that will help you allocate resources effectively and build a more robust business model.`
     }
   ];
 
@@ -945,8 +955,27 @@ export const getBusinessTypePersonas = (businessType: string) => {
   // Get the right personas based on business type
   const businessSpecificPersonas = businessTypePersonas[businessType as keyof typeof businessTypePersonas] || [];
   
-  // Combine common personas with business-specific ones and return 3-4 personas
-  return [...businessSpecificPersonas, ...commonPersonas].slice(0, 4);
+  // Combine common personas with business-specific ones to ensure we always have at least 3
+  let allPersonas = [...businessSpecificPersonas, ...commonPersonas];
+  
+  // Remove icon emojis from the display names but keep the property
+  allPersonas = allPersonas.map(persona => ({
+    name: persona.name.replace(/[^\w\s]/g, '').trim(), // Remove emojis from name
+    icon: "", // Keep the property but use empty string
+    message: persona.message
+  }));
+  
+  // Make sure we return at least 3 personas even if less are available
+  while (allPersonas.length < 3) {
+    // Add additional generic personas if needed
+    allPersonas.push({
+      name: "Business Advisor",
+      icon: "",
+      message: `This task completion demonstrates your commitment to building a solid business foundation. These insights will guide your decisions and help you prioritize your resources as you move forward.`
+    });
+  }
+  
+  return allPersonas;
 };
 
 // Generate detailed task completion messages with multiple personas
@@ -957,38 +986,91 @@ export const generateDetailedTaskCompletionMessage = (
   nextTaskDescription?: string,
   businessType: string = "software"
 ): string => {
-  // Get personas specific to the business type
-  const personas = getBusinessTypePersonas(businessType);
-
-  // Construct the detailed message
-  let message = `## 🎉 Congratulations on completing Task #${taskNumber}! 🎉\n\n`;
+  // Get current date/time for a unique timestamp
+  const timestamp = new Date().toISOString();
   
-  // Only include task description if it's not a placeholder text
-  if (taskDescription !== "Moving to next task" && taskDescription !== "All tasks completed") {
-    message += `You've successfully completed: **${taskDescription}**\n\n`;
+  // Base completion message
+  let message = `✅ **Task #${taskNumber} Completed**\n\n`;
+  
+  // Add task-specific feedback
+  const feedback = getTaskSpecificFeedback(taskDescription, businessType);
+  
+  // If there's a next task, add transition to it
+  if (nextTaskNumber && nextTaskDescription) {
+    return `${message}${feedback}\n\n**Next Task (#${nextTaskNumber}):** ${nextTaskDescription}\n\nHow would you like to proceed?`;
   }
   
-  // Add the persona perspectives
-  personas.forEach(persona => {
-    message += `### ${persona.icon} ${persona.name} Perspective:\n${persona.message}\n\n`;
-  });
+  // If all tasks are completed
+  return `${message}${feedback}\n\nCongratulations! You've completed all tasks in this stage. Let me know if you need help with anything else.`;
+};
 
-  // Add the milestone achievement message
-  message += `## 🏆 Milestone Achievement\n\n`;
-  message += `You're making excellent progress in your entrepreneurial journey. Each completed task brings you closer to building a sustainable and profitable business. This structured approach ensures you're building on solid foundations.\n\n`;
-
-  // Add the next task information if available
-  if (nextTaskNumber !== undefined && nextTaskDescription) {
-    message += `## Your Next Task:\n\n`;
-    message += `**Task #${nextTaskNumber}: ${nextTaskDescription}**\n\n`;
-    message += `Would you like me to help you with this task?`;
-  } else {
-    message += `## Stage Complete!\n\n`;
-    message += `Congratulations! You've completed all the tasks for this stage. This is a significant milestone in your business journey.\n\n`;
-    message += `Would you like to move to the next stage?`;
+const getTaskSpecificFeedback = (taskDescription: string, businessType: string): string => {
+  const taskLower = taskDescription.toLowerCase();
+  
+  // Identify task type
+  const isResearchTask = taskLower.includes("research") || taskLower.includes("analyze") || taskLower.includes("identify");
+  const isBrandingTask = taskLower.includes("brand") || taskLower.includes("logo") || taskLower.includes("design");
+  const isImplementationTask = taskLower.includes("implement") || taskLower.includes("build") || taskLower.includes("create");
+  const isMarketingTask = taskLower.includes("market") || taskLower.includes("promote") || taskLower.includes("advertise");
+  
+  // Return concise, specific feedback based on task type and business type
+  if (isResearchTask) {
+    return `Great research work! This foundation will help guide your ${businessType} business decisions.`;
+  } else if (isBrandingTask) {
+    return `Excellent progress on your branding! A strong identity will help your ${businessType} business stand out.`;
+  } else if (isImplementationTask) {
+    return `Well done implementing this component of your ${businessType} business.`;
+  } else if (isMarketingTask) {
+    return `Good job on your marketing efforts! Consistent promotion is key to your ${businessType}'s growth.`;
   }
+  
+  // Default feedback
+  return `Good progress! You're one step closer to building your successful ${businessType} business.`;
+};
 
-  return message;
+// Add special task guidance function for the branding task the user is working on
+export const getBrandingTaskGuidance = (): string => {
+  return `# Creating Your Brand Identity: Step-by-Step Guide
+
+## Step 1: Brainstorm Brand Name Ideas
+- Focus on names that are short (max 9 letters), memorable, and relate to your niche
+- Consider invented words that can become unique to your brand
+- Check if the .com domain is available using GoDaddy or Namecheap
+- Aim for 10-15 name options initially
+
+## Step 2: Validate Domain Availability
+- Go to Namecheap.com or GoDaddy.com and check domain availability
+- Prioritize .com domains as they're most recognized by customers
+- If your first choice isn't available, try adding a relevant word (like "shop", "store", etc.)
+- Check social media handle availability as well (use namecheckr.com)
+
+## Step 3: Design a Simple Logo
+- Use Canva's free logo maker (canva.com) - no design skills needed
+- Choose a clean, simple design that works in different sizes
+- Select colors that match your brand personality (2-3 colors maximum)
+- Ensure it looks good both in color and black & white
+
+## Step 4: Create Your Value Proposition
+- Craft a single sentence that clearly states:
+  * What you offer
+  * Who it's for
+  * Why it's better than alternatives
+- Keep it under 12 words if possible
+- Focus on benefits, not features
+- Make it specific rather than generic
+
+## Examples for E-commerce Stores:
+1. "Premium pet accessories that last a lifetime" (FurEver)
+2. "Stylish activewear designed for real bodies" (FitForm)
+3. "Handcrafted jewelry that tells your unique story" (GemTale)
+
+## Common Pitfalls to Avoid:
+- Choosing names that are too similar to existing brands
+- Creating an overly complex logo with too many colors/elements
+- Writing a generic value proposition that could apply to any business
+- Selecting a domain name that's difficult to spell or remember
+
+When you've completed this task, you'll have established the foundation of your brand identity that will guide all your future marketing and customer communications.`;
 };
 
 // Get AI chat response
@@ -996,7 +1078,8 @@ export const getAIChatResponse = async (
   messages: any[],
   userMessage: string,
   currentProject: any,
-  model: string = "gpt-4" // Add default model parameter
+  model: string = "gpt-4", // Add default model parameter
+  skipTaskCompletion: boolean = false // Add parameter to skip automatic task completion
 ) => {
   try { 
     if (!currentProject) {
@@ -1015,9 +1098,15 @@ export const getAIChatResponse = async (
       console.error("No user message provided to getAIChatResponse");
       return "I'm sorry, but I couldn't process an empty message.";
     }
+    
+    // Special case for brand/logo creation task
+    if (userMessage.includes("Todo #5") && 
+        (userMessage.toLowerCase().includes("brand") || userMessage.toLowerCase().includes("logo"))) {
+      return getBrandingTaskGuidance();
+    }
 
-    // First, handle automatic task completion if the message indicates completion
-    if (isTaskCompletionMessage(userMessage) && currentProject.todos) {
+    // First, handle automatic task completion if the message indicates completion and skipTaskCompletion is false
+    if (!skipTaskCompletion && isTaskCompletionMessage(userMessage) && currentProject.todos) {
       try {
         // Find the first incomplete task
         const firstIncompleteIndex = currentProject.todos.findIndex((todo: any) => !todo.completed);
@@ -1089,14 +1178,25 @@ export const getAIChatResponse = async (
     // Check if user has pasted a todo task from the list
     let isExactTodoTask = false;
     let matchedTodoIndex = -1;
+    let isGapAnalysisTask = false; // Add flag for gap analysis tasks
     
     if (currentProject.todos && Array.isArray(currentProject.todos)) {
       for (let i = 0; i < currentProject.todos.length; i++) {
         const todo = currentProject.todos[i];
+        // Check if task is a gap analysis task
+        if (todo.task.toLowerCase().includes("gap") && 
+            todo.task.toLowerCase().includes("analysis")) {
+          isGapAnalysisTask = true;
+        }
         if (todo.task.toLowerCase() === userMessage.toLowerCase() ||
             userMessage.toLowerCase().includes(todo.task.toLowerCase())) {
           isExactTodoTask = true;
           matchedTodoIndex = i;
+          // Check if matched task is a gap analysis
+          if (todo.task.toLowerCase().includes("gap") && 
+              todo.task.toLowerCase().includes("analysis")) {
+            isGapAnalysisTask = true;  
+          }
           break;
         }
       }
@@ -1110,7 +1210,20 @@ export const getAIChatResponse = async (
       if (requestedTaskNumber >= 0 && requestedTaskNumber < currentProject.todos.length) {
         matchedTodoIndex = requestedTaskNumber;
         isExactTodoTask = true;
+        // Check if matched task is a gap analysis
+        const task = currentProject.todos[requestedTaskNumber];
+        if (task.task.toLowerCase().includes("gap") && 
+            task.task.toLowerCase().includes("analysis")) {
+          isGapAnalysisTask = true;
+        }
       }
+    }
+
+    // Check if the message itself mentions gap analysis
+    if (userMessage.toLowerCase().includes("gap analysis") || 
+        userMessage.toLowerCase().includes("analyze gaps") ||
+        userMessage.toLowerCase().includes("find gaps")) {
+      isGapAnalysisTask = true;
     }
 
     // Get information about completed tasks and current stage
@@ -1758,3 +1871,330 @@ export const isNextTaskRequest = (message: string): boolean => {
 
   return nextTaskPhrases.some(regex => regex.test(message));
 }; 
+
+/**
+ * Generates specific product recommendations for e-commerce businesses with success rate metrics
+ * @param personas Array of target customer personas
+ * @param budget Budget constraint for the business
+ * @param productType Optional specific product type to focus on
+ * @returns Array of product recommendations with success metrics
+ */
+export interface ProductRecommendation {
+  name: string;
+  description: string;
+  targetPersona: string;
+  pricingRange: string;
+  profitMargin: string;
+  marketSaturation: {
+    level: string;
+    score: number;
+  };
+  uniqueSellingPoint: string;
+  supplierOptions: string[];
+  successProbability: number;
+  reasonForScore: string;
+}
+
+export const generateEcommerceProductRecommendations = async (
+  personas: string[] = [],
+  budget: string = "$1000-$5000",
+  productType?: string
+): Promise<ProductRecommendation[]> => {
+  try {
+    // Define common product categories with high success rates
+    const productCategories = [
+      { category: "Fitness & Wellness", baseSuccessRate: 75 },
+      { category: "Home & Kitchen", baseSuccessRate: 72 },
+      { category: "Beauty & Personal Care", baseSuccessRate: 78 },
+      { category: "Tech Accessories", baseSuccessRate: 76 },
+      { category: "Eco-Friendly Products", baseSuccessRate: 70 },
+      { category: "Pet Supplies", baseSuccessRate: 73 },
+      { category: "Hobby & Craft Supplies", baseSuccessRate: 69 },
+      { category: "Baby Products", baseSuccessRate: 71 },
+      { category: "Fashion Accessories", baseSuccessRate: 68 },
+      { category: "Outdoor & Adventure", baseSuccessRate: 67 }
+    ];
+
+    // Specific products with detailed attributes
+    const productsDatabase: ProductRecommendation[] = [
+      {
+        name: "Smart Fitness Tracker",
+        description: "Waterproof fitness watch with heart rate monitor, sleep tracking, and smartphone notifications",
+        targetPersona: "Health-conscious individuals aged 25-45",
+        pricingRange: "$25-45 retail, $10-18 cost",
+        profitMargin: "55-60%",
+        marketSaturation: {
+          level: "Medium-High",
+          score: 6
+        },
+        uniqueSellingPoint: "Affordable alternative to premium brands with comparable features",
+        supplierOptions: ["AliExpress", "Alibaba", "DHgate"],
+        successProbability: 70,
+        reasonForScore: "Strong demand but competitive market requires good marketing to stand out"
+      },
+      {
+        name: "Bamboo Bath Caddy",
+        description: "Expandable bath tray with phone, tablet, book, and wine glass holders",
+        targetPersona: "Self-care enthusiasts, primarily women 28-55",
+        pricingRange: "$30-50 retail, $12-20 cost",
+        profitMargin: "60-65%",
+        marketSaturation: {
+          level: "Medium",
+          score: 5
+        },
+        uniqueSellingPoint: "Eco-friendly materials with premium feel and design",
+        supplierOptions: ["Alibaba", "Etsy Wholesale", "Specialized manufacturers"],
+        successProbability: 75,
+        reasonForScore: "High profit margin and strong gifting potential with relatively low marketing costs"
+      },
+      {
+        name: "Collapsible Silicone Food Containers",
+        description: "Space-saving, eco-friendly food storage solutions for kitchen and travel",
+        targetPersona: "Eco-conscious home cooks, busy professionals",
+        pricingRange: "$15-25 retail, $5-9 cost",
+        profitMargin: "65-70%",
+        marketSaturation: {
+          level: "Medium-Low",
+          score: 4
+        },
+        uniqueSellingPoint: "Space-saving design perfect for small kitchens and travel",
+        supplierOptions: ["Alibaba", "Global Sources", "Canton Fair suppliers"],
+        successProbability: 82,
+        reasonForScore: "Growing eco-friendly market with practical everyday use case"
+      },
+      {
+        name: "LED Plant Grow Light",
+        description: "Adjustable spectrum lights for indoor plants with timer and multiple modes",
+        targetPersona: "Urban gardeners, houseplant enthusiasts aged 25-40",
+        pricingRange: "$35-60 retail, $15-25 cost",
+        profitMargin: "55-60%",
+        marketSaturation: {
+          level: "Medium",
+          score: 5
+        },
+        uniqueSellingPoint: "Full spectrum with customizable settings for different plant types",
+        supplierOptions: ["Alibaba", "AliExpress", "Specialized LED manufacturers"],
+        successProbability: 78,
+        reasonForScore: "Growing indoor plant trend with year-round demand"
+      },
+      {
+        name: "Portable Blender",
+        description: "Rechargeable personal blender for smoothies and protein shakes",
+        targetPersona: "Fitness enthusiasts, busy professionals aged 22-35",
+        pricingRange: "$25-40 retail, $10-18 cost",
+        profitMargin: "55-60%",
+        marketSaturation: {
+          level: "Medium-High",
+          score: 6
+        },
+        uniqueSellingPoint: "Strong battery life and easy one-button operation",
+        supplierOptions: ["Alibaba", "AliExpress", "DHgate"],
+        successProbability: 65,
+        reasonForScore: "Popular product but facing increased competition"
+      },
+      {
+        name: "Pet Grooming Glove",
+        description: "Gentle deshedding and massage glove for dogs and cats",
+        targetPersona: "Pet owners aged 25-60 with medium to long-haired pets",
+        pricingRange: "$12-20 retail, $3-6 cost",
+        profitMargin: "70-75%",
+        marketSaturation: {
+          level: "Medium",
+          score: 5
+        },
+        uniqueSellingPoint: "Works on multiple pet types with massage benefits",
+        supplierOptions: ["Alibaba", "AliExpress", "Pet supply wholesalers"],
+        successProbability: 80,
+        reasonForScore: "Evergreen pet market with high profit margins and repeat purchase potential"
+      },
+      {
+        name: "Yoga Wheel Set",
+        description: "3-piece yoga wheel set for stretching, balance and flexibility",
+        targetPersona: "Yoga practitioners, fitness enthusiasts aged 20-45",
+        pricingRange: "$30-50 retail, $12-20 cost",
+        profitMargin: "60-65%",
+        marketSaturation: {
+          level: "Low-Medium",
+          score: 3
+        },
+        uniqueSellingPoint: "Complete set with instruction guide for beginners to advanced",
+        supplierOptions: ["Alibaba", "Specialized fitness equipment manufacturers"],
+        successProbability: 72,
+        reasonForScore: "Growing yoga accessory market with specialized appeal"
+      },
+      {
+        name: "Reusable Beeswax Food Wraps",
+        description: "Eco-friendly alternative to plastic wrap in various sizes and patterns",
+        targetPersona: "Environmentally conscious consumers aged 25-55",
+        pricingRange: "$15-25 retail, $5-8 cost",
+        profitMargin: "65-70%",
+        marketSaturation: {
+          level: "Medium-Low",
+          score: 4
+        },
+        uniqueSellingPoint: "Sustainable, washable, and biodegradable with appealing designs",
+        supplierOptions: ["Etsy Wholesale", "Specialized eco-product manufacturers"],
+        successProbability: 76,
+        reasonForScore: "Strong trend toward sustainability with practical everyday use"
+      },
+      {
+        name: "Solar Power Bank",
+        description: "20000mAh portable charger with solar charging capability",
+        targetPersona: "Travelers, outdoor enthusiasts, tech-savvy users",
+        pricingRange: "$35-55 retail, $15-25 cost",
+        profitMargin: "55-60%",
+        marketSaturation: {
+          level: "Medium-High",
+          score: 6
+        },
+        uniqueSellingPoint: "Environmentally friendly with emergency charging capability",
+        supplierOptions: ["Alibaba", "Global Sources", "Tech wholesalers"],
+        successProbability: 68,
+        reasonForScore: "Appeal to outdoor market but faces stiff competition from established brands"
+      },
+      {
+        name: "Car Trash Can with Lid",
+        description: "Leakproof, collapsible auto trash bin with storage pockets",
+        targetPersona: "Car owners, parents, rideshare drivers",
+        pricingRange: "$15-25 retail, $4-8 cost",
+        profitMargin: "70-75%",
+        marketSaturation: {
+          level: "Low-Medium",
+          score: 3
+        },
+        uniqueSellingPoint: "Multipurpose design with leakproof liner and storage",
+        supplierOptions: ["Alibaba", "AliExpress", "Auto accessory manufacturers"],
+        successProbability: 78,
+        reasonForScore: "Practical solution with high margins and broad target market"
+      },
+      {
+        name: "Bedside Caddy Organizer",
+        description: "Felt storage organizer that slides between mattress and box spring",
+        targetPersona: "Apartment dwellers, college students, minimalists",
+        pricingRange: "$18-30 retail, $6-10 cost",
+        profitMargin: "65-70%",
+        marketSaturation: {
+          level: "Low",
+          score: 2
+        },
+        uniqueSellingPoint: "Space-saving solution for small bedrooms without nightstands",
+        supplierOptions: ["Alibaba", "Home organization wholesalers"],
+        successProbability: 81,
+        reasonForScore: "Low competition with strong practical appeal and good margins"
+      },
+      {
+        name: "Adjustable Laptop Stand",
+        description: "Portable, ergonomic aluminum laptop riser with multiple angles",
+        targetPersona: "Remote workers, students, digital nomads aged 20-45",
+        pricingRange: "$25-40 retail, $8-15 cost",
+        profitMargin: "60-65%",
+        marketSaturation: {
+          level: "Medium-High",
+          score: 6
+        },
+        uniqueSellingPoint: "Lightweight yet sturdy with cooling ventilation",
+        supplierOptions: ["Alibaba", "Tech accessory manufacturers"],
+        successProbability: 74,
+        reasonForScore: "Sustained demand from work-from-home trend despite competition"
+      }
+    ];
+
+    // Function to adjust success probability based on persona match
+    const adjustSuccessProbability = (product: ProductRecommendation, userPersonas: string[]): ProductRecommendation => {
+      let adjustedProduct = {...product};
+      
+      // Base adjustment factors
+      let personaMatchBonus = 0;
+      
+      // Check persona match
+      if (userPersonas.length > 0) {
+        const targetPersonaLower = product.targetPersona.toLowerCase();
+        
+        for (const persona of userPersonas) {
+          const personaLower = persona.toLowerCase();
+          
+          // Check for demographic matches
+          if (
+            (personaLower.includes('young') && targetPersonaLower.includes('20-')) ||
+            (personaLower.includes('middle') && targetPersonaLower.includes('30-')) ||
+            (personaLower.includes('professional') && targetPersonaLower.includes('professional')) ||
+            (personaLower.includes('parent') && targetPersonaLower.includes('parent')) ||
+            (personaLower.includes('fitness') && targetPersonaLower.includes('fitness')) ||
+            (personaLower.includes('eco') && targetPersonaLower.includes('eco')) ||
+            (personaLower.includes('tech') && targetPersonaLower.includes('tech'))
+          ) {
+            personaMatchBonus += 5;
+          }
+        }
+      }
+      
+      // Cap the bonus at 15%
+      personaMatchBonus = Math.min(personaMatchBonus, 15);
+      
+      // Apply the adjustments
+      adjustedProduct.successProbability = Math.min(95, adjustedProduct.successProbability + personaMatchBonus);
+      
+      return adjustedProduct;
+    };
+
+    // Filter products based on product type if specified
+    let filteredProducts = [...productsDatabase];
+    if (productType) {
+      const productTypeLower = productType.toLowerCase();
+      filteredProducts = filteredProducts.filter(product => 
+        product.name.toLowerCase().includes(productTypeLower) || 
+        product.description.toLowerCase().includes(productTypeLower));
+    }
+    
+    // Adjust success probabilities based on user personas
+    const adjustedProducts = filteredProducts.map(product => adjustSuccessProbability(product, personas));
+    
+    // Sort by success probability (highest first)
+    adjustedProducts.sort((a, b) => b.successProbability - a.successProbability);
+    
+    return adjustedProducts;
+  } catch (error) {
+    console.error("Error generating product recommendations:", error);
+    return [];
+  }
+};
+
+/**
+ * Generates a formatted response with product recommendations
+ * @param products Array of product recommendations
+ * @returns Formatted string with product recommendations
+ */
+export const formatProductRecommendations = (products: ProductRecommendation[]): string => {
+  if (!products || products.length === 0) {
+    return "No product recommendations found. Please provide more information about your target market.";
+  }
+
+  let result = "# Recommended E-commerce Products\n\n";
+  result += "Here are specific product recommendations for your e-commerce store, ranked by success probability:\n\n";
+
+  products.forEach((product, index) => {
+    result += `## ${index + 1}. ${product.name} - ${product.successProbability}% Success Probability\n\n`;
+    result += `**Description:** ${product.description}\n\n`;
+    result += `**Target Customer:** ${product.targetPersona}\n\n`;
+    result += `**Pricing Strategy:** ${product.pricingRange}\n\n`;
+    result += `**Profit Margin:** ${product.profitMargin}\n\n`;
+    result += `**Market Saturation:** ${product.marketSaturation.level}\n\n`;
+    result += `**Unique Selling Point:** ${product.uniqueSellingPoint}\n\n`;
+    result += `**Where to Source:** ${product.supplierOptions.join(', ')}\n\n`;
+    result += `**Why This Score:** ${product.reasonForScore}\n\n`;
+    
+    if (index < products.length - 1) {
+      result += "---\n\n";
+    }
+  });
+
+  result += "\n## Next Steps\n\n";
+  result += "1. Research the top 2-3 products in more depth\n";
+  result += "2. Compare supplier options and pricing\n";
+  result += "3. Order samples to verify quality before committing\n";
+  result += "4. Develop unique branding and positioning\n\n";
+  
+  result += "Would you like more detailed information about any of these specific products?";
+
+  return result;
+};

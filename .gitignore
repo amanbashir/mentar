@@ -19,3 +19,5 @@ node_modules
 *.icloud
 .icloud
 **/*.icloud 
+# Local Netlify folder
+.netlify

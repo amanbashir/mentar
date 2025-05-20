@@ -13,10 +13,12 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
-    "dev:local": "concurrently \"npm run dev\" \"npm run supabase:start\""
+    "dev:local": "concurrently \"npm run dev\" \"npm run supabase:start\"",
+    "dev:all": "concurrently \"npm run dev\" \"netlify dev\""
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.0.0",
     "@supabase/supabase-js": "^2.49.4",
     "framer-motion": "^12.9.7",
