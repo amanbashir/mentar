@@ -1,12 +1,12 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY);
 
 // Initialize Supabase client
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 );
 
 export const handler = async (event, context) => {
@@ -19,7 +19,7 @@ export const handler = async (event, context) => {
   }
 
   const sig = event.headers["stripe-signature"];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const endpointSecret = import.meta.env.VITE_STRIPE_WEBHOOK_SECRET;
 
   let stripeEvent;
 
