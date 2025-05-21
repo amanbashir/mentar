@@ -4,6 +4,7 @@ import {
   redirectToCheckout,
   getSubscriptionStatus,
 } from "../../services/stripeService";
+import { supabase } from "../../lib/supabaseClient";
 
 interface BillingProps {
   subscriptionStatus: string;
@@ -62,6 +63,31 @@ const Billing: React.FC<BillingProps> = ({
   const [message, setMessage] = useState<MessageType | null>(null);
   const [checkoutAttempts, setCheckoutAttempts] = useState<number>(0);
 
+  const updateUserSubscription = async (
+    planType: string,
+    subscriptionId: string
+  ) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const userId = user?.id;
+
+    // const { error } = await supabase
+    //   .from("subscriptions")
+    //   .update({
+    //     user_id: userId,
+    //     stripe_subscription_id: subscriptionId,
+    //     stripe_customer_id: session.customer,
+    //     status: session.status,
+    //     plan_type: planType,
+    //     current_period_end: new Date(
+    //       session.current_period_end * 1000
+    //     ).toISOString(),
+    //     updated_at: new Date().toISOString(),
+    //   })
+    //   .eq("user_id", userId);
+  };
+
   // Check for URL params when the component mounts
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -90,6 +116,7 @@ const Billing: React.FC<BillingProps> = ({
             planType = "pro";
           }
         }
+        updateUserSubscription(planType, sessionId);
 
         // Update the subscription status
         onSubscriptionStatusChange(planType);

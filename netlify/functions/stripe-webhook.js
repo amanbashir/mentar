@@ -1,13 +1,13 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-// Use process.env instead of import.meta.env
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// Use VITE_ prefixed environment variables
+const stripe = new Stripe(process.env.VITE_STRIPE_SECRET_KEY);
 
 // Initialize Supabase client
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.VITE_SUPABASE_URL,
+  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 );
 
 export const handler = async (event, context) => {
@@ -20,11 +20,20 @@ export const handler = async (event, context) => {
       };
     }
 
+    // Log the incoming event for debugging
+    console.log("Received webhook event:", {
+      type: event.body ? JSON.parse(event.body).type : "no body",
+      headers: event.headers,
+    });
+
     const sig = event.headers["stripe-signature"];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const endpointSecret = process.env.VITE_STRIPE_WEBHOOK_SECRET;
 
     // Add validation for required environment variables
-    if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    if (
+      !process.env.VITE_STRIPE_SECRET_KEY ||
+      !process.env.VITE_STRIPE_WEBHOOK_SECRET
+    ) {
       console.error(
         "Missing required environment variables for Stripe webhook"
       );
@@ -33,8 +42,8 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           message: "Server configuration error",
           debug: {
-            hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
-            hasWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
+            hasStripeKey: !!process.env.VITE_STRIPE_SECRET_KEY,
+            hasWebhookSecret: !!process.env.VITE_STRIPE_WEBHOOK_SECRET,
           },
         }),
       };
@@ -43,9 +52,18 @@ export const handler = async (event, context) => {
     let stripeEvent;
 
     try {
-      // Verify the webhook signature
+      // Get the raw body string
+      const rawBody = event.body;
+
+      // Log raw event data for debugging
+      console.log("Raw webhook data:", {
+        rawBody: rawBody ? rawBody.substring(0, 100) + "..." : "no body",
+        signature: sig ? "present" : "missing",
+      });
+
+      // Verify the webhook signature using the raw body
       stripeEvent = stripe.webhooks.constructEvent(
-        event.body,
+        rawBody,
         sig,
         endpointSecret
       );
@@ -56,6 +74,7 @@ export const handler = async (event, context) => {
         signatureHeader: sig ? "present" : "missing",
         bodyLength: event.body ? event.body.length : 0,
         endpointSecretLength: endpointSecret ? endpointSecret.length : 0,
+        rawBody: event.body ? event.body.substring(0, 100) + "..." : "no body",
       });
       return {
         statusCode: 400,
@@ -77,8 +96,25 @@ export const handler = async (event, context) => {
       switch (stripeEvent.type) {
         case "checkout.session.completed":
           const session = stripeEvent.data.object;
-          const userId = session.metadata.userId;
+
+          // Log the session data
+          console.log("Checkout session data:", {
+            id: session.id,
+            customerId: session.customer,
+            subscriptionId: session.subscription,
+            metadata: session.metadata,
+          });
+
+          // Ensure we have a user ID
+          const userId = session.metadata?.userId;
+          if (!userId) {
+            throw new Error("No userId found in session metadata");
+          }
+
           const subscriptionId = session.subscription;
+          if (!subscriptionId) {
+            throw new Error("No subscription ID found in session");
+          }
 
           console.log(`Processing completed checkout for user: ${userId}`);
 
@@ -86,15 +122,21 @@ export const handler = async (event, context) => {
           const subscription = await stripe.subscriptions.retrieve(
             subscriptionId
           );
+
+          // Log subscription data
+          console.log("Subscription data:", {
+            id: subscription.id,
+            status: subscription.status,
+            priceId: subscription.items.data[0].price.id,
+          });
+
           const priceId = subscription.items.data[0].price.id;
 
           // Determine plan type based on price ID
           let planType = "pro";
-          if (priceId === import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID) {
+          if (priceId === process.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID) {
             planType = "pro_monthly";
-          } else if (
-            priceId === import.meta.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID
-          ) {
+          } else if (priceId === process.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID) {
             planType = "pro_annual";
           }
 
@@ -129,9 +171,11 @@ export const handler = async (event, context) => {
         case "customer.subscription.updated":
           const updatedSubscription = stripeEvent.data.object;
 
-          console.log(
-            `Processing subscription update: ${updatedSubscription.id}`
-          );
+          console.log("Subscription update data:", {
+            id: updatedSubscription.id,
+            status: updatedSubscription.status,
+            customerId: updatedSubscription.customer,
+          });
 
           // Update subscription status in Supabase
           const { error: updateError } = await supabase
@@ -158,9 +202,11 @@ export const handler = async (event, context) => {
         case "customer.subscription.deleted":
           const deletedSubscription = stripeEvent.data.object;
 
-          console.log(
-            `Processing subscription deletion: ${deletedSubscription.id}`
-          );
+          console.log("Subscription deletion data:", {
+            id: deletedSubscription.id,
+            status: deletedSubscription.status,
+            customerId: deletedSubscription.customer,
+          });
 
           // Update subscription status in Supabase
           const { error: deleteError } = await supabase
@@ -195,7 +241,7 @@ export const handler = async (event, context) => {
         statusCode: 500,
         body: JSON.stringify({
           message: error.message,
-          eventType: stripeEvent.type,
+          eventType: stripeEvent?.type,
           error: error,
         }),
       };
