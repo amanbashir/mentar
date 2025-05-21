@@ -79,15 +79,12 @@ const Billing: React.FC<BillingProps> = ({
 
     console.log("User ID:", userId);
 
-    const { error } = await supabase
-      .from("subscriptions")
-      .update({
-        user_id: userId,
-        stripe_subscription_id: subscriptionId,
-        plan_type: planType,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId);
+    const { error } = await supabase.from("subscriptions").insert({
+      user_id: userId,
+      stripe_subscription_id: subscriptionId,
+      plan_type: planType,
+      updated_at: new Date().toISOString(),
+    });
 
     if (error) {
       console.error("Error updating subscription:", error);
