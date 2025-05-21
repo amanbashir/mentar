@@ -2,10 +2,34 @@ import { supabase } from '../lib/supabaseClient';
 import { loadStripe } from '@stripe/stripe-js';
 
 // Use the Stripe test key from the environment file
-const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLISHABLE_KEY;
+const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
-// Initialize Stripe
-const stripePromise = loadStripe(STRIPE_PUBLIC_KEY || '');
+if (!STRIPE_PUBLIC_KEY) {
+  console.error('Stripe publishable key is not set. Please check your environment variables.');
+}
+
+// Initialize Stripe with error handling
+const initializeStripe = async () => {
+  try {
+    const stripe = await loadStripe(STRIPE_PUBLIC_KEY || "");
+    if (!stripe) {
+      throw new Error('Failed to initialize Stripe');
+    }
+    return stripe;
+  } catch (error: any) {
+    // Check for specific error patterns that might indicate content blockers
+    if (error.message?.includes('network') || !window.fetch || error.type === 'load_error') {
+      throw new Error(
+        'Unable to load payment processing. This might be caused by ad blockers, privacy extensions, or network restrictions. ' +
+        'Please disable any ad blockers or privacy extensions and try again.'
+      );
+    }
+    throw error;
+  }
+};
+
+// Initialize Stripe with the new error handling
+const stripePromise = initializeStripe();
 
 // Base URL for serverless functions
 const API_URL = process.env.NODE_ENV === 'production'
@@ -122,24 +146,32 @@ export const createCheckoutSession = async (
 };
 
 /**
- * Redirects the user to the Stripe checkout page
+ * Redirects the user to the checkout page with enhanced error handling
  */
 export const redirectToCheckout = async (sessionId: string): Promise<void> => {
   try {
-    console.log('Redirecting to checkout with session ID:', sessionId);
+    console.log('Initializing checkout with session ID:', sessionId);
     
     const stripe = await stripePromise;
     if (!stripe) {
-      throw new Error('Failed to load Stripe');
+      throw new Error('Failed to load payment processor. Please check your internet connection and try again.');
     }
     
     const { error } = await stripe.redirectToCheckout({ sessionId });
     
     if (error) {
+      if (error.message?.includes('network') || error.type === 'network_error') {
+        throw new Error(
+          'Payment processing was blocked. Please:\n' +
+          '1. Disable any ad blockers or privacy extensions\n' +
+          '2. Check your internet connection\n' +
+          '3. Try again or use a different browser'
+        );
+      }
       throw new Error(error.message || 'Failed to redirect to checkout');
     }
-  } catch (error) {
-    console.error('Error redirecting to checkout:', error);
+  } catch (error: any) {
+    console.error('Error during checkout:', error);
     throw error;
   }
 };
