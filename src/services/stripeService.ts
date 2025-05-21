@@ -160,7 +160,7 @@ export const redirectToCheckout = async (sessionId: string): Promise<void> => {
     const { error } = await stripe.redirectToCheckout({ sessionId });
     
     if (error) {
-      if (error.message?.includes('network') || error.type === 'network_error') {
+      if (error.message?.includes('network') ) {
         throw new Error(
           'Payment processing was blocked. Please:\n' +
           '1. Disable any ad blockers or privacy extensions\n' +
