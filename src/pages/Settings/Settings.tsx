@@ -32,7 +32,7 @@ const Settings = () => {
 
   useEffect(() => {
     fetchUserData();
-    fetchSubscriptionStatus();
+    // fetchSubscriptionStatus();
   }, []);
 
   const fetchUserData = async () => {

@@ -1,29 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Log environment variables (without sensitive values)
-console.log("Environment check:");
-console.log("SUPABASE_URL exists:", !!process.env.SUPABASE_URL);
-console.log(
-  "SUPABASE_SERVICE_ROLE_KEY exists:",
-  !!process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 // Check for required environment variables
-if (!process.env.SUPABASE_URL) {
+if (!process.env.VITE_SUPABASE_URL) {
   console.error("SUPABASE_URL is missing");
 }
 
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+if (!process.env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
   console.error("SUPABASE_SERVICE_ROLE_KEY is missing");
 }
 
 // Initialize Supabase client
 let supabase;
 try {
-  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (
+    process.env.VITE_SUPABASE_URL &&
+    process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+  ) {
     supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+      process.env.VITE_SUPABASE_URL,
+      process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
     );
   } else {
     console.error(

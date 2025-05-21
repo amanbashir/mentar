@@ -65,27 +65,28 @@ const Billing: React.FC<BillingProps> = ({
 
   const updateUserSubscription = async (
     planType: string,
-    subscriptionId: string
+    subscriptionId: string | null
   ) => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     const userId = user?.id;
 
-    // const { error } = await supabase
-    //   .from("subscriptions")
-    //   .update({
-    //     user_id: userId,
-    //     stripe_subscription_id: subscriptionId,
-    //     stripe_customer_id: session.customer,
-    //     status: session.status,
-    //     plan_type: planType,
-    //     current_period_end: new Date(
-    //       session.current_period_end * 1000
-    //     ).toISOString(),
-    //     updated_at: new Date().toISOString(),
-    //   })
-    //   .eq("user_id", userId);
+    const { error } = await supabase
+      .from("subscriptions")
+      .update({
+        user_id: userId,
+        stripe_subscription_id: subscriptionId,
+        plan_type: planType,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error updating subscription:", error);
+    }
+
+    console.log("Subscription updated successfully");
   };
 
   // Check for URL params when the component mounts
@@ -96,7 +97,18 @@ const Billing: React.FC<BillingProps> = ({
     const sessionId = url.searchParams.get("session_id");
     const priceId = url.searchParams.get("price_id");
 
+    console.log("URL params:", { success, canceled, sessionId, priceId });
+
     if (success === "true") {
+      let userId;
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        userId = user?.id;
+      });
+
+      if (userId) {
+        console.log("User ID:", userId);
+      }
+
       setMessage({
         title: "Subscription Activated",
         type: "success",
@@ -104,17 +116,21 @@ const Billing: React.FC<BillingProps> = ({
           "Your subscription has been processed successfully! Your account has been upgraded.",
       });
 
-      // Determine the plan type based on the price ID if available
-      if (sessionId) {
-        console.log("Session ID:", sessionId);
-        let planType = "pro"; // Default to pro
+      if (!userId) {
+        console.error("User ID not found");
+        return;
+      }
 
-        if (priceId) {
-          if (priceId.toLowerCase().includes("business")) {
-            planType = "business";
-          } else if (priceId.toLowerCase().includes("pro")) {
-            planType = "pro";
-          }
+      // Determine the plan type based on the price ID if available
+
+      console.log("Session ID:", sessionId);
+      let planType = "pro"; // Default to pro
+
+      if (priceId) {
+        if (priceId.toLowerCase().includes("business")) {
+          planType = "business";
+        } else if (priceId.toLowerCase().includes("pro")) {
+          planType = "pro";
         }
         updateUserSubscription(planType, sessionId);
 
@@ -139,7 +155,7 @@ const Billing: React.FC<BillingProps> = ({
       cleanUrl.searchParams.delete("price_id");
       window.history.replaceState({}, "", cleanUrl.toString());
     }
-  }, [onSubscriptionStatusChange]);
+  }, []);
 
   const detectAdBlocker = async (): Promise<boolean> => {
     try {
