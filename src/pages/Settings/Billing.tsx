@@ -5,10 +5,10 @@ import {
   getSubscriptionStatus,
 } from "../../services/stripeService";
 import { supabase } from "../../lib/supabaseClient";
+import "./Billing.css";
 
 interface BillingProps {
   subscriptionStatus: string;
-  onSubscriptionStatusChange: (status: string) => void;
 }
 
 interface PlanDetails {
@@ -56,12 +56,39 @@ interface MessageType {
 }
 
 const Billing: React.FC<BillingProps> = ({
-  subscriptionStatus,
-  onSubscriptionStatusChange,
+  subscriptionStatus: initialStatus,
 }) => {
   const [isLoadingCheckout, setIsLoadingCheckout] = useState<boolean>(false);
   const [message, setMessage] = useState<MessageType | null>(null);
   const [checkoutAttempts, setCheckoutAttempts] = useState<number>(0);
+  const [isLoadingStatus, setIsLoadingStatus] = useState<boolean>(true);
+  const [currentSubscriptionStatus, setCurrentSubscriptionStatus] =
+    useState<string>(initialStatus);
+  const [isLoadingPortal, setIsLoadingPortal] = useState<boolean>(false);
+
+  const getSubscriptionStatus = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      console.error("User ID not found");
+      return;
+    }
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("user_id", userId);
+
+    console.log("Subscription data:", data);
+
+    if (error) {
+      console.error("Error fetching subscription status:", error);
+    }
+
+    return data;
+  };
 
   const updateUserSubscription = async (
     planType: string,
@@ -91,7 +118,33 @@ const Billing: React.FC<BillingProps> = ({
     }
 
     console.log("Subscription updated successfully");
+    // Update local state after successful subscription update
+    setCurrentSubscriptionStatus(planType);
   };
+
+  // Add useEffect to check subscription status on mount
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        setIsLoadingStatus(true);
+        const subscriptionData = await getSubscriptionStatus();
+
+        if (subscriptionData && subscriptionData.length > 0) {
+          const latestSubscription = subscriptionData[0]; // Get the most recent subscription
+          setCurrentSubscriptionStatus(latestSubscription.plan_type);
+        } else {
+          setCurrentSubscriptionStatus("none"); // Set to free plan if no subscription found
+        }
+      } catch (error) {
+        console.error("Error checking subscription:", error);
+        setCurrentSubscriptionStatus("none"); // Default to free plan on error
+      } finally {
+        setIsLoadingStatus(false);
+      }
+    };
+
+    checkSubscription();
+  }, []); // Run once on mount
 
   // Check for URL params when the component mounts
   useEffect(() => {
@@ -125,7 +178,7 @@ const Billing: React.FC<BillingProps> = ({
         updateUserSubscription(planType, sessionId);
 
         // Update the subscription status
-        onSubscriptionStatusChange(planType);
+        setCurrentSubscriptionStatus(planType);
       }
     } else if (canceled === "true") {
       setMessage({
@@ -264,6 +317,22 @@ const Billing: React.FC<BillingProps> = ({
       setIsLoadingCheckout(false);
     }
   };
+  const redirectToCustomerPortal = async () => {
+    try {
+      setIsLoadingPortal(true);
+      window.location.href = import.meta.env.VITE_CUSTOMER_PORTAL_LINK;
+    } catch (error) {
+      console.error("Error redirecting to customer portal:", error);
+      setMessage({
+        title: "Portal Access Error",
+        type: "error",
+        details:
+          "Unable to access subscription management portal. Please try again later.",
+      });
+    } finally {
+      setIsLoadingPortal(false);
+    }
+  };
 
   const renderPlanCard = (plan: PlanDetails, isCurrent: boolean) => {
     const isFeatured = plan.name === "Pro";
@@ -298,50 +367,68 @@ const Billing: React.FC<BillingProps> = ({
   return (
     <div className="billing-section">
       <h1>Billing</h1>
-      <div className="current-plan">
-        Current Plan:{" "}
-        <span>
-          {subscriptionStatus === "none"
-            ? "Free"
-            : subscriptionStatus.charAt(0).toUpperCase() +
-              subscriptionStatus.slice(1)}
-        </span>
-      </div>
+      {isLoadingStatus ? (
+        <div>Loading subscription status...</div>
+      ) : (
+        <>
+          <div className="current-plan">
+            Current Plan:{" "}
+            <span>
+              {currentSubscriptionStatus === "none"
+                ? "Free"
+                : currentSubscriptionStatus.charAt(0).toUpperCase() +
+                  currentSubscriptionStatus.slice(1)}
+            </span>
+            {currentSubscriptionStatus !== "none" && (
+              <button
+                className="manage-subscription-btn"
+                onClick={redirectToCustomerPortal}
+                disabled={isLoadingPortal}
+              >
+                {isLoadingPortal ? "Loading..." : "Manage Subscription"}
+              </button>
+            )}
+          </div>
 
-      {message && (
-        <div className={`message ${message.type}`}>
-          <div className="message-title">{message.title}</div>
-          {message.details && (
-            <div className="message-details">{message.details}</div>
-          )}
-          {message.showAdBlockerHelp && (
-            <div className="ad-blocker-help">
-              <p>
-                Common ad blockers and privacy extensions that might be causing
-                this issue:
-              </p>
-              <ul>
-                <li>uBlock Origin</li>
-                <li>AdBlock / AdBlock Plus</li>
-                <li>Brave Shield</li>
-                <li>Privacy Badger</li>
-                <li>Ghostery</li>
-                <li>DuckDuckGo Privacy Essentials</li>
-              </ul>
-              <p>
-                Try temporarily disabling these extensions for this site, or use
-                a different browser.
-              </p>
+          {message && (
+            <div className={`message ${message.type}`}>
+              <div className="message-title">{message.title}</div>
+              {message.details && (
+                <div className="message-details">{message.details}</div>
+              )}
+              {message.showAdBlockerHelp && (
+                <div className="ad-blocker-help">
+                  <p>
+                    Common ad blockers and privacy extensions that might be
+                    causing this issue:
+                  </p>
+                  <ul>
+                    <li>uBlock Origin</li>
+                    <li>AdBlock / AdBlock Plus</li>
+                    <li>Brave Shield</li>
+                    <li>Privacy Badger</li>
+                    <li>Ghostery</li>
+                    <li>DuckDuckGo Privacy Essentials</li>
+                  </ul>
+                  <p>
+                    Try temporarily disabling these extensions for this site, or
+                    use a different browser.
+                  </p>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      <div className="pricing-cards">
-        {renderPlanCard(PLANS.free, subscriptionStatus === "none")}
-        {renderPlanCard(PLANS.pro, subscriptionStatus === "pro")}
-        {renderPlanCard(PLANS.business, subscriptionStatus === "business")}
-      </div>
+          <div className="pricing-cards">
+            {renderPlanCard(PLANS.free, currentSubscriptionStatus === "none")}
+            {renderPlanCard(PLANS.pro, currentSubscriptionStatus === "pro")}
+            {renderPlanCard(
+              PLANS.business,
+              currentSubscriptionStatus === "business"
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

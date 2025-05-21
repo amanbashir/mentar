@@ -193,7 +193,7 @@ const Settings = () => {
         {activeSection === "billing" && (
           <Billing
             subscriptionStatus={subscriptionStatus}
-            onSubscriptionStatusChange={setSubscriptionStatus}
+            // onSubscriptionStatusChange={setSubscriptionStatus}
           />
         )}
 
