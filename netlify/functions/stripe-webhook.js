@@ -1,17 +1,61 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-// Use VITE_ prefixed environment variables
+// Validate environment variables
+const requiredEnvVars = {
+  VITE_STRIPE_SECRET_KEY: process.env.VITE_STRIPE_SECRET_KEY,
+  VITE_STRIPE_WEBHOOK_SECRET: process.env.VITE_STRIPE_WEBHOOK_SECRET,
+  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_SERVICE_ROLE_KEY: process.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+};
+
+// Check for missing environment variables
+const missingEnvVars = Object.entries(requiredEnvVars)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key);
+
+if (missingEnvVars.length > 0) {
+  console.error("Missing required environment variables:", missingEnvVars);
+  throw new Error(
+    `Missing required environment variables: ${missingEnvVars.join(", ")}`
+  );
+}
+
+// Initialize Stripe
 const stripe = new Stripe(process.env.VITE_STRIPE_SECRET_KEY);
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-);
+// Initialize Supabase client with validation
+let supabase;
+try {
+  if (
+    !process.env.VITE_SUPABASE_URL ||
+    !process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    throw new Error("Supabase configuration is incomplete");
+  }
+
+  supabase = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  console.log("Supabase client initialized successfully");
+} catch (error) {
+  console.error("Failed to initialize Supabase client:", error);
+  throw error;
+}
 
 export const handler = async (event, context) => {
   try {
+    // Log environment variables (without sensitive values)
+    console.log("Environment configuration:", {
+      hasStripeKey: !!process.env.VITE_STRIPE_SECRET_KEY,
+      hasWebhookSecret: !!process.env.VITE_STRIPE_WEBHOOK_SECRET,
+      hasSupabaseUrl: !!process.env.VITE_SUPABASE_URL,
+      hasSupabaseKey: !!process.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+      nodeEnv: process.env.NODE_ENV,
+    });
+
     // Only allow POST requests
     if (event.httpMethod !== "POST") {
       return {
@@ -28,26 +72,6 @@ export const handler = async (event, context) => {
 
     const sig = event.headers["stripe-signature"];
     const endpointSecret = process.env.VITE_STRIPE_WEBHOOK_SECRET;
-
-    // Add validation for required environment variables
-    if (
-      !process.env.VITE_STRIPE_SECRET_KEY ||
-      !process.env.VITE_STRIPE_WEBHOOK_SECRET
-    ) {
-      console.error(
-        "Missing required environment variables for Stripe webhook"
-      );
-      return {
-        statusCode: 500,
-        body: JSON.stringify({
-          message: "Server configuration error",
-          debug: {
-            hasStripeKey: !!process.env.VITE_STRIPE_SECRET_KEY,
-            hasWebhookSecret: !!process.env.VITE_STRIPE_WEBHOOK_SECRET,
-          },
-        }),
-      };
-    }
 
     let stripeEvent;
 
