@@ -68,9 +68,16 @@ const Billing: React.FC<BillingProps> = ({
     subscriptionId: string | null
   ) => {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const userId = user?.id;
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      console.error("User ID not found");
+      return;
+    }
+
+    console.log("User ID:", userId);
 
     const { error } = await supabase
       .from("subscriptions")
@@ -100,26 +107,12 @@ const Billing: React.FC<BillingProps> = ({
     console.log("URL params:", { success, canceled, sessionId, priceId });
 
     if (success === "true") {
-      let userId;
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        userId = user?.id;
-      });
-
-      if (userId) {
-        console.log("User ID:", userId);
-      }
-
       setMessage({
         title: "Subscription Activated",
         type: "success",
         details:
           "Your subscription has been processed successfully! Your account has been upgraded.",
       });
-
-      if (!userId) {
-        console.error("User ID not found");
-        return;
-      }
 
       // Determine the plan type based on the price ID if available
 
