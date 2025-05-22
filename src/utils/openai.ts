@@ -7,7 +7,6 @@ import {copywritingBlueprint} from '../../lib/mentars/copywriting-new-strat.ts';
 import {ecommerceBlueprint} from '../../lib/mentars/ecom-new-strat.ts';
 import { StageData } from "../types/stage";
 import { Project, StageKey } from '../types/project';
-import { systemPrompt } from "./prompts.ts";
 
 // Helper functions for extracting information from messages
 
@@ -251,11 +250,10 @@ export const typedSaasStrategy: BusinessStrategy = typedSoftwareBlueprint;
 export async function generateTodosForProject(
   projectId: string,
   businessType: string,
-  budget: string | null
+  budget: string
 ) {
   const blueprint = getStrategyForBusinessType(businessType);
-  // Use empty string as default if budget is null
-  return generateTodos(projectId, budget || "", businessType, blueprint);
+  return generateTodos(projectId, budget, businessType, blueprint);
 }
 
 // Add type for step parameter
@@ -280,7 +278,6 @@ export const generateTodos = async (
   const stageData = blueprint[stage];
 
   if (!stageData || !stageData.steps) {
-    console.error(`No steps found for ${stage} in ${businessType} blueprint`);
     throw new Error(`No steps found for ${stage} in ${businessType} blueprint`);
   }
 
@@ -310,14 +307,14 @@ export const generateTodos = async (
     }
   }
 
-  console.log('Using Blueprint for business type:', businessType);
-  console.log('Blueprint stage data:', stageData.objective);
-  console.log('Using prequalification info:', prequalificationInfo ? 'Yes' : 'No');
+  console.log('Using Blueprint:', blueprint);
+console.log('Using PREQUALIFICATION INFO' , prequalificationInfo)
+
+
 
   // Create a detailed prompt from the blueprint
   let checklistItems: string[] = [];
   let deliverables: string[] = [];
-  let pitfalls: string[] = [];
   
   stageData.steps.forEach((step: BlueprintStep) => {
     if (step.checklist) checklistItems.push(...step.checklist);
@@ -329,36 +326,22 @@ export const generateTodos = async (
   if (stageData.deliverables) {
     deliverables = stageData.deliverables;
   }
-  
-  if (stageData.pitfalls) {
-    pitfalls = stageData.pitfalls;
-  }
 
   const todoGenerationPrompt = `As an AI ${businessType} business mentor, I need your help with two things:
-  1. Generate 5 specific, actionable tasks for a ${businessType} business in ${stage.replace('_', ' ')}
-  The tasks should be action items and not "How to do this" or "What to do" - they should be specific and actionable
+  1. Generate 5 specific, actionable tasks for starting a ${businessType} business
   2. Interpret and formalize a launch date from the user's free-form text and today's date ${new Date().toISOString().split('T')[0]}
 
   BUDGET: ${budget}
 
-  BUSINESS TYPE: ${businessType}
-
   Stage Objective: ${stageData.objective}
   
   Tasks should follow our ${businessType} blueprint and focus on:
-  
-  STAGE STEPS:
-  ${stageData.steps.map((step: any) => 
-    `- ${step.title}: ${step.description || step.goal || ''}`
-  ).join('\n')}
   
   CHECKLIST ITEMS:
   ${checklistItems.map(item => `- ${item}`).join("\n")}
   
   DELIVERABLES:
   ${deliverables.map(item => `- ${item}`).join("\n")}
-  
-  ${pitfalls.length > 0 ? `PITFALLS TO AVOID:\n${pitfalls.map(item => `- ${item}`).join("\n")}\n` : ''}
   
   ${prequalificationInfo}
 
@@ -369,8 +352,8 @@ export const generateTodos = async (
   FORMAT YOUR RESPONSE AS JSON with this structure:
   {
     "tasks": [
-      {"task": "Detailed task description 1", "completed": false, "stage": "${stage}", "step": null},
-      {"task": "Detailed task description 2", "completed": false, "stage": "${stage}", "step": null},
+      {"task": "Detailed task description 1", "completed": false},
+      {"task": "Detailed task description 2", "completed": false},
       ...
     ],
     "launchDate": "YYYY-MM-DD",
@@ -379,16 +362,16 @@ export const generateTodos = async (
 
   IMPORTANT GUIDELINES:
   - Make each task ultra-specific with exact steps, tools, and websites to use
-  - Generate exactly 5 tasks that perfectly match the ${businessType} business model
-  - Consider the user's budget when suggesting tools or approaches
-  - Reference specific platforms or tools that are industry standards for ${businessType} businesses
+  - Generate exactly 5 tasks
   - Avoid Adding numbers to the task titles
   - For the launch date, choose a reasonable date based on the user's text
   - If the launch timeframe is vague, use your judgment to select a date 60-90 days in the future
-  - If no launch timeframe was provided, set a date 90 days from today i.e ${new Date(new Date().setDate(new Date().getDate() + 90)).toISOString().split('T')[0]}
+  - If no launch timeframe was provided, set a date 90 days from today i.e ${new Date().toISOString().split('T')[0]}
   - The launch date should be a valid ISO date string (YYYY-MM-DD)`;
 
-  console.log(`Generating ${businessType} todos for stage ${stage} with launch date interpretation`);
+  console.log(`Generating initial ${businessType} todos with launch date interpretation`);
+  console.log("- Budget:", budget);
+  console.log("- Prequalification includes launch date text:", !!launchDateText);
 
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   
@@ -875,642 +858,190 @@ export const truncateMessageHistory = (messages: any[], maxTokens: number = 6000
   return result;
 };
 
-// Generate personas based on business type
-export const getBusinessTypePersonas = (businessType: string) => {
-  const commonPersonas = [
-    {
-      name: "Business Mentor",
-      icon: "🔑",
-      message: `I'm impressed with your dedication to completing this task! This shows your commitment to building your business the right way. The skills and knowledge you've gained here will serve you well as you continue to develop your business. Keep up this excellent momentum!`
-    },
-    {
-      name: "Growth Strategist",
-      icon: "📈",
-      message: `By completing this task, you've unlocked new potential for your business. This accomplishment puts you ahead of 80% of entrepreneurs who often skip these essential foundation-building steps. The work you've done here will compound over time, creating long-term value for your business.`
-    },
-    {
-      name: "Market Analyst",
-      icon: "🔍",
-      message: `From a market analysis perspective, this task gives you valuable insights into your competitive landscape. Understanding where your business stands in relation to market needs and competitor offerings is essential for strategic positioning. This foundation will help you make informed decisions moving forward.`
-    },
-    {
-      name: "Business Consultant",
-      icon: "📊",
-      message: `As a business consultant, I can tell you that identifying and addressing these gaps is precisely what separates successful businesses from those that struggle. You now have a clear roadmap of priorities that will help you allocate resources effectively and build a more robust business model.`
-    }
-  ];
-
-  // Business type specific personas
-  const businessTypePersonas = {
-    ecommerce: [
-      {
-        name: "E-commerce Expert",
-        icon: "🛒",
-        message: `As an e-commerce specialist, I can confirm that this task is crucial for building a successful online store. You're establishing strong foundations that will make scaling and optimizing your store much easier down the line. This attention to detail will directly impact your conversion rates and customer satisfaction.`
-      },
-      {
-        name: "Digital Marketing Advisor",
-        icon: "📱",
-        message: `From a marketing perspective, completing this task positions your store for better visibility and customer engagement. You're building the essential infrastructure needed for effective digital marketing campaigns. This work will significantly impact your ability to acquire and retain customers efficiently.`
-      }
-    ],
-    software: [
-      {
-        name: "SaaS Architect",
-        icon: "🔧",
-        message: `From a SaaS architecture standpoint, this task represents a critical component in building a scalable, robust software product. The technical foundation you're establishing will prevent costly rework later and enable faster iteration as you evolve your product.`
-      },
-      {
-        name: "Product Development Coach",
-        icon: "🚀",
-        message: `As a product development expert, I can see that completing this task puts you firmly on the path to product-market fit. You're taking the right steps to validate assumptions and build features that truly matter to users, which is exactly what successful software founders do.`
-      }
-    ],
-    agency: [
-      {
-        name: "Agency Scaling Expert",
-        icon: "🏢",
-        message: `In the agency world, this task is what separates freelancers from true agency owners. You're building systems and processes that will allow you to scale beyond trading time for money, creating leverage that will multiply your impact and revenue.`
-      },
-      {
-        name: "Client Acquisition Specialist",
-        icon: "🤝",
-        message: `From a business development perspective, this task strengthens your ability to attract and onboard ideal clients. You're laying the groundwork for consistent lead generation and client retention, the lifeblood of any successful agency.`
-      }
-    ],
-    copywriting: [
-      {
-        name: "Copy Chief",
-        icon: "✍️",
-        message: `As a senior copywriter, I recognize that this task enhances your positioning as an expert rather than just another writer. You're building the framework that will allow you to command premium rates and attract clients who value strategic communication.`
-      },
-      {
-        name: "Brand Messaging Consultant",
-        icon: "💬",
-        message: `From a brand perspective, completing this task elevates your offering beyond words on a page to strategic communication that drives business results. This is exactly the approach that will make clients see you as an invaluable partner rather than a replaceable service provider.`
-      }
-    ]
-  };
-
-  // Get the right personas based on business type
-  const businessSpecificPersonas = businessTypePersonas[businessType as keyof typeof businessTypePersonas] || [];
-  
-  // Combine common personas with business-specific ones to ensure we always have at least 3
-  let allPersonas = [...businessSpecificPersonas, ...commonPersonas];
-  
-  // Remove icon emojis from the display names but keep the property
-  allPersonas = allPersonas.map(persona => ({
-    name: persona.name.replace(/[^\w\s]/g, '').trim(), // Remove emojis from name
-    icon: "", // Keep the property but use empty string
-    message: persona.message
-  }));
-  
-  // Make sure we return at least 3 personas even if less are available
-  while (allPersonas.length < 3) {
-    // Add additional generic personas if needed
-    allPersonas.push({
-      name: "Business Advisor",
-      icon: "",
-      message: `This task completion demonstrates your commitment to building a solid business foundation. These insights will guide your decisions and help you prioritize your resources as you move forward.`
-    });
-  }
-  
-  return allPersonas;
-};
-
-// Generate detailed task completion messages with multiple personas
-export const generateDetailedTaskCompletionMessage = (
-  taskNumber: number,
-  taskDescription: string,
-  nextTaskNumber?: number,
-  nextTaskDescription?: string,
-  businessType: string = "software"
-): string => {
-  // Get current date/time for a unique timestamp
-  const timestamp = new Date().toISOString();
-  
-  // Base completion message
-  let message = `✅ **Task #${taskNumber} Completed**\n\n`;
-  
-  // Add task-specific feedback
-  const feedback = getTaskSpecificFeedback(taskDescription, businessType);
-  
-  // If there's a next task, add transition to it
-  if (nextTaskNumber && nextTaskDescription) {
-    return `${message}${feedback}\n\n**Next Task (#${nextTaskNumber}):** ${nextTaskDescription}\n\nHow would you like to proceed?`;
-  }
-  
-  // If all tasks are completed
-  return `${message}${feedback}\n\nCongratulations! You've completed all tasks in this stage. Let me know if you need help with anything else.`;
-};
-
-const getTaskSpecificFeedback = (taskDescription: string, businessType: string): string => {
-  const taskLower = taskDescription.toLowerCase();
-  
-  // Identify task type
-  const isResearchTask = taskLower.includes("research") || taskLower.includes("analyze") || taskLower.includes("identify");
-  const isBrandingTask = taskLower.includes("brand") || taskLower.includes("logo") || taskLower.includes("design");
-  const isImplementationTask = taskLower.includes("implement") || taskLower.includes("build") || taskLower.includes("create");
-  const isMarketingTask = taskLower.includes("market") || taskLower.includes("promote") || taskLower.includes("advertise");
-  
-  // Return concise, specific feedback based on task type and business type
-  if (isResearchTask) {
-    return `Great research work! This foundation will help guide your ${businessType} business decisions.`;
-  } else if (isBrandingTask) {
-    return `Excellent progress on your branding! A strong identity will help your ${businessType} business stand out.`;
-  } else if (isImplementationTask) {
-    return `Well done implementing this component of your ${businessType} business.`;
-  } else if (isMarketingTask) {
-    return `Good job on your marketing efforts! Consistent promotion is key to your ${businessType}'s growth.`;
-  }
-  
-  // Default feedback
-  return `Good progress! You're one step closer to building your successful ${businessType} business.`;
-};
-
-// Add special task guidance function for the branding task the user is working on
-export const getBrandingTaskGuidance = (): string => {
-  return `# Creating Your Brand Identity: Step-by-Step Guide
-
-## Step 1: Brainstorm Brand Name Ideas
-- Focus on names that are short (max 9 letters), memorable, and relate to your niche
-- Consider invented words that can become unique to your brand
-- Check if the .com domain is available using GoDaddy or Namecheap
-- Aim for 10-15 name options initially
-
-## Step 2: Validate Domain Availability
-- Go to Namecheap.com or GoDaddy.com and check domain availability
-- Prioritize .com domains as they're most recognized by customers
-- If your first choice isn't available, try adding a relevant word (like "shop", "store", etc.)
-- Check social media handle availability as well (use namecheckr.com)
-
-## Step 3: Design a Simple Logo
-- Use Canva's free logo maker (canva.com) - no design skills needed
-- Choose a clean, simple design that works in different sizes
-- Select colors that match your brand personality (2-3 colors maximum)
-- Ensure it looks good both in color and black & white
-
-## Step 4: Create Your Value Proposition
-- Craft a single sentence that clearly states:
-  * What you offer
-  * Who it's for
-  * Why it's better than alternatives
-- Keep it under 12 words if possible
-- Focus on benefits, not features
-- Make it specific rather than generic
-
-## Examples for E-commerce Stores:
-1. "Premium pet accessories that last a lifetime" (FurEver)
-2. "Stylish activewear designed for real bodies" (FitForm)
-3. "Handcrafted jewelry that tells your unique story" (GemTale)
-
-## Common Pitfalls to Avoid:
-- Choosing names that are too similar to existing brands
-- Creating an overly complex logo with too many colors/elements
-- Writing a generic value proposition that could apply to any business
-- Selecting a domain name that's difficult to spell or remember
-
-When you've completed this task, you'll have established the foundation of your brand identity that will guide all your future marketing and customer communications.`;
-};
-
 // Get AI chat response
 export const getAIChatResponse = async (
   messages: any[],
   userMessage: string,
   currentProject: any,
-  model: string = "gpt-4", // Add default model parameter
-  skipTaskCompletion: boolean = false // Add parameter to skip automatic task completion
+  systemPrompt: string,
+  useGPT4: boolean = true // Add model selection parameter
 ) => {
-  try { 
+  try {
+    // Input validation
     if (!currentProject) {
       console.error("No current project provided to getAIChatResponse");
       return "I'm sorry, but I couldn't process your request because no project information was provided.";
     }
-
-    console.log('Current Project:', currentProject);
 
     if (!messages || !Array.isArray(messages)) {
       console.error("Invalid messages array provided to getAIChatResponse");
       return "I'm sorry, but I couldn't process your previous messages correctly.";
     }
 
-    if (!userMessage) {
+    if (!userMessage?.trim()) {
       console.error("No user message provided to getAIChatResponse");
       return "I'm sorry, but I couldn't process an empty message.";
     }
-    
-    // Special case for brand/logo creation task
-    if (userMessage.includes("Todo #5") && 
-        (userMessage.toLowerCase().includes("brand") || userMessage.toLowerCase().includes("logo"))) {
-      return getBrandingTaskGuidance();
-    }
 
-    // First, handle automatic task completion if the message indicates completion and skipTaskCompletion is false
-    if (!skipTaskCompletion && isTaskCompletionMessage(userMessage) && currentProject.todos) {
-      try {
-        // Find the first incomplete task
-        const firstIncompleteIndex = currentProject.todos.findIndex((todo: any) => !todo.completed);
-        
-        if (firstIncompleteIndex !== -1) {
-          // Mark this task as completed in the project
-          const updatedTodos = [...currentProject.todos];
-          updatedTodos[firstIncompleteIndex] = {
-            ...updatedTodos[firstIncompleteIndex],
-            completed: true
-          };
-          
-          // Update the project in the database
-          await supabase
-            .from("projects")
-            .update({ todos: updatedTodos })
-            .eq("id", currentProject.id);
-          
-          // Update the local copy of the project with completed task
-          currentProject = {
-            ...currentProject,
-            todos: updatedTodos
-          };
-          
-          // Look for the next task to suggest (now that we've marked the current one complete)
-          const nextIncompleteIndex = updatedTodos.findIndex((todo: any) => !todo.completed);
-          
-          if (nextIncompleteIndex !== -1) {
-            const completedTaskNumber = firstIncompleteIndex + 1;
-            const nextTaskNumber = nextIncompleteIndex + 1;
-            
-            // Use the detailed completion message instead of the simple one
-            return generateDetailedTaskCompletionMessage(
-              completedTaskNumber,
-              updatedTodos[firstIncompleteIndex].task,
-              nextTaskNumber,
-              updatedTodos[nextIncompleteIndex].task,
-              currentProject.business_type
-            );
-          } else {
-            // All tasks completed
-            return generateDetailedTaskCompletionMessage(
-              firstIncompleteIndex + 1,
-              updatedTodos[firstIncompleteIndex].task,
-              undefined,
-              undefined,
-              currentProject.business_type
-            );
-          }
-        }
-      } catch (error) {
-        console.error("Error handling task completion message:", error);
-        // Continue with normal response if there was an error
-      }
-    }
-
-    // Get the current blueprint based on business type
-    const blueprint = getStrategyForBusinessType(currentProject.business_type);
-    
-    // Check if the user message is about a todo task or help request
-    const isTaskRequest = userMessage.toLowerCase().includes("can you help") ||
-      userMessage.toLowerCase().includes("how do i") || 
-      userMessage.includes("how to") ||
-      userMessage.toLowerCase().includes("could you assist") || 
-      userMessage.toLowerCase().includes("guide me") ||
-      userMessage.toLowerCase().includes("help me complete this task") ||
-      userMessage.toLowerCase().includes("help me");
-
-    // Check if user has pasted a todo task from the list
-    let isExactTodoTask = false;
-    let matchedTodoIndex = -1;
-    let isGapAnalysisTask = false; // Add flag for gap analysis tasks
-    
-    if (currentProject.todos && Array.isArray(currentProject.todos)) {
-      for (let i = 0; i < currentProject.todos.length; i++) {
-        const todo = currentProject.todos[i];
-        // Check if task is a gap analysis task
-        if (todo.task.toLowerCase().includes("gap") && 
-            todo.task.toLowerCase().includes("analysis")) {
-          isGapAnalysisTask = true;
-        }
-        if (todo.task.toLowerCase() === userMessage.toLowerCase() ||
-            userMessage.toLowerCase().includes(todo.task.toLowerCase())) {
-          isExactTodoTask = true;
-          matchedTodoIndex = i;
-          // Check if matched task is a gap analysis
-          if (todo.task.toLowerCase().includes("gap") && 
-              todo.task.toLowerCase().includes("analysis")) {
-            isGapAnalysisTask = true;  
-          }
-          break;
-        }
-      }
-    }
-
-    // If the user's message contains "I want to work on Todo #X", extract the task number
-    const todoRequestRegex = /I want to work on Todo #(\d+):/i;
-    const todoRequestMatch = userMessage.match(todoRequestRegex);
-    if (todoRequestMatch && currentProject.todos) {
-      const requestedTaskNumber = parseInt(todoRequestMatch[1]) - 1; // Convert to 0-indexed
-      if (requestedTaskNumber >= 0 && requestedTaskNumber < currentProject.todos.length) {
-        matchedTodoIndex = requestedTaskNumber;
-        isExactTodoTask = true;
-        // Check if matched task is a gap analysis
-        const task = currentProject.todos[requestedTaskNumber];
-        if (task.task.toLowerCase().includes("gap") && 
-            task.task.toLowerCase().includes("analysis")) {
-          isGapAnalysisTask = true;
-        }
-      }
-    }
-
-    // Check if the message itself mentions gap analysis
-    if (userMessage.toLowerCase().includes("gap analysis") || 
-        userMessage.toLowerCase().includes("analyze gaps") ||
-        userMessage.toLowerCase().includes("find gaps")) {
-      isGapAnalysisTask = true;
-    }
-
-    // Get information about completed tasks and current stage
-    const completedTaskCount = currentProject.todos?.filter((todo: any) => todo.completed).length || 0;
-    const totalTaskCount = currentProject.todos?.length || 0;
-    const currentStage = currentProject.current_stage || "stage_1";
-    
-    // Find the first incomplete task (the current focus task)
-    const currentFocusTask = currentProject.todos?.find((todo: any) => !todo.completed);
-    const currentFocusTaskIndex = currentProject.todos?.findIndex((todo: any) => !todo.completed);
-    
-    // Get stage and step information from the blueprint
-    const currentStageData = blueprint[currentStage];
-    let currentStepData = null;
-    if (currentStageData?.steps && currentProject.current_step) {
-      currentStepData = currentStageData.steps.find((step: any) => 
-        step.title === currentProject.current_step
-      );
-    }
-    
-    // Create a detailed business context
-    const businessTypeContext = `You are helping the user build a ${
-    currentProject.business_type || "business"
-    } business.
-    The user's budget is ${currentProject.total_budget || "not set yet"}.
-    The user's business idea is ${
-      currentProject.business_idea || "not set yet"
-    }.
-    The user's income goal is ${currentProject.income_goal || "not set yet"}.
-    
-    Current Progress:
-    - Stage: ${currentStage.replace('_', ' ').toUpperCase()}
-    - Completed Tasks: ${completedTaskCount} of ${totalTaskCount}
-    - Next Task to Focus On: ${currentFocusTask ? `#${currentFocusTaskIndex + 1} - ${currentFocusTask.task}` : "All tasks completed"}
-    
-    Blueprint Details:
-    - Business Type: ${currentProject.business_type}
-    - Current Stage Objective: ${currentStageData?.objective || "Not available"}
-    - Current Step: ${currentStepData?.title || "Not specified"}
-    - Step Description: ${currentStepData?.description || currentStepData?.goal || "Not available"}
-
-    IMPORTANT INSTRUCTIONS:
-    1. DO NOT ask questions about business type, budget, business idea, or income goals - this information is already provided above.
-    2. DO NOT ask for context about the business - use the information provided above.
-    3. Only ask specific questions related to the immediate task or problem the user needs help with.
-    4. Focus on providing direct, actionable solutions based on the context you already have.
-    5. ALWAYS format your responses using React-Markdown format so they render properly in the interface.
-    6. If a user is trying to work on tasks out of order, encourage them to complete earlier tasks first.
-    7. DO NOT move to another step or todo until the current one is fully completed and you have confirmation from the user.
-    8. Always reference todo items by their number (e.g., "Todo #3") when discussing them.
-    9. Always prompt the user with 2-3 specific questions to ensure extreme detail in their task completion.
-    10. Make your responses helpful and action-oriented, focusing on helping the user make tangible progress.
-    11. DIRECTLY SOLVE USER TASKS. DO NOT just give guidance on how to do it. Provide actual solutions, content, and completed work.
-    12. When suggesting ANY type of recommendations (personas, customer segments, product ideas, business names, marketing strategies, etc.), you MUST ALWAYS:
-        a. Provide exactly 3-5 specific options/suggestions (never more, never less)
-        b. For EACH option, calculate and display a simple success rate percentage (0-100%) based on:
-           - Market saturation
-           - Budget requirements
-           - Market size
-           - Unique selling proposition
-           - Cash flow potential
-        c. Format each suggestion as:
-           ### Option 1: [Name/Title]
-           [Brief description of the option - at least 3-4 sentences with specific details]
-           
-           **Success Rate: XX%**
-           
-           This option has a XX% chance of success based on market analysis, budget requirements, market size, unique selling proposition, and cash flow potential.
-        d. ALWAYS conclude by recommending the option with the highest success rate
-        e. For product ideas specifically, emphasize the success rate prominently in your recommendation
-    13. If a user proposes a new idea, evaluate it using the same success rate methodology and compare it with previous options.
-    14. When a user selects or shows interest in a lower-scoring option (not the highest-scoring one):
-        a. Express diplomatic concern about their choice
-        b. Point out that the higher success rate option offers better chances of success
-        c. ALWAYS include the success rate percentage
-        d. Say something like: "I notice you're interested in [Option X] with a [Y]% success rate. Before proceeding, I'd like to highlight that [Highest Success Rate Option] has a [Z]% success rate, which is [Z-Y]% higher, indicating a stronger potential for success."
-        e. For product ideas, explicitly state the difference in success rates
-        f. Always ASK if they'd like to reconsider their choice
-        g. If they insist on the lower-scoring option, respect their choice but periodically remind them of the challenges
-    15. Always keep users focused on completing the current todo item before moving to the next one.
-    16. Don't generate images or logos, only provide text-based content.
-    17. PROVIDE EXTREMELY DETAILED AND ELABORATE SOLUTIONS to each task. Never be generic or high-level. Include specific examples, templates, and actionable items.
-    18. After providing a solution for a task, ALWAYS ask if the user wants to mark it as complete.
-    
-    ${isExactTodoTask || isTaskRequest ? 
-      `IMPORTANT: The user is asking for help with a specific task or has pasted a todo item from their list.
-      You MUST directly solve their task, not just provide guidance on how to do it.
-      DO NOT say phrases like "Here's how to do this" or "Step-by-step way to do this".
-      Instead, DIRECTLY give them the solution, exact content, templates, or completed work they need.
-      For example:
-      - If they need marketing copy, WRITE the actual marketing copy (at least 300-500 words)
-      - If they need a business plan, CREATE the actual business plan (with all sections filled out)
-      - If they need a competitor analysis, PROVIDE the complete analysis with real data and insights
-      - If they need a pricing strategy, DEVELOP the full pricing model with specific price points
-      - If they need customer personas, create 3-5 detailed personas with success rates (at least 150 words each)
-
-      ALWAYS provide comprehensive solutions that can be used immediately without further work needed.
-      
-      If the task is about researching something, DO THE RESEARCH FOR THEM and provide a complete report/analysis.
-      
-      When providing ANY type of recommendations or multiple options (personas, business ideas, marketing strategies, etc.), you MUST ALWAYS:
-      1. Provide exactly 3-5 specific options/suggestions (never more, never less)
-      2. For EACH option, calculate and display a simple success rate percentage (0-100%) based on:
-         - Market saturation
-         - Budget requirements
-         - Market size
-         - Unique selling proposition
-         - Cash flow potential
-      3. Format each suggestion as:
-         ### Option 1: [Name/Title]
-         [DETAILED description of the option - at least 150 words with specific details]
-         
-         **Success Rate: XX%**
-         
-         *Market saturation:* [Specific analysis]
-         *Budget requirements:* [Specific analysis]
-         *Market size:* [Specific analysis]
-         *Unique selling proposition:* [Specific analysis]
-         *Cash flow potential:* [Specific analysis]
-         
-         This option has a XX% chance of success overall.
-      
-      4. After presenting all options with their success rates, ALWAYS:
-         a. Conclude by STRONGLY recommending the option with the highest success rate
-         b. If they later express interest in a lower-scoring option, diplomatically express concern
-         c. Point out that the higher success rate option offers better chances of success
-         d. ALWAYS include the success rate percentage
-         e. For product ideas, explicitly state the difference in success rates
-         f. Ask if they'd like to reconsider with something like: "I notice you're interested in [Option X] with a [Y]% success rate. Before proceeding, I'd like to highlight that [Highest Success Rate Option] has a [Z]% success rate, which is [Z-Y]% higher, indicating a stronger potential for success. Would you like to reconsider?"
-         g. If they still insist on a lower-scoring option, respect their choice but periodically remind them of the challenges
-
-      Provide the FINISHED WORK they need, not just instructions on how to do it themselves.
-      Include specific information, examples, and completed templates that they can use immediately.
-
-      At the end of your response, add a success indicator tag that will be used to automatically mark the task as complete. Add this line:
-      [TASK_COMPLETE_INDICATOR: ${matchedTodoIndex !== -1 ? `TASK_${matchedTodoIndex}` : 'CURRENT_TASK'}]
-
-      Remember to format your response using React-Markdown syntax for proper rendering.` :
-      `Remember to format your response using React-Markdown syntax for proper rendering.`
-    }`;
-
-    // Log details for debugging
-    console.log("API Request details:");
-    console.log("- Business type:", currentProject.business_type);
-    console.log("- Message count:", messages.length);
-    console.log("- System prompt length:", systemPrompt.length);
-    console.log("- Is task request:", isTaskRequest);
-    console.log("- Is exact todo task:", isExactTodoTask);
-    console.log("- Current focus task:", currentFocusTask?.task || "None");
-    console.log("- Matched todo index:", matchedTodoIndex);
-    console.log("- Using model:", model);
-    
-    // Check API key
+    // API key validation
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
     if (!apiKey) {
       console.error("OpenAI API key is missing");
       return "I apologize, but I can't process your request because the API configuration is missing. Please contact support.";
     }
-    
-    // Truncate message history to fit within token limits
-    // Reserve ~2000 tokens for system prompt and latest user message
-    const truncatedMessages = truncateMessageHistory(messages, 6000);
-    console.log(`Truncated message history from ${messages.length} to ${truncatedMessages.length} messages`);
-    
-    // Prepare request body
-    const requestBody = {
-      model: model, // Use the provided model parameter
-      messages: [
-        {
-          role: "system",
-          content: `${systemPrompt}\n\n${businessTypeContext}`,
-        },
-        ...truncatedMessages.map((msg) => ({
-          role: msg.is_user ? "user" : "assistant",
-          content: msg.content,
-        })),
-        { role: "user", content: userMessage },
-      ],
-      temperature: 0.7,
-      presence_penalty: 0.6,
-      frequency_penalty: 0.6,
+
+    // Get current task information
+    const completedTaskCount = currentProject.todos?.filter((todo: any) => todo.completed).length || 0;
+    const totalTaskCount = currentProject.todos?.length || 0;
+    const currentStage = currentProject.current_stage || "stage_1";
+    const currentFocusTask = currentProject.todos?.find((todo: any) => !todo.completed);
+    const currentFocusTaskIndex = currentProject.todos?.findIndex((todo: any) => !todo.completed) ?? -1;
+
+    // Check for task jumping
+    const isTaskRequest = userMessage.toLowerCase().includes("can you help") ||
+      userMessage.toLowerCase().includes("how do i") || 
+      userMessage.toLowerCase().includes("how to") ||
+      userMessage.toLowerCase().includes("could you assist") || 
+      userMessage.toLowerCase().includes("guide me") ||
+      userMessage.toLowerCase().includes("help me complete this task") ||
+      userMessage.toLowerCase().includes("help me");
+
+    if (isTaskRequest) {
+      const requestedTaskIndex = currentProject.todos?.findIndex((todo: any) => 
+        userMessage.toLowerCase().includes(todo.task.toLowerCase())
+      ) ?? -1;
+
+      if (requestedTaskIndex > currentFocusTaskIndex) {
+        return `I notice you're asking about a future task. To maintain proper progress and ensure success, we need to complete the current task first:
+
+**Current Task #${currentFocusTaskIndex + 1}**: ${currentFocusTask?.task}
+
+Would you like help with this task? Once we complete it, we can move on to the next one.`;
+      }
+    }
+
+    // Construct the system context
+    const systemContext = {
+      role: "system",
+      content: `${systemPrompt}
+
+You are an AI business assistant actively executing tasks for the user's ${currentProject.business_type} business.
+
+CURRENT STATE:
+- Current Stage: ${currentStage.replace('_', ' ').toUpperCase()}
+- Progress: ${completedTaskCount} of ${totalTaskCount} tasks completed
+- Current Task: ${currentFocusTask ? `#${currentFocusTaskIndex + 1} - ${currentFocusTask.task}` : "All tasks completed"}
+- Using Model: ${useGPT4 ? 'GPT-4' : 'GPT-3.5'}
+
+TASK EXECUTION RULES:
+1. NEVER suggest or discuss future tasks until current task is completed
+2. NEVER provide generic advice - execute the specific task at hand
+3. NEVER ask for information already provided in the context
+4. ALWAYS execute tasks in exact sequence
+5. ALWAYS provide specific, actionable steps
+6. ALWAYS include exact tools, websites, and resources to use
+7. ALWAYS show your work and results in real-time
+8. ALWAYS format responses in React-Markdown
+
+EXECUTION APPROACH:
+1. For the current task:
+   - Execute immediately without asking for permission
+   - If specific information is needed, ask ONLY for that
+   - Complete as much as possible automatically
+   - Show work and results in real-time
+   - Only ask for user confirmation after showing results
+
+2. For research tasks:
+   - Perform the actual research
+   - Present specific findings with data
+   - Include exact examples and metrics
+   - Make concrete recommendations
+   - Show success metrics
+
+3. For planning tasks:
+   - Create complete, actionable plans
+   - Include specific tools and resources
+   - Provide exact steps with timelines
+   - Calculate costs and ROI
+   - Show success probability
+
+4. For execution tasks:
+   - Create the actual content or setup
+   - Provide ready-to-use materials
+   - Include all technical details
+   - Show example outputs
+   - Provide success criteria
+
+CRITICAL INSTRUCTIONS:
+1. DO NOT suggest or discuss future tasks
+2. DO NOT provide generic advice
+3. DO NOT ask "how would you like to proceed"
+4. DO NOT ask for information already provided
+5. DO NOT allow task jumping
+6. DO execute the current task completely
+7. DO show all work and calculations
+8. DO provide specific metrics
+9. DO maintain strict task order
+10. DO reference tasks by number
+
+When user asks about a task:
+1. If it's the current task - execute it immediately
+2. If it's a future task - remind them to complete current task first
+3. If it's a past task - confirm it's completed before proceeding
+
+When executing tasks:
+1. DO NOT ask for permission to start
+2. DO NOT provide generic steps
+3. DO NOT suggest alternatives
+4. DO execute the task completely
+5. DO show all work and results`
     };
 
-    const response = await fetch(
-          "https://api.openai.com/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-          }
-        );
+    // Truncate message history to fit within token limits
+    const truncatedMessages = truncateMessageHistory(messages, useGPT4 ? 6000 : 3000);
+    
+    // Prepare the messages array for the API
+    const apiMessages = [
+      systemContext,
+      ...truncatedMessages.map((msg) => ({
+        role: msg.is_user ? "user" : "assistant",
+        content: msg.content,
+      })),
+      { role: "user", content: userMessage.trim() }
+    ];
 
-        if (response.ok) {
-          const data = await response.json();
-          console.log("API response received successfully");
-          let aiResponse = data.choices[0].message.content;
-          
-          // If there's a task completion indicator, mark the task as complete
-          const taskCompleteRegex = /\[TASK_COMPLETE_INDICATOR: (TASK_\d+|CURRENT_TASK)\]/;
-          const taskCompleteMatch = aiResponse.match(taskCompleteRegex);
-          
-          if (taskCompleteMatch) {
-            const taskIndicator = taskCompleteMatch[1];
-            let taskIndexToComplete = -1;
-            
-            if (taskIndicator === 'CURRENT_TASK') {
-              // Find the first incomplete task
-              const nextIncompleteIndex = currentProject.todos.findIndex((todo: any) => !todo.completed);
-              if (nextIncompleteIndex !== -1) {
-                taskIndexToComplete = nextIncompleteIndex;
-              }
-            } else {
-              // Extract index from TASK_X format
-              const indexMatch = taskIndicator.match(/TASK_(\d+)/);
-              if (indexMatch) {
-                taskIndexToComplete = parseInt(indexMatch[1]);
-              }
-            }
-            
-            console.log("Task completion indicator found:", { 
-              taskIndicator, 
-              taskIndexToComplete,
-              todoCount: currentProject.todos?.length || 0
-            });
-            
-            // Mark the task as complete
-            if (taskIndexToComplete !== -1 && currentProject.todos[taskIndexToComplete]) {
-              try {
-                console.log("Marking task as complete:", currentProject.todos[taskIndexToComplete].task);
-                
-                const todoId = currentProject.todos[taskIndexToComplete].id;
-                const updatedTodos = [...currentProject.todos];
-                updatedTodos[taskIndexToComplete] = {
-                  ...updatedTodos[taskIndexToComplete],
-                  completed: true
-                };
-                
-                // Update todos in the database
-                const { error } = await supabase
-                  .from("projects")
-                  .update({ todos: updatedTodos })
-                  .eq("id", currentProject.id);
-                
-                if (error) {
-                  console.error("Error updating todo completion status:", error);
-                } else {
-                  console.log("Task marked as complete successfully");
-                  
-                  // Check if all tasks are now completed to trigger stage transition
-                  const allTasksCompleted = updatedTodos.every((todo: any) => todo.completed);
-                  
-                  if (allTasksCompleted) {
-                    console.log("All tasks completed, should trigger stage transition");
-                  }
-                }
-                
-                // Remove the indicator from the response
-                aiResponse = aiResponse.replace(taskCompleteRegex, '');
-                
-                // Add a completion confirmation
-                aiResponse += "\n\n**✅ I've marked this task as complete for you.**";
-                
-                // If there are more tasks to do, suggest the next one
-                if (taskIndexToComplete < currentProject.todos.length - 1) {
-                  const nextTaskIndex = taskIndexToComplete + 1;
-                  aiResponse += `\n\nYour next task is: **Task #${nextTaskIndex + 1}: ${currentProject.todos[nextTaskIndex].task}**\n\nWould you like me to help you with this task?`;
-                } else {
-                  // This was the last task
-                  aiResponse += "\n\n**🎉 Congratulations! You've completed all tasks in this stage. You can now move to the next stage.**";
-                }
-              } catch (error) {
-                console.error("Error marking task as complete:", error);
-              }
-            }
-          }
-          
-          return aiResponse;
-        }
-        
+    // Make the API call
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: useGPT4 ? "gpt-4" : "gpt-3.5-turbo",
+        messages: apiMessages,
+        temperature: 0.7,
+        presence_penalty: 0.6,
+        frequency_penalty: 0.6,
+      }),
+    });
 
-    throw new Error("Failed to get AI response after multiple attempts");
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("OpenAI API Error:", {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+      });
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+
   } catch (error) {
-    console.error("Error getting AI response:", error);
-    return "I apologize, but I encountered an error with my AI service. The server might be busy. Please try again in a moment or contact support if the issue persists.";
+    console.error("Error in getAIChatResponse:", error);
+    return "I apologize, but I encountered an error with my AI service. Please try again in a moment or contact support if the issue persists.";
   }
 };
 
@@ -1550,92 +1081,6 @@ export const isTaskOutOfOrder = (
   }
 
   return false; // All previous tasks are completed
-};
-
-// Get the next incomplete todo task that should be worked on
-export const getNextIncompleteTodo = (todoList: any[]): any | null => {
-  if (!todoList || todoList.length === 0) {
-    return null;
-  }
-  
-  // Find the first incomplete task
-  for (let i = 0; i < todoList.length; i++) {
-    if (!todoList[i].completed) {
-      return { task: todoList[i], index: i };
-    }
-  }
-  
-  return null; // All tasks are completed
-};
-
-// Find the todo task by task text with fuzzy matching
-export const findTodoTaskByText = (todoList: any[], taskText: string | null): any | null => {
-  if (!todoList || todoList.length === 0 || !taskText) {
-    return null;
-  }
-  
-  // First, clean the input text by removing typical prefixes users might add
-  const cleanTaskText = taskText.replace(/^(i want to (work on|do|complete)|help me with|let(')?s work on|how (do|can) i|please help( me)? with|i need help with|task #?\d+:?\s*)/i, '').trim();
-  
-  // Try exact match first (case insensitive)
-  let task = todoList.find(todo => 
-    todo.task.toLowerCase() === cleanTaskText.toLowerCase()
-  );
-  
-  if (task) {
-    const index = todoList.findIndex(todo => todo.task === task.task);
-    return { task, index };
-  }
-  
-  // If no exact match, check if the task text contains the entire todo task
-  task = todoList.find(todo => 
-    cleanTaskText.toLowerCase().includes(todo.task.toLowerCase())
-  );
-  
-  if (task) {
-    const index = todoList.findIndex(todo => todo.task === task.task);
-    return { task, index };
-  }
-  
-  // If still no match, try to find a todo that is largely contained in the message
-  // This handles cases where the user paraphrases or only mentions part of the task
-  const todoWithMostWords = todoList
-    .map(todo => {
-      const todoWords = todo.task.toLowerCase().split(/\s+/);
-      const messageWords = cleanTaskText.toLowerCase().split(/\s+/);
-      
-      // Count how many words from the todo appear in the message
-      const matchedWords = todoWords.filter((word: string) => 
-        // Skip very short words and common articles/prepositions
-        word.length > 3 && 
-        !['the', 'and', 'for', 'with', 'your'].includes(word) && 
-        messageWords.includes(word)
-      );
-      
-      const matchScore = matchedWords.length / todoWords.length;
-      return { todo, matchScore };
-    })
-    .filter(item => item.matchScore > 0.4) // Must match at least 40% of words
-    .sort((a, b) => b.matchScore - a.matchScore) // Sort by highest match score
-    .shift(); // Take the best match
-  
-  if (todoWithMostWords) {
-    const index = todoList.findIndex(todo => todo.task === todoWithMostWords.todo.task);
-    return { task: todoWithMostWords.todo, index };
-  }
-  
-  // Check if the message mentions any todo by number
-  const todoNumberRegex = /todo\s+#?(\d+)|task\s+#?(\d+)|(\d+)(st|nd|rd|th)\s+todo|(\d+)(st|nd|rd|th)\s+task/i;
-  const match = taskText.match(todoNumberRegex);
-
-  if (match) {
-    const todoNumber = parseInt(match[1] || match[2] || match[3] || match[5]) - 1; // Convert to 0-indexed
-    if (todoNumber >= 0 && todoNumber < todoList.length) {
-      return { task: todoList[todoNumber], index: todoNumber };
-    }
-  }
-
-  return null;
 };
 
 // Helper function to calculate a success score for a suggestion
@@ -1775,20 +1220,136 @@ export async function generateTodosForStage(stage: StageKey, currentProject: any
 
   try {
     const { business_type, id: projectId, total_budget: budget } = currentProject;
+    const blueprint = getStrategyForBusinessType(business_type);
 
-    switch (business_type) {
-      case 'ecommerce':
-        return await generateEcommerceTodos(projectId, budget);
-      case 'agency':
-        return await generateSMMATodos(projectId, budget);
-      case 'copywriting':
-        return await generateCopywritingTodos(projectId, budget);
-      case 'software':
-        return await generateSoftwareTodos(projectId, budget);
-      default:
-        console.error(`Unsupported business type: ${business_type}`);
-        return null;
+    // Verify that the stage exists in the blueprint
+    if (!blueprint[stage]) {
+      console.error(`Stage ${stage} not found in ${business_type} blueprint`);
+      return null;
     }
+
+    // Get the stage data
+    const stageData = blueprint[stage];
+
+    // Add additional checklist items to prevent image-related tasks
+    const additionalChecklist = [
+      "DO NOT include any tasks related to logo design or generation",
+      "DO NOT include any tasks related to image creation or editing",
+      "DO NOT include any tasks related to banner or visual asset creation",
+      "DO NOT include any tasks related to icon design",
+      "DO NOT include any tasks related to AI image generation",
+      "Focus on business operations and strategy",
+      "Focus on measurable outcomes and metrics",
+      "Focus on technical setup and automation",
+      "Focus on customer acquisition and retention",
+      "Focus on analytics and tracking implementation"
+    ];
+
+    // Add these to the stage data
+    if (!stageData.checklist) {
+      stageData.checklist = [];
+    }
+    stageData.checklist = [...additionalChecklist, ...stageData.checklist];
+
+    // Create a detailed prompt for the current stage
+    const todoGenerationPrompt = `As an AI ${business_type} business mentor, generate specific, actionable tasks for stage ${stage} of building a ${business_type} business.
+
+STAGE OBJECTIVE: ${stageData.objective}
+
+CURRENT STAGE DETAILS:
+${stageData.steps?.map((step: { title: string; goal?: string }) => `- ${step.title}: ${step.goal || ''}`).join('\n')}
+
+CHECKLIST ITEMS:
+${stageData.checklist.map((item: string) => `- ${item}`).join('\n')}
+
+DELIVERABLES:
+${stageData.deliverables?.map((item: string) => `- ${item}`).join('\n') || 'No specific deliverables defined'}
+
+IMPORTANT GUIDELINES:
+1. DO NOT include any tasks related to:
+   - Logo design or generation
+   - Image creation or editing
+   - Banner or visual asset creation
+   - Icon design
+   - Any AI image generation
+   Instead, assume the user will handle visual assets separately.
+
+2. Each task MUST be:
+   - Ultra-specific with exact steps
+   - Immediately actionable
+   - Measurable with clear completion criteria
+   - Focused on business impact
+   - Independent of visual asset creation
+
+3. Include for each task:
+   - Specific tools or platforms to use (with URLs)
+   - Expected time investment
+   - Success metrics
+   - Alternative approaches if applicable
+
+CURRENT PROJECT CONTEXT:
+- Business Type: ${business_type}
+- Budget: ${budget || "0"}
+- Stage: ${stage}
+- Stage Progress: Stage ${stage.replace('stage_', '')} of the blueprint
+
+Format the response as a JSON array of tasks, where each task has a 'task' and 'completed' field.
+
+Example task format:
+[
+  {
+    "task": "Set up conversion tracking in Google Analytics 4 by visiting analytics.google.com, creating a new GA4 property, adding the tracking code to your website header, and configuring 3 key conversion events: signup, purchase, and email subscription. Test each event using the real-time analytics view.",
+    "completed": false
+  }
+]
+
+IMPORTANT:
+- Generate exactly 5 tasks
+- Each task must be self-contained
+- Focus on business operations and strategy
+- Include specific tools and metrics
+- Tasks should follow a logical progression
+- Each task should take 1-4 hours to complete`;
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: todoGenerationPrompt,
+          },
+        ],
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("OpenAI API Error in generateTodosForStage:", {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+      });
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    let todos;
+    try {
+      todos = JSON.parse(data.choices[0].message.content);
+    } catch (error) {
+      console.error("Error parsing JSON from OpenAI response:", error);
+      console.log("Raw response:", data.choices[0].message.content);
+      throw new Error("Failed to parse todos from API response");
+    }
+
+    return todos;
   } catch (error) {
     console.error("Error in generateTodosForStage:", error);
     return null;
@@ -1800,401 +1361,26 @@ export const generateSMMATodos = async (
   projectId: string,
   budget: string
 ): Promise<any[] | null> => {
-  return generateTodos(projectId, budget, 'agency', smmaBlueprint as unknown as BusinessStrategy);
+  return generateTodos(projectId, budget, 'SMMA', typedSMMABlueprint);
 };
 
 export const generateCopywritingTodos = async (
   projectId: string,
   budget: string
 ): Promise<any[] | null> => {
-  return generateTodos(projectId, budget, 'copywriting', copywritingBlueprint as unknown as BusinessStrategy);
+  return generateTodos(projectId, budget, 'Copywriting', typedCopywritingBlueprint);
 };
 
 export const generateSoftwareTodos = async (
   projectId: string,
   budget: string
 ): Promise<any[] | null> => {
-  return generateTodos(projectId, budget, 'software', softwareBlueprint as unknown as BusinessStrategy);
+  return generateTodos(projectId, budget, 'Software', typedSoftwareBlueprint);
 };
 
 export const generateEcommerceTodos = async (
   projectId: string,
   budget: string
 ): Promise<any[] | null> => {
-  return generateTodos(projectId, budget, 'ecommerce', ecommerceBlueprint as unknown as BusinessStrategy);
-};
-
-// Check if a message indicates task completion
-export const isTaskCompletionMessage = (message: string): boolean => {
-  const completionPhrases = [
-    /\bcompleted\b/i,
-    /\bdone\b/i,
-    /\bfinished\b/i,
-    /\bi did it\b/i,
-    /\bmarked as complete\b/i,
-    /\bcompleted task\b/i,
-    /\bfinished task\b/i,
-    /\bcomplete\b/i,
-    /\btask completed\b/i,
-    /\bi'm done\b/i,
-    /\bi am done\b/i,
-    /\bi have completed\b/i,
-    /\bi have finished\b/i,
-    /\bi've completed\b/i,
-    /\bi've finished\b/i,
-    /\bi finished\b/i,
-    /\bi completed\b/i,
-  ];
-
-  return completionPhrases.some(regex => regex.test(message));
-};
-
-// Check if a message is asking about the next task
-export const isNextTaskRequest = (message: string): boolean => {
-  const nextTaskPhrases = [
-    /\bnext task\b/i,
-    /\bwhat'?s next\b/i,
-    /\bwhat should i do next\b/i,
-    /\bnext step\b/i,
-    /\bwhat now\b/i,
-    /\bcontinue\b/i,
-    /\bproceed\b/i,
-    /\bwhat'?s the next task\b/i,
-    /\bwhat'?s the next step\b/i,
-    /\bwhat'?s my next task\b/i,
-    /\bwhat do i do now\b/i,
-    /\blet'?s move on\b/i,
-    /\bnext todo\b/i,
-    /\bmove on\b/i,
-    /\bwhat'?s after this\b/i,
-  ];
-
-  return nextTaskPhrases.some(regex => regex.test(message));
+  return generateTodos(projectId, budget, 'Ecommerce', ecommerceBlueprint);
 }; 
-
-/**
- * Generates specific product recommendations for e-commerce businesses with success rate metrics
- * @param personas Array of target customer personas
- * @param budget Budget constraint for the business
- * @param productType Optional specific product type to focus on
- * @returns Array of product recommendations with success metrics
- */
-export interface ProductRecommendation {
-  name: string;
-  description: string;
-  targetPersona: string;
-  pricingRange: string;
-  profitMargin: string;
-  marketSaturation: {
-    level: string;
-    score: number;
-  };
-  uniqueSellingPoint: string;
-  supplierOptions: string[];
-  successProbability: number;
-  reasonForScore: string;
-}
-
-export const generateEcommerceProductRecommendations = async (
-  personas: string[] = [],
-  budget: string = "$1000-$5000",
-  productType?: string
-): Promise<ProductRecommendation[]> => {
-  try {
-    // Define common product categories with high success rates
-    const productCategories = [
-      { category: "Fitness & Wellness", baseSuccessRate: 75 },
-      { category: "Home & Kitchen", baseSuccessRate: 72 },
-      { category: "Beauty & Personal Care", baseSuccessRate: 78 },
-      { category: "Tech Accessories", baseSuccessRate: 76 },
-      { category: "Eco-Friendly Products", baseSuccessRate: 70 },
-      { category: "Pet Supplies", baseSuccessRate: 73 },
-      { category: "Hobby & Craft Supplies", baseSuccessRate: 69 },
-      { category: "Baby Products", baseSuccessRate: 71 },
-      { category: "Fashion Accessories", baseSuccessRate: 68 },
-      { category: "Outdoor & Adventure", baseSuccessRate: 67 }
-    ];
-
-    // Specific products with detailed attributes
-    const productsDatabase: ProductRecommendation[] = [
-      {
-        name: "Smart Fitness Tracker",
-        description: "Waterproof fitness watch with heart rate monitor, sleep tracking, and smartphone notifications",
-        targetPersona: "Health-conscious individuals aged 25-45",
-        pricingRange: "$25-45 retail, $10-18 cost",
-        profitMargin: "55-60%",
-        marketSaturation: {
-          level: "Medium-High",
-          score: 6
-        },
-        uniqueSellingPoint: "Affordable alternative to premium brands with comparable features",
-        supplierOptions: ["AliExpress", "Alibaba", "DHgate"],
-        successProbability: 70,
-        reasonForScore: "Strong demand but competitive market requires good marketing to stand out"
-      },
-      {
-        name: "Bamboo Bath Caddy",
-        description: "Expandable bath tray with phone, tablet, book, and wine glass holders",
-        targetPersona: "Self-care enthusiasts, primarily women 28-55",
-        pricingRange: "$30-50 retail, $12-20 cost",
-        profitMargin: "60-65%",
-        marketSaturation: {
-          level: "Medium",
-          score: 5
-        },
-        uniqueSellingPoint: "Eco-friendly materials with premium feel and design",
-        supplierOptions: ["Alibaba", "Etsy Wholesale", "Specialized manufacturers"],
-        successProbability: 75,
-        reasonForScore: "High profit margin and strong gifting potential with relatively low marketing costs"
-      },
-      {
-        name: "Collapsible Silicone Food Containers",
-        description: "Space-saving, eco-friendly food storage solutions for kitchen and travel",
-        targetPersona: "Eco-conscious home cooks, busy professionals",
-        pricingRange: "$15-25 retail, $5-9 cost",
-        profitMargin: "65-70%",
-        marketSaturation: {
-          level: "Medium-Low",
-          score: 4
-        },
-        uniqueSellingPoint: "Space-saving design perfect for small kitchens and travel",
-        supplierOptions: ["Alibaba", "Global Sources", "Canton Fair suppliers"],
-        successProbability: 82,
-        reasonForScore: "Growing eco-friendly market with practical everyday use case"
-      },
-      {
-        name: "LED Plant Grow Light",
-        description: "Adjustable spectrum lights for indoor plants with timer and multiple modes",
-        targetPersona: "Urban gardeners, houseplant enthusiasts aged 25-40",
-        pricingRange: "$35-60 retail, $15-25 cost",
-        profitMargin: "55-60%",
-        marketSaturation: {
-          level: "Medium",
-          score: 5
-        },
-        uniqueSellingPoint: "Full spectrum with customizable settings for different plant types",
-        supplierOptions: ["Alibaba", "AliExpress", "Specialized LED manufacturers"],
-        successProbability: 78,
-        reasonForScore: "Growing indoor plant trend with year-round demand"
-      },
-      {
-        name: "Portable Blender",
-        description: "Rechargeable personal blender for smoothies and protein shakes",
-        targetPersona: "Fitness enthusiasts, busy professionals aged 22-35",
-        pricingRange: "$25-40 retail, $10-18 cost",
-        profitMargin: "55-60%",
-        marketSaturation: {
-          level: "Medium-High",
-          score: 6
-        },
-        uniqueSellingPoint: "Strong battery life and easy one-button operation",
-        supplierOptions: ["Alibaba", "AliExpress", "DHgate"],
-        successProbability: 65,
-        reasonForScore: "Popular product but facing increased competition"
-      },
-      {
-        name: "Pet Grooming Glove",
-        description: "Gentle deshedding and massage glove for dogs and cats",
-        targetPersona: "Pet owners aged 25-60 with medium to long-haired pets",
-        pricingRange: "$12-20 retail, $3-6 cost",
-        profitMargin: "70-75%",
-        marketSaturation: {
-          level: "Medium",
-          score: 5
-        },
-        uniqueSellingPoint: "Works on multiple pet types with massage benefits",
-        supplierOptions: ["Alibaba", "AliExpress", "Pet supply wholesalers"],
-        successProbability: 80,
-        reasonForScore: "Evergreen pet market with high profit margins and repeat purchase potential"
-      },
-      {
-        name: "Yoga Wheel Set",
-        description: "3-piece yoga wheel set for stretching, balance and flexibility",
-        targetPersona: "Yoga practitioners, fitness enthusiasts aged 20-45",
-        pricingRange: "$30-50 retail, $12-20 cost",
-        profitMargin: "60-65%",
-        marketSaturation: {
-          level: "Low-Medium",
-          score: 3
-        },
-        uniqueSellingPoint: "Complete set with instruction guide for beginners to advanced",
-        supplierOptions: ["Alibaba", "Specialized fitness equipment manufacturers"],
-        successProbability: 72,
-        reasonForScore: "Growing yoga accessory market with specialized appeal"
-      },
-      {
-        name: "Reusable Beeswax Food Wraps",
-        description: "Eco-friendly alternative to plastic wrap in various sizes and patterns",
-        targetPersona: "Environmentally conscious consumers aged 25-55",
-        pricingRange: "$15-25 retail, $5-8 cost",
-        profitMargin: "65-70%",
-        marketSaturation: {
-          level: "Medium-Low",
-          score: 4
-        },
-        uniqueSellingPoint: "Sustainable, washable, and biodegradable with appealing designs",
-        supplierOptions: ["Etsy Wholesale", "Specialized eco-product manufacturers"],
-        successProbability: 76,
-        reasonForScore: "Strong trend toward sustainability with practical everyday use"
-      },
-      {
-        name: "Solar Power Bank",
-        description: "20000mAh portable charger with solar charging capability",
-        targetPersona: "Travelers, outdoor enthusiasts, tech-savvy users",
-        pricingRange: "$35-55 retail, $15-25 cost",
-        profitMargin: "55-60%",
-        marketSaturation: {
-          level: "Medium-High",
-          score: 6
-        },
-        uniqueSellingPoint: "Environmentally friendly with emergency charging capability",
-        supplierOptions: ["Alibaba", "Global Sources", "Tech wholesalers"],
-        successProbability: 68,
-        reasonForScore: "Appeal to outdoor market but faces stiff competition from established brands"
-      },
-      {
-        name: "Car Trash Can with Lid",
-        description: "Leakproof, collapsible auto trash bin with storage pockets",
-        targetPersona: "Car owners, parents, rideshare drivers",
-        pricingRange: "$15-25 retail, $4-8 cost",
-        profitMargin: "70-75%",
-        marketSaturation: {
-          level: "Low-Medium",
-          score: 3
-        },
-        uniqueSellingPoint: "Multipurpose design with leakproof liner and storage",
-        supplierOptions: ["Alibaba", "AliExpress", "Auto accessory manufacturers"],
-        successProbability: 78,
-        reasonForScore: "Practical solution with high margins and broad target market"
-      },
-      {
-        name: "Bedside Caddy Organizer",
-        description: "Felt storage organizer that slides between mattress and box spring",
-        targetPersona: "Apartment dwellers, college students, minimalists",
-        pricingRange: "$18-30 retail, $6-10 cost",
-        profitMargin: "65-70%",
-        marketSaturation: {
-          level: "Low",
-          score: 2
-        },
-        uniqueSellingPoint: "Space-saving solution for small bedrooms without nightstands",
-        supplierOptions: ["Alibaba", "Home organization wholesalers"],
-        successProbability: 81,
-        reasonForScore: "Low competition with strong practical appeal and good margins"
-      },
-      {
-        name: "Adjustable Laptop Stand",
-        description: "Portable, ergonomic aluminum laptop riser with multiple angles",
-        targetPersona: "Remote workers, students, digital nomads aged 20-45",
-        pricingRange: "$25-40 retail, $8-15 cost",
-        profitMargin: "60-65%",
-        marketSaturation: {
-          level: "Medium-High",
-          score: 6
-        },
-        uniqueSellingPoint: "Lightweight yet sturdy with cooling ventilation",
-        supplierOptions: ["Alibaba", "Tech accessory manufacturers"],
-        successProbability: 74,
-        reasonForScore: "Sustained demand from work-from-home trend despite competition"
-      }
-    ];
-
-    // Function to adjust success probability based on persona match
-    const adjustSuccessProbability = (product: ProductRecommendation, userPersonas: string[]): ProductRecommendation => {
-      let adjustedProduct = {...product};
-      
-      // Base adjustment factors
-      let personaMatchBonus = 0;
-      
-      // Check persona match
-      if (userPersonas.length > 0) {
-        const targetPersonaLower = product.targetPersona.toLowerCase();
-        
-        for (const persona of userPersonas) {
-          const personaLower = persona.toLowerCase();
-          
-          // Check for demographic matches
-          if (
-            (personaLower.includes('young') && targetPersonaLower.includes('20-')) ||
-            (personaLower.includes('middle') && targetPersonaLower.includes('30-')) ||
-            (personaLower.includes('professional') && targetPersonaLower.includes('professional')) ||
-            (personaLower.includes('parent') && targetPersonaLower.includes('parent')) ||
-            (personaLower.includes('fitness') && targetPersonaLower.includes('fitness')) ||
-            (personaLower.includes('eco') && targetPersonaLower.includes('eco')) ||
-            (personaLower.includes('tech') && targetPersonaLower.includes('tech'))
-          ) {
-            personaMatchBonus += 5;
-          }
-        }
-      }
-      
-      // Cap the bonus at 15%
-      personaMatchBonus = Math.min(personaMatchBonus, 15);
-      
-      // Apply the adjustments
-      adjustedProduct.successProbability = Math.min(95, adjustedProduct.successProbability + personaMatchBonus);
-      
-      return adjustedProduct;
-    };
-
-    // Filter products based on product type if specified
-    let filteredProducts = [...productsDatabase];
-    if (productType) {
-      const productTypeLower = productType.toLowerCase();
-      filteredProducts = filteredProducts.filter(product => 
-        product.name.toLowerCase().includes(productTypeLower) || 
-        product.description.toLowerCase().includes(productTypeLower));
-    }
-    
-    // Adjust success probabilities based on user personas
-    const adjustedProducts = filteredProducts.map(product => adjustSuccessProbability(product, personas));
-    
-    // Sort by success probability (highest first)
-    adjustedProducts.sort((a, b) => b.successProbability - a.successProbability);
-    
-    return adjustedProducts;
-  } catch (error) {
-    console.error("Error generating product recommendations:", error);
-    return [];
-  }
-};
-
-/**
- * Generates a formatted response with product recommendations
- * @param products Array of product recommendations
- * @returns Formatted string with product recommendations
- */
-export const formatProductRecommendations = (products: ProductRecommendation[]): string => {
-  if (!products || products.length === 0) {
-    return "No product recommendations found. Please provide more information about your target market.";
-  }
-
-  let result = "# Recommended E-commerce Products\n\n";
-  result += "Here are specific product recommendations for your e-commerce store, ranked by success probability:\n\n";
-
-  products.forEach((product, index) => {
-    result += `## ${index + 1}. ${product.name} - ${product.successProbability}% Success Probability\n\n`;
-    result += `**Description:** ${product.description}\n\n`;
-    result += `**Target Customer:** ${product.targetPersona}\n\n`;
-    result += `**Pricing Strategy:** ${product.pricingRange}\n\n`;
-    result += `**Profit Margin:** ${product.profitMargin}\n\n`;
-    result += `**Market Saturation:** ${product.marketSaturation.level}\n\n`;
-    result += `**Unique Selling Point:** ${product.uniqueSellingPoint}\n\n`;
-    result += `**Where to Source:** ${product.supplierOptions.join(', ')}\n\n`;
-    result += `**Why This Score:** ${product.reasonForScore}\n\n`;
-    
-    if (index < products.length - 1) {
-      result += "---\n\n";
-    }
-  });
-
-  result += "\n## Next Steps\n\n";
-  result += "1. Research the top 2-3 products in more depth\n";
-  result += "2. Compare supplier options and pricing\n";
-  result += "3. Order samples to verify quality before committing\n";
-  result += "4. Develop unique branding and positioning\n\n";
-  
-  result += "Would you like more detailed information about any of these specific products?";
-
-  return result;
-};

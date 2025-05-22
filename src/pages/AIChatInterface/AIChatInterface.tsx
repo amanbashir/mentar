@@ -17,20 +17,10 @@ import {
   generateBusinessOverviewSummary,
   getAIChatResponse,
   getNextStage,
-  typedSaasStrategy,
-  generateLaunchDateMessage,
-  generateEcommerceTodos,
-  generateSoftwareTodos,
-  generateSMMATodos,
-  generateCopywritingTodos,
   generateTodosForProject,
-  findTodoTaskByText,
-  getNextIncompleteTodo,
-  isTaskCompletionMessage,
-  isNextTaskRequest,
-  generateDetailedTaskCompletionMessage,
-  generateEcommerceProductRecommendations,
-  formatProductRecommendations,
+  generateTodosForStage,
+  generateLaunchDateMessage,
+  typedSaasStrategy,
 } from "../../utils/openai";
 import DeleteProjectDialog from "../../components/DeleteProjectDialog";
 
@@ -169,7 +159,6 @@ interface PrequalificationState {
 interface Toast {
   id: string;
   message: string;
-  type?: "info" | "success" | "warning" | "error";
 }
 
 // Custom components for markdown
@@ -231,7 +220,7 @@ const calculateProgress = (
   const stageProgress = (completedStageCount / totalStages) * 100;
 
   const totalTasks = Object.values(typedSaasStrategy).reduce(
-    (acc, stage: any) => {
+    (acc: number, stage: any) => {
       return acc + (stage.checklist?.length || 0);
     },
     0
@@ -316,9 +305,7 @@ function AIChatInterface() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [todos, setTodos] = useState<any[]>([]);
   const [currentStep, setCurrentStep] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<"gpt-3.5-turbo" | "gpt-4">(
-    "gpt-4"
-  );
+  const [useGPT4, setUseGPT4] = useState(true);
 
   // Add prequalification state
   const [prequalification, setPrequalification] =
@@ -544,10 +531,6 @@ function AIChatInterface() {
   const handleProjectSwitch = (project: Project) => {
     console.log("Switching to project:", project);
     setCurrentProject(project);
-    // Set the model based on project's selected_model if available
-    if (project.selected_model) {
-      setSelectedModel(project.selected_model as "gpt-3.5-turbo" | "gpt-4");
-    }
     setShowDropdown(false);
   };
 
@@ -1062,248 +1045,32 @@ I'll use this information to guide you through your ${currentProject?.business_t
         return;
       }
 
-      // Detect task completion messages
-      if (isTaskCompletionMessage(userMessage)) {
-        // Find the first incomplete todo
-        const nextIncomplete = getNextIncompleteTodo(currentProject.todos);
-
-        if (nextIncomplete) {
-          // Mark the task as complete directly in this function
-          const updatedTodos = [...currentProject.todos];
-          updatedTodos[nextIncomplete.index] = {
-            ...updatedTodos[nextIncomplete.index],
-            completed: true,
-          };
-
-          // Update todos in the database
-          const { error } = await supabase
-            .from("projects")
-            .update({ todos: updatedTodos })
-            .eq("id", currentProject.id);
-
-          if (error) {
-            console.error("Error updating todo completion:", error);
-            throw error;
-          }
-
-          // Update the local state
-          setCurrentProject((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  todos: updatedTodos,
-                }
-              : null
-          );
-
-          // Generate detailed completion message using multiple personas
-          const completionMessage = generateDetailedTaskCompletionMessage(
-            nextIncomplete.index + 1,
-            nextIncomplete.task.task,
-            undefined,
-            undefined,
-            currentProject.business_type
-          );
-          await saveMessage(completionMessage, false);
-
-          // Check for the next incomplete task (after the update)
-          const newNextIncomplete = getNextIncompleteTodo(updatedTodos);
-
-          if (newNextIncomplete) {
-            // Suggest the next task with a delay for better UX
-            setTimeout(async () => {
-              const nextTaskMessage = generateDetailedTaskCompletionMessage(
-                nextIncomplete.index + 1,
-                nextIncomplete.task.task,
-                newNextIncomplete.index + 1,
-                newNextIncomplete.task.task,
-                currentProject.business_type
-              );
-              await saveMessage(nextTaskMessage, false);
-              setIsLoading(false);
-            }, 1000);
-            return;
-          } else {
-            // All tasks are completed
-            setTimeout(async () => {
-              const allCompleteMessage = generateDetailedTaskCompletionMessage(
-                nextIncomplete.index + 1,
-                nextIncomplete.task.task,
-                undefined,
-                undefined,
-                currentProject.business_type
-              );
-              await saveMessage(allCompleteMessage, false);
-              setIsLoading(false);
-            }, 1000);
-            return;
-          }
-        }
-      }
-
-      // Check for "next task" request
-      if (isNextTaskRequest(userMessage)) {
-        const nextIncomplete = getNextIncompleteTodo(currentProject.todos);
-
-        if (nextIncomplete) {
-          const nextTaskMessage = generateDetailedTaskCompletionMessage(
-            0, // No completed task number for this case
-            "Moving to next task", // Placeholder text
-            nextIncomplete.index + 1,
-            nextIncomplete.task.task,
-            currentProject.business_type
-          );
-          await saveMessage(nextTaskMessage, false);
-          setIsLoading(false);
-          return;
-        } else {
-          // No more tasks to complete
-          const allCompleteMessage = generateDetailedTaskCompletionMessage(
-            0, // No completed task number for this case
-            "All tasks completed", // Placeholder text
-            undefined,
-            undefined,
-            currentProject.business_type
-          );
-          await saveMessage(allCompleteMessage, false);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Handle todo task mention
-      const referencedTodoTask = findTodoTaskByText(
-        currentProject.todos,
-        userMessage
-      );
-
-      console.log("Task reference check:", {
+      // Handle todo task completion
+      const referencedTodoTask = findReferencedTodoTask(
         userMessage,
-        referencedTask: referencedTodoTask?.task?.task || "None found",
-      });
-
-      // Enhanced task reference detection
+        currentProject
+      );
       if (referencedTodoTask) {
-        console.log("User referenced a specific task:", referencedTodoTask);
-
-        // Check if any previous tasks are incomplete
-        const todoIndex = currentProject.todos.findIndex(
-          (todo) => todo.task === referencedTodoTask.task.task
+        await handleTodoTaskCompletion(
+          referencedTodoTask,
+          currentProject,
+          currentStageData,
+          currentStepData
         );
-
-        const hasPreviousIncompleteTasks = currentProject.todos
-          .slice(0, todoIndex)
-          .some((todo) => !todo.completed);
-
-        if (hasPreviousIncompleteTasks && !referencedTodoTask.task.completed) {
-          // Find the first incomplete task
-          const nextTodo = getNextIncompleteTodo(currentProject.todos);
-
-          if (nextTodo) {
-            const encouragementMessage = `I notice you're trying to work on task #${
-              todoIndex + 1
-            }, but there are previous tasks that need to be completed first. Let's follow the process step by step.\n\nThe next task you should focus on is: **Task #${
-              nextTodo.index + 1
-            }: ${
-              nextTodo.task.task
-            }**\n\nWould you like me to help you complete this task first?`;
-            await saveMessage(encouragementMessage, false);
-            setIsLoading(false);
-            return;
-          }
-        }
-
-        // If this is a "get help with task X" message, provide elaborate solution
-        const isTaskHelpRequest =
-          userMessage.toLowerCase().includes("help") ||
-          userMessage.toLowerCase().includes("how to") ||
-          userMessage.toLowerCase().includes("work on") ||
-          userMessage.toLowerCase().includes("complete") ||
-          userMessage.toLowerCase().includes("do this task") ||
-          userMessage.toLowerCase().includes("elaborate");
-
-        if (
-          isTaskHelpRequest ||
-          userMessage
-            .toLowerCase()
-            .includes(referencedTodoTask.task.task.toLowerCase())
-        ) {
-          console.log(
-            "Processing task help request for:",
-            referencedTodoTask.task.task
-          );
-          await handleTodoTaskCompletion(
-            referencedTodoTask.task,
-            currentProject,
-            currentStageData,
-            currentStepData
-          );
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Check if the message is a direct request for task elaboration without naming a specific task
-      const isGenericTaskHelpRequest =
-        userMessage.toLowerCase().match(/elaborate( on)? (this )?task/i) ||
-        userMessage.toLowerCase().match(/explain( this)? task/i) ||
-        userMessage.toLowerCase().match(/help( me)? (with )?(this )?task/i);
-
-      if (isGenericTaskHelpRequest) {
-        // Find the first incomplete task
-        const nextTodo = getNextIncompleteTodo(currentProject.todos);
-
-        if (nextTodo) {
-          console.log(
-            "Processing generic task help request for next task:",
-            nextTodo.task.task
-          );
-          await handleTodoTaskCompletion(
-            nextTodo.task,
-            currentProject,
-            currentStageData,
-            currentStepData
-          );
-          setIsLoading(false);
-          return;
-        }
+        setIsLoading(false);
+        return;
       }
 
       // Handle general conversation with blueprint context
-      await handleGeneralConversation(
+      const aiResponse = await getAIChatResponse(
+        messages,
         userMessage,
         currentProject,
-        currentStageData,
-        currentStepData
+        getCombinedPrompt(currentProject.business_type),
+        useGPT4 // Pass the model selection
       );
 
-      // Auto-mark task as completed if this was a task solution request
-      if (userMessage.includes("I need a comprehensive solution for Todo #")) {
-        // Extract the task index from the message
-        const taskMatch = userMessage.match(/Todo #(\d+):/);
-        if (taskMatch && taskMatch[1]) {
-          const taskIndex = parseInt(taskMatch[1]) - 1; // Convert to 0-based index
-
-          // Find the todo item
-          if (taskIndex >= 0 && taskIndex < currentProject.todos.length) {
-            const todoItem = currentProject.todos[taskIndex];
-
-            // Only mark as completed if it's not already completed
-            if (!todoItem.completed) {
-              // Mark the task as complete
-              await handleTodoChange(todoItem.id, true);
-
-              // Add a followup message after a delay
-              setTimeout(async () => {
-                await saveMessage(
-                  "I've automatically marked this task as completed for you. If you need to make changes, you can still uncheck it in the todo list.",
-                  false
-                );
-              }, 500);
-            }
-          }
-        }
-      }
+      await saveMessage(aiResponse, false);
 
       // Update business overview
       await updateBusinessOverview(currentProject);
@@ -1328,30 +1095,11 @@ I'll use this information to guide you through your ${currentProject?.business_t
     userMessage: string,
     currentProject: Project
   ) => {
-    if (!currentProject?.todos || currentProject.todos.length === 0) {
-      return null;
-    }
-
-    // Use the new helper function for fuzzy matching
-    const result = findTodoTaskByText(currentProject.todos, userMessage);
-    if (result) {
-      return result.task;
-    }
-
-    // Check if the message mentions any todo by number
-    const todoNumberRegex =
-      /todo\s+#?(\d+)|task\s+#?(\d+)|(\d+)(st|nd|rd|th)\s+todo|(\d+)(st|nd|rd|th)\s+task/i;
-    const match = userMessage.match(todoNumberRegex);
-
-    if (match) {
-      const todoNumber =
-        parseInt(match[1] || match[2] || match[3] || match[5]) - 1; // Convert to 0-indexed
-      if (todoNumber >= 0 && todoNumber < currentProject.todos.length) {
-        return currentProject.todos[todoNumber];
-      }
-    }
-
-    return null;
+    return currentProject.todos?.find(
+      (todo) =>
+        userMessage.toLowerCase().includes(todo.task.toLowerCase()) ||
+        todo.task.toLowerCase() === userMessage.toLowerCase()
+    );
   };
 
   // Helper function to handle project initialization
@@ -1407,130 +1155,14 @@ I'll use this information to guide you through your ${currentProject?.business_t
       .every((todo) => todo.completed);
 
     if (!previousTodosCompleted) {
-      // Find the first incomplete todo
-      const nextTodo = getNextIncompleteTodo(currentProject.todos);
-
-      if (nextTodo) {
-        const encouragementMessage = `I notice you're trying to work on task #${
-          todoIndex + 1
-        }, but there are previous tasks that need to be completed first. Let's follow the process step by step.
-
-The next task you should focus on is: **Task #${nextTodo.index + 1}: ${
-          nextTodo.task.task
-        }**
-
-Would you like me to help you complete this task first?`;
-
-        await saveMessage(encouragementMessage, false);
-        return;
-      } else {
-        // Fallback to general encouragement if no next todo is found (shouldn't happen)
-        const encouragementMessage = await getAIChatResponse(
-          messages,
-          "Generate an encouraging message reminding the user they need to complete previous tasks first. Reference the specific current task they should focus on.",
-          currentProject,
-          selectedModel,
-          true // Skip automatic task completion
-        );
-        await saveMessage(encouragementMessage, false);
-        return;
-      }
-    }
-
-    // Check if this is a product research task for ecommerce
-    const taskLower = todoTask.task.toLowerCase();
-    const isProductResearchTask =
-      currentProject.business_type === "ecommerce" &&
-      (taskLower.includes("product research") ||
-        taskLower.includes("find products") ||
-        taskLower.includes("identify products") ||
-        taskLower.includes("product selection") ||
-        taskLower.includes("market research") ||
-        taskLower.includes("niche selection") ||
-        taskLower.includes("product ideas"));
-
-    if (isProductResearchTask) {
-      try {
-        // Extract or use default personas
-        let personas: string[] = [];
-
-        // Try to extract personas from previous messages or outputs
-        if (currentProject.outputs?.prequalification?.answers) {
-          // Get answers that might contain persona information
-          const answers = currentProject.outputs.prequalification.answers;
-
-          // Typical questions about target market are in early positions
-          if (answers.length >= 3) {
-            const potentialPersonaAnswers = answers.slice(0, 3);
-
-            // Extract sentences that might describe personas
-            potentialPersonaAnswers.forEach((answer) => {
-              const sentences = answer
-                .split(/[.!?]+/)
-                .filter((s) => s.trim().length > 0);
-              sentences.forEach((sentence) => {
-                if (
-                  sentence.toLowerCase().includes("target") ||
-                  sentence.toLowerCase().includes("customer") ||
-                  sentence.toLowerCase().includes("audience") ||
-                  sentence.toLowerCase().includes("demographic")
-                ) {
-                  personas.push(sentence.trim());
-                }
-              });
-            });
-          }
-        }
-
-        // If no personas were found, use some defaults based on typical ecommerce customers
-        if (personas.length === 0) {
-          personas = [
-            "Health-conscious millennials aged 25-35",
-            "Tech-savvy professionals working from home",
-            "Environmentally conscious consumers",
-            "Parents of young children looking for convenient solutions",
-          ];
-        }
-
-        // Extract budget from project or use default
-        const budget = currentProject.total_budget || "$1000-$5000";
-
-        // Generate product recommendations
-        const productRecommendations =
-          await generateEcommerceProductRecommendations(personas, budget);
-
-        // Format the recommendations into a nice response
-        const formattedResponse = formatProductRecommendations(
-          productRecommendations
-        );
-
-        // Send the product recommendations
-        await saveMessage(formattedResponse, false);
-
-        // Automatically mark the task as complete after a short delay
-        setTimeout(async () => {
-          try {
-            // Find the todo ID which is required by handleTodoChange
-            const todoId = todoTask.id || todoTask.task;
-
-            // Mark task as complete using handleTodoChange with the correct parameters
-            await handleTodoChange(todoId, true);
-
-            // Add a followup message
-            await saveMessage(
-              "I've automatically marked this product research task as complete. These product suggestions are based on current market trends and the personas identified for your business. Would you like to explore any specific product in more detail?",
-              false
-            );
-          } catch (error) {
-            console.error("Error marking task complete:", error);
-          }
-        }, 1500);
-
-        return;
-      } catch (error) {
-        console.error("Error generating product recommendations:", error);
-        // Fall back to the default handling if there's an error
-      }
+      const encouragementMessage = await getAIChatResponse(
+        messages,
+        "Generate an encouraging message reminding the user they need to complete previous tasks first. Reference the specific current task they should focus on.",
+        currentProject,
+        "You are Mentar, a business coach helping users build their business by guiding them through tasks in the proper sequence."
+      );
+      await saveMessage(encouragementMessage, false);
+      return;
     }
 
     // Generate enhanced prompt with blueprint context
@@ -1545,35 +1177,10 @@ Would you like me to help you complete this task first?`;
       messages,
       enhancedPrompt,
       currentProject,
-      selectedModel,
-      true // Skip automatic task completion
+      getCombinedPrompt(currentProject.business_type)
     );
 
     await saveMessage(aiResponse, false);
-
-    // Automatically mark the task as complete if it's the currently focused one
-    if (
-      todoIndex === currentProject.todos.findIndex((todo) => !todo.completed)
-    ) {
-      // Automatically mark the task as complete
-      setTimeout(async () => {
-        try {
-          // Find the todo ID
-          const todoId = todoTask.id || todoTask.task;
-
-          // Mark the task as complete
-          await handleTodoChange(todoId, true);
-
-          // Send a confirmation message
-          const completionMessage = `I've marked task #${
-            todoIndex + 1
-          } as complete. Are you satisfied with the response and want to move to the next task?`;
-          await saveMessage(completionMessage, false);
-        } catch (error) {
-          console.error("Error marking task complete:", error);
-        }
-      }, 1000);
-    }
   };
 
   // Helper function to handle general conversation
@@ -1594,8 +1201,7 @@ Would you like me to help you complete this task first?`;
       messages,
       conversationPrompt,
       currentProject,
-      selectedModel,
-      true // Skip automatic task completion since the component already handles it
+      getCombinedPrompt(currentProject.business_type)
     );
 
     await saveMessage(aiResponse, false);
@@ -1627,78 +1233,24 @@ Would you like me to help you complete this task first?`;
     currentStepData: any,
     todoTask: TodoItem
   ) => {
-    // Get the todo index to provide context about where we are in the sequence
-    const todoIndex = currentProject.todos.findIndex(
-      (t) => t.task === todoTask.task
-    );
-
-    // Get previous and next todos for context
-    const previousTodo =
-      todoIndex > 0 ? currentProject.todos[todoIndex - 1] : null;
-    const nextTodo =
-      todoIndex < currentProject.todos.length - 1
-        ? currentProject.todos[todoIndex + 1]
-        : null;
-
-    // Check if this is a gap analysis task
-    const isGapAnalysisTask =
-      todoTask.task.toLowerCase().includes("gap") &&
-      todoTask.task.toLowerCase().includes("analysis");
-
-    // Base prompt context
-    let prompt = `Help the user complete this task from their ${
+    return `Help the user complete this task from their ${
       currentProject.business_type
     } business blueprint:
 
-Current Stage: ${currentProject.current_stage || ""}
+Current Stage: ${currentProject.current_stage}
 Stage Objective: ${currentStageData?.objective || ""}
 Current Step: ${currentStepData?.title || ""}
 Step Details: ${currentStepData?.description || ""}
 
-CURRENT TASK: "${todoTask.task}"
-${
-  previousTodo
-    ? `Previous Task: "${previousTodo.task}" (${
-        previousTodo.completed ? "Completed" : "Not Completed"
-      })`
-    : ""
-}
-${nextTodo ? `Next Task: "${nextTodo.task}"` : ""}
+Task to Complete: "${todoTask.task}"
 
-`;
+Provide specific, actionable guidance to help them complete this task. Include:
+1. Exact steps to follow
+2. Tools or platforms to use
+3. Examples or templates if relevant
+4. Success criteria for the task
 
-    // Add task-specific instructions
-    if (isGapAnalysisTask) {
-      prompt += `For this gap analysis task, identify the actual gaps in the user's business plan or market. Do not provide steps to complete the task. Instead:
-
-1. Identify 5-7 specific gaps that exist for the user's ${currentProject.business_type} business
-2. For each gap, provide:
-   - A clear description of the gap
-   - Why this gap matters to their business success
-   - The potential impact of not addressing this gap
-   - A brief recommendation on how to address it
-3. Prioritize these gaps from most critical to least critical
-4. Summarize the key findings at the beginning of your response
-
-Format your response as an actual gap analysis report with clear headings and sections. The user doesn't need step-by-step instructions for performing a gap analysis - they need you to actually perform the analysis and show them the results.`;
-    } else {
-      prompt += `Provide specific, actionable guidance to complete this task. Include:
-
-1. Step-by-step instructions from start to finish (minimum 5 steps with detailed explanations)
-2. Recommended tools or platforms to use (with specific recommendations, not just generic options)
-3. 3 specific examples or templates that apply to their business type
-4. Success criteria so they know when they've successfully completed the task
-5. Common pitfalls to avoid
-6. Resources for further learning
-
-Format your response in markdown with clear sections, bullet points, and numbered lists. Make it easy for the user to follow along.`;
-    }
-
-    prompt += `\n\nRemember this is task #${todoIndex + 1} of ${
-      currentProject.todos.length
-    } in their business plan. Your guidance should be comprehensive enough that they can complete this task without needing additional help.`;
-
-    return prompt;
+Format your response in markdown with clear sections and bullet points.`;
   };
 
   // Helper function to generate conversation prompt
@@ -1708,63 +1260,24 @@ Format your response in markdown with clear sections, bullet points, and numbere
     currentStageData: StageData | null,
     currentStepData: any
   ) => {
-    // Get the next incomplete todo for context
-    const nextIncomplete = getNextIncompleteTodo(currentProject.todos);
-    const todoProgress = currentProject.todos
-      ? `${currentProject.todos.filter((t) => t.completed).length}/${
-          currentProject.todos.length
-        }`
-      : "0/0";
-
-    // Count how many todos are completed to give appropriate guidance
-    const completedTodos = currentProject.todos
-      ? currentProject.todos.filter((t) => t.completed).length
-      : 0;
-    const totalTodos = currentProject.todos ? currentProject.todos.length : 0;
-    const allTodosCompleted = completedTodos === totalTodos && totalTodos > 0;
-
     return `You are helping the user with their ${
-      currentProject.business_type || ""
+      currentProject.business_type
     } business.
 
-Current Stage: ${currentProject.current_stage || ""}
+Current Stage: ${currentProject.current_stage}
 Stage Objective: ${currentStageData?.objective || ""}
 Current Step: ${currentStepData?.title || ""}
 Step Details: ${currentStepData?.description || ""}
-Todo Progress: ${todoProgress} tasks completed
-
-${
-  nextIncomplete
-    ? `Next Incomplete Task: Task #${nextIncomplete.index + 1}: ${
-        nextIncomplete.task.task
-      }`
-    : allTodosCompleted
-    ? "All tasks are completed for this stage!"
-    : "No tasks available."
-}
 
 User Message: ${userMessage}
 
-Provide guidance that aligns with their current stage and step in the business blueprint. Keep these guidelines in mind:
-
-1. Always prioritize helping them complete their next todo task in sequence
-2. Provide specific, actionable advice relevant to their business type
-3. If they ask about something unrelated to their current tasks, still answer helpfully but gently guide them back to their business plan
-4. If they're confused about what to do next, remind them of their next incomplete task
-5. Remember that tasks should be completed in sequential order for the best results
-
-Your goal is to help them successfully build their ${
-      currentProject.business_type || ""
-    } business by following the structured plan and completing tasks in order.`;
+Provide guidance that aligns with their current stage and step in the business blueprint.`;
   };
 
   // Add a function to show toast message
-  const showToast = (message: string, isSuccess: boolean = false) => {
+  const showToast = (message: string) => {
     const id = Date.now().toString();
-    setToasts((prev) => [
-      ...prev,
-      { id, message, type: isSuccess ? "success" : "info" },
-    ]);
+    setToasts((prev) => [...prev, { id, message }]);
 
     // Remove the toast after 3 seconds
     setTimeout(() => {
@@ -1777,44 +1290,6 @@ Your goal is to help them successfully build their ${
     if (!currentProject) return;
 
     try {
-      console.log("Todo change initiated:", { todoTask, completed });
-
-      // Get the todo item index
-      const todoIndex = currentProject.todos.findIndex(
-        (todo) => todo.task === todoTask
-      );
-      if (todoIndex === -1) {
-        console.error("Todo task not found:", todoTask);
-        return;
-      }
-
-      console.log("Found todo at index:", todoIndex);
-
-      // Check if trying to complete a task out of order
-      if (completed && todoIndex > 0) {
-        // Check if any previous tasks are incomplete
-        const hasPreviousIncompleteTasks = currentProject.todos
-          .slice(0, todoIndex)
-          .some((todo) => !todo.completed);
-
-        if (hasPreviousIncompleteTasks) {
-          // Find the first incomplete previous task
-          const firstIncompletePrevTask = currentProject.todos
-            .slice(0, todoIndex)
-            .findIndex((todo) => !todo.completed);
-
-          const incompleteTaskNum = firstIncompletePrevTask + 1;
-
-          showToast(
-            `Complete task #${incompleteTaskNum} first before moving to task #${
-              todoIndex + 1
-            }`,
-            false
-          );
-          return;
-        }
-      }
-
       // Update the todo item in the local state
       const updatedTodos = currentProject.todos.map((todo) =>
         todo.task === todoTask ? { ...todo, completed } : todo
@@ -1829,106 +1304,132 @@ Your goal is to help them successfully build their ${
       ).length;
       const totalTodos = updatedTodos.length;
 
-      console.log("Todo completion stats:", {
-        previouslyCompletedCount,
-        newCompletedCount,
-        totalTodos,
-      });
-
       // Check if this was the last todo being completed
       const isLastTodoCompleted =
         previouslyCompletedCount === totalTodos - 1 &&
         newCompletedCount === totalTodos;
       const currentStage = currentProject.current_stage as StageKey;
 
-      console.log("Stage transition check:", {
-        isLastTodoCompleted,
-        currentStage,
-        completedBefore: previouslyCompletedCount,
-        completedAfter: newCompletedCount,
-        total: totalTodos,
-      });
+      // If this was the last todo completed, immediately move to next stage
+      if (isLastTodoCompleted && currentStage) {
+        // Get the next stage
+        const nextStage = getNextStage(currentStage);
 
-      // Show appropriate toast message
-      if (completed) {
-        showToast(`Task #${todoIndex + 1} completed!`, true);
+        if (nextStage) {
+          // Generate new todos for the next stage
+          const newTodos = await updateTodosForStage(nextStage, currentProject);
 
-        // Check if we recently sent a completion message for this task
-        const lastMessage = messages[messages.length - 1];
-        const secondLastMessage =
-          messages.length > 1 ? messages[messages.length - 2] : null;
+          if (newTodos) {
+            // Update the project with new stage and todos
+            const { error } = await supabase
+              .from("projects")
+              .update({
+                current_stage: nextStage,
+                todos: newTodos,
+                completed_stages: [
+                  ...(currentProject.completed_stages || []),
+                  currentStage,
+                ],
+              })
+              .eq("id", currentProject.id);
 
-        // Check if the last message is from the AI and contains task completion text
-        const isLastMessageTaskCompletion =
-          lastMessage &&
-          !lastMessage.is_user &&
-          lastMessage.content.includes(
-            `Congratulations on completing Task #${todoIndex + 1}`
-          );
+            if (error) throw error;
 
-        // Also check the second-to-last message (in case user just sent something)
-        const isSecondLastMessageTaskCompletion =
-          secondLastMessage &&
-          !secondLastMessage.is_user &&
-          secondLastMessage.content.includes(
-            `Congratulations on completing Task #${todoIndex + 1}`
-          );
+            // Update local project state
+            setCurrentProject((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                current_stage: nextStage,
+                todos: newTodos,
+                completed_stages: [
+                  ...(prev.completed_stages || []),
+                  currentStage,
+                ],
+              };
+            });
 
-        // Find the next incomplete task to suggest it automatically
-        if (
-          todoIndex === previouslyCompletedCount &&
-          !isLastMessageTaskCompletion &&
-          !isSecondLastMessageTaskCompletion
-        ) {
-          // This was the next task in sequence that was completed and we haven't sent a completion message yet
-          const nextIncompleteIndex = updatedTodos.findIndex(
-            (todo) => !todo.completed
-          );
-          if (nextIncompleteIndex !== -1) {
-            // Show next task message in chat
-            setTimeout(async () => {
-              // Use the new detailed message with a unique timestamp
-              const detailedCompletionMessage =
-                generateDetailedTaskCompletionMessage(
-                  todoIndex + 1,
-                  updatedTodos[todoIndex].task,
-                  nextIncompleteIndex + 1,
-                  updatedTodos[nextIncompleteIndex].task,
-                  currentProject.business_type
-                );
-              await saveMessage(detailedCompletionMessage, false);
-            }, 500);
-          } else {
-            // All tasks completed
-            setTimeout(async () => {
-              const detailedCompletionMessage =
-                generateDetailedTaskCompletionMessage(
-                  todoIndex + 1,
-                  updatedTodos[todoIndex].task,
-                  undefined,
-                  undefined,
-                  currentProject.business_type
-                );
-              await saveMessage(detailedCompletionMessage, false);
-            }, 500);
+            // Get the strategy for the current business type
+            const strategy = getStrategyForBusinessType(
+              currentProject.business_type
+            );
+            const currentStageData = strategy[currentStage];
+            const nextStageData = strategy[nextStage];
+
+            // Generate stage completion and transition message
+            const stageCompletionMessage = `🎉 Congratulations! You've completed ${currentStage
+              .replace("_", " ")
+              .toUpperCase()}!
+
+**Stage Summary:**
+${currentStageData?.objective || "Stage completed successfully"}
+
+**Next Stage: ${nextStage.replace("_", " ").toUpperCase()}**
+${nextStageData?.objective || "Get ready for your next set of tasks"}
+
+I've generated your next set of tasks to keep the momentum going. Would you like to get started with your first task in the new stage?`;
+
+            // Save the stage completion message
+            await saveMessage(stageCompletionMessage, false);
+
+            // Update business overview after stage change
+            const stageTransitionMessages = [...messages];
+            const updatedBusinessOverview =
+              await generateBusinessOverviewSummary(
+                {
+                  ...currentProject,
+                  current_stage: nextStage,
+                  todos: newTodos,
+                },
+                stageTransitionMessages
+              );
+
+            // Update project with new business overview
+            const { error: overviewError } = await supabase
+              .from("projects")
+              .update({ business_overview_summary: updatedBusinessOverview })
+              .eq("id", currentProject.id);
+
+            if (overviewError) throw overviewError;
+
+            // Update local project state with new business overview
+            setCurrentProject((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                business_overview_summary: updatedBusinessOverview,
+              };
+            });
+
+            return; // Exit early since we've already updated everything
           }
+        } else {
+          // This was the final stage
+          const completionMessage = `🎉 Congratulations! You've completed all stages of your ${currentProject.business_type} business plan! 
+
+You've successfully worked through all the stages and completed all tasks. Your business is now well-positioned for success.
+
+Would you like to:
+1. Review your overall progress and achievements
+2. Get additional guidance for scaling your business
+3. Start implementing advanced strategies
+
+Let me know how I can help you take your business to the next level!`;
+
+          await saveMessage(completionMessage, false);
+          return;
         }
-      } else {
-        showToast(`Task #${todoIndex + 1} marked as incomplete`);
       }
 
-      // Update todos in database first (without stage change)
+      // If we're not moving to a new stage, just update the todos
       const { error: updateError } = await supabase
         .from("projects")
         .update({ todos: updatedTodos })
         .eq("id", currentProject.id);
 
-      if (updateError) {
-        console.error("Error updating todos:", updateError);
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
-      // Update local project state with updated todos
+      // Update local project state
       setCurrentProject((prev) => {
         if (!prev) return prev;
         return {
@@ -1936,136 +1437,6 @@ Your goal is to help them successfully build their ${
           todos: updatedTodos,
         };
       });
-
-      // If this was the last todo completed, handle stage transition
-      if (isLastTodoCompleted && currentStage) {
-        // Check if we've already shown a stage completion message
-        const lastMessageIsStageCompletion =
-          messages.length > 0 &&
-          !messages[messages.length - 1].is_user &&
-          messages[messages.length - 1].content.includes("Stage Complete!");
-
-        if (lastMessageIsStageCompletion) {
-          console.log(
-            "Already showed stage completion message, skipping duplicate"
-          );
-          // Skip sending another stage completion message
-        } else {
-          // Get the next stage
-          const nextStage = getNextStage(currentStage);
-          console.log("Stage transition:", { currentStage, nextStage });
-
-          if (nextStage) {
-            showToast(
-              `All tasks completed! Moving to ${nextStage
-                .replace("_", " ")
-                .toUpperCase()} stage`,
-              true
-            );
-
-            try {
-              // Generate new todos for the next stage
-              const newTodos = await updateTodosForStage(
-                nextStage,
-                currentProject
-              );
-              console.log(
-                "New todos generated for next stage:",
-                newTodos?.length || 0
-              );
-
-              if (newTodos) {
-                // Update the project with new stage and todos
-                const { error } = await supabase
-                  .from("projects")
-                  .update({
-                    current_stage: nextStage,
-                    todos: newTodos,
-                    completed_stages: [
-                      ...(currentProject.completed_stages || []),
-                      currentStage,
-                    ],
-                  })
-                  .eq("id", currentProject.id);
-
-                if (error) {
-                  console.error("Error updating project stage:", error);
-                  throw error;
-                }
-
-                console.log("Database updated with new stage and todos");
-
-                // Update local project state
-                setCurrentProject((prev) => {
-                  if (!prev) return prev;
-                  return {
-                    ...prev,
-                    current_stage: nextStage,
-                    todos: newTodos,
-                    completed_stages: [
-                      ...(prev.completed_stages || []),
-                      currentStage,
-                    ],
-                  };
-                });
-
-                // Generate and save stage introduction message
-                const stageIntro = generateStageIntroduction(
-                  currentProject.business_type,
-                  nextStage
-                );
-
-                console.log("Generated stage intro for new stage");
-
-                // Save the stage introduction message
-                await saveMessage(stageIntro, false);
-
-                // Update business overview after stage change
-                const updatedMessages = [...messages];
-                const businessOverview = await generateBusinessOverviewSummary(
-                  {
-                    ...currentProject,
-                    current_stage: nextStage,
-                    todos: newTodos,
-                  },
-                  updatedMessages
-                );
-
-                // Update project with new business overview
-                const { error: overviewError } = await supabase
-                  .from("projects")
-                  .update({ business_overview_summary: businessOverview })
-                  .eq("id", currentProject.id);
-
-                if (overviewError) {
-                  console.error(
-                    "Error updating business overview:",
-                    overviewError
-                  );
-                  throw overviewError;
-                }
-
-                // Update local project state with new business overview
-                setCurrentProject((prev) => {
-                  if (!prev) return prev;
-                  return {
-                    ...prev,
-                    business_overview_summary: businessOverview,
-                  };
-                });
-
-                console.log("Stage transition completed successfully");
-                return; // Exit early since we've already updated everything
-              }
-            } catch (error) {
-              console.error("Error during stage transition:", error);
-              showToast("Error moving to next stage. Please try again.", false);
-            }
-          } else {
-            console.log("No next stage available after:", currentStage);
-          }
-        }
-      }
 
       // Update business overview in real time
       const updatedMessages = [...messages];
@@ -2080,10 +1451,7 @@ Your goal is to help them successfully build their ${
         .update({ business_overview_summary: businessOverview })
         .eq("id", currentProject.id);
 
-      if (overviewError) {
-        console.error("Error updating business overview:", overviewError);
-        throw overviewError;
-      }
+      if (overviewError) throw overviewError;
 
       // Update local project state with new business overview
       setCurrentProject((prev) => {
@@ -2095,61 +1463,31 @@ Your goal is to help them successfully build their ${
       });
     } catch (error) {
       console.error("Error updating todo:", error);
-      showToast("Failed to update task. Please try again.", false);
+      showToast("Failed to update task. Please try again.");
     }
   };
 
   // Modify the Get Started button click handler
   const handleGetStarted = (todoItem: TodoItem) => {
-    if (!currentProject?.todos) {
-      showToast("No tasks available");
-      return;
-    }
-
     // Get the index of the current todo
-    const index = currentProject.todos.findIndex(
-      (t) => t.task === todoItem.task
-    );
-    if (index === -1) {
-      showToast("Task not found");
-      return;
-    }
+    const index =
+      currentProject?.todos?.findIndex((t) => t.task === todoItem.task) || 0;
 
     // Check if all previous todos are completed
-    const previousTodosCompleted = currentProject.todos
-      .slice(0, index)
+    const previousTodosCompleted = currentProject?.todos
+      ?.slice(0, index)
       .every((prevTodo) => prevTodo.completed);
 
     if (!previousTodosCompleted) {
-      // Find the first incomplete previous task
-      const firstIncompletePrevTask = currentProject.todos
-        .slice(0, index)
-        .findIndex((todo) => !todo.completed);
-
-      // firstIncompletePrevTask will be a valid index since we already know previousTodosCompleted is false
-      const incompleteTaskNum = firstIncompletePrevTask + 1;
-
-      showToast(`Please complete task #${incompleteTaskNum} first`);
+      showToast("Complete previous tasks to continue");
       return;
     }
 
-    // If this task is already completed, ask if user wants to revisit
-    if (todoItem.completed) {
-      // // Format task message for the AI
-      // setInputMessage(
-      //   `Complete Task #${index + 1}: "${
-      //     todoItem.task
-      //   }" for me. I need the full solution for my ${
-      //     currentProject?.business_type
-      //   } business, not instructions. Please deliver the finished result directly.`
-      // );
-    } else {
-      // Format task message for the AI
-      setInputMessage(
-        `"${todoItem.task}" for me. I need the full solution for my ${currentProject?.business_type} business, not instructions. Please deliver the finished result directly.`
-      );
-    }
-
+    setInputMessage(
+      `I want to work on Todo #${index + 1}: "${
+        todoItem.task
+      }"\n\nPlease execute this task`
+    );
     if (inputRef.current) {
       inputRef.current.focus();
       setTimeout(() => {
@@ -2217,8 +1555,8 @@ Your goal is to help them successfully build their ${
         formattedMessages,
         userMessage + prequalificationContext,
         currentProject,
-        selectedModel,
-        true // Skip automatic task completion in popup chat
+        getCombinedPrompt(currentProject.business_type),
+        useGPT4 // Pass the model selection
       );
 
       // Add a follow-up question to the popup response if not already present
@@ -2308,7 +1646,8 @@ Your goal is to help them successfully build their ${
   // Define markdown components configuration
   const markdownComponents: Components = {
     code({ node, className, children, ...props }) {
-      const language = className ? className.replace(/language-/, "") : "";
+      const match = /language-(\w+)/.exec(className || "");
+      const language = match && match[1] ? match[1] : "";
 
       if (!className) {
         return (
@@ -2430,73 +1769,48 @@ Let's get started with the following tasks:`;
     currentProject: Project
   ) => {
     // Get new todos for the stage
-    const newTodos = await generateTodosForStage(
-      currentProject.business_type,
-      stage,
-      currentProject
-    );
+    const newTodos = await generateTodosForStage(stage, currentProject);
 
     if (!newTodos) {
       console.error("Failed to generate todos for stage:", stage);
       return null;
     }
 
-    // Update project with proper stage type
-    const { error } = await supabase
-      .from("projects")
-      .update({
+    try {
+      // Update project with proper stage type
+      const { error } = await supabase
+        .from("projects")
+        .update({
+          todos: newTodos,
+          current_stage: stage,
+          completed_stages: [...(currentProject.completed_stages || []), stage],
+        })
+        .eq("id", currentProject.id);
+
+      if (error) {
+        console.error("Error updating todos for stage:", error);
+        return null;
+      }
+
+      // Update local state using the helper function
+      updateProjectState({
         todos: newTodos,
         current_stage: stage,
         completed_stages: [...(currentProject.completed_stages || []), stage],
-      })
-      .eq("id", currentProject.id);
+      });
 
-    if (error) {
-      console.error("Error updating todos for stage:", error);
-      return null;
-    }
+      // Generate stage introduction with correct arguments
+      const stageIntro = generateStageIntroduction(
+        currentProject.business_type,
+        stage
+      );
 
-    // Update local state using the helper function
-    updateProjectState({
-      todos: newTodos,
-      current_stage: stage,
-      completed_stages: [...(currentProject.completed_stages || []), stage],
-    });
+      // Save the stage introduction message
+      await saveMessage(stageIntro, false);
 
-    // Generate stage introduction with correct arguments
-    const stageIntro = generateStageIntroduction(
-      currentProject.business_type,
-      stage
-    );
-
-    // Save the stage introduction message
-    await saveMessage(stageIntro, false);
-
-    return newTodos;
-  };
-
-  // Update the generateTodosForStage function to handle all business types
-  const generateTodosForStage = async (
-    businessType: string,
-    stage: StageKey,
-    project: Project
-  ): Promise<any[] | null> => {
-    try {
-      switch (businessType) {
-        case "ecommerce":
-          return await generateEcommerceTodos(stage, project as any);
-        case "software":
-          return await generateSoftwareTodos(stage, project as any);
-        case "agency":
-          return await generateSMMATodos(stage, project as any);
-        case "copywriting":
-          return await generateCopywritingTodos(stage, project as any);
-        default:
-          console.error("Unsupported business type:", businessType);
-          return null;
-      }
+      return newTodos;
     } catch (error) {
-      console.error("Error generating todos:", error);
+      console.error("Error in updateTodosForStage:", error);
       return null;
     }
   };
@@ -2603,7 +1917,7 @@ Let's get started with the following tasks:`;
       const generatedTodos = await generateTodosForProject(
         currentProject.id,
         currentProject.business_type.toLowerCase(),
-        currentProject.total_budget
+        currentProject.total_budget || "0" // Provide a default value if budget is null
       );
 
       // Update project with todos and initial stage
@@ -2643,7 +1957,7 @@ Let's get started with the following tasks:`;
 
       // Generate stage introduction
       const stageIntro = `We are stage ${
-        currentProject?.current_stage || "1"
+        currentProject?.current_stage
       } of building your successful business
 
 ${currentStageData?.objective || ""}
@@ -2675,27 +1989,138 @@ Your first task is ready. Would you like to get started?`;
     }
   };
 
-  // Add a function to handle model change
-  const handleModelChange = async (model: "gpt-3.5-turbo" | "gpt-4") => {
-    if (!currentProject || isLoading) return;
+  // Add useEffect to monitor todo completion
+  useEffect(() => {
+    const checkStageCompletion = async () => {
+      if (!currentProject?.todos || !currentProject.current_stage) return;
 
-    setSelectedModel(model);
+      const allTodosCompleted = currentProject.todos.every(
+        (todo) => todo.completed
+      );
+      const currentStage = currentProject.current_stage as StageKey;
 
-    try {
-      // Update the model in the database
-      const { error } = await supabase
-        .from("projects")
-        .update({ selected_model: model })
-        .eq("id", currentProject.id);
+      // Check if this stage is already marked as completed
+      const isStageAlreadyCompleted =
+        currentProject.completed_stages?.includes(currentStage);
 
-      if (error) {
-        console.error("Error updating model preference:", error);
-        showToast("Failed to save model preference", false);
+      if (allTodosCompleted && !isStageAlreadyCompleted) {
+        // Get the next stage
+        const nextStage = getNextStage(currentStage);
+
+        if (nextStage) {
+          try {
+            // Generate new todos for the next stage
+            const newTodos = await updateTodosForStage(
+              nextStage,
+              currentProject
+            );
+
+            if (newTodos) {
+              // Get the strategy for the current business type
+              const strategy = getStrategyForBusinessType(
+                currentProject.business_type
+              );
+              const currentStageData = strategy[currentStage];
+              const nextStageData = strategy[nextStage];
+
+              // Generate stage completion and transition message
+              const stageCompletionMessage = `🎉 Congratulations! You've completed ${currentStage
+                .replace("_", " ")
+                .toUpperCase()}!
+
+**Stage Summary:**
+${currentStageData?.objective || "Stage completed successfully"}
+
+**Next Stage: ${nextStage.replace("_", " ").toUpperCase()}**
+${nextStageData?.objective || "Get ready for your next set of tasks"}
+
+I've generated your next set of tasks to keep the momentum going. Would you like to get started with your first task in the new stage?`;
+
+              // Update project with new stage and todos
+              const { error } = await supabase
+                .from("projects")
+                .update({
+                  current_stage: nextStage,
+                  todos: newTodos,
+                  completed_stages: [
+                    ...(currentProject.completed_stages || []),
+                    currentStage,
+                  ],
+                })
+                .eq("id", currentProject.id);
+
+              if (error) throw error;
+
+              // Save the stage completion message
+              await saveMessage(stageCompletionMessage, false);
+
+              // Update local project state
+              setCurrentProject((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  current_stage: nextStage,
+                  todos: newTodos,
+                  completed_stages: [
+                    ...(prev.completed_stages || []),
+                    currentStage,
+                  ],
+                };
+              });
+
+              // Update business overview
+              const stageTransitionMessages = [...messages];
+              const updatedBusinessOverview =
+                await generateBusinessOverviewSummary(
+                  {
+                    ...currentProject,
+                    current_stage: nextStage,
+                    todos: newTodos,
+                  },
+                  stageTransitionMessages
+                );
+
+              // Update project with new business overview
+              const { error: overviewError } = await supabase
+                .from("projects")
+                .update({ business_overview_summary: updatedBusinessOverview })
+                .eq("id", currentProject.id);
+
+              if (overviewError) throw overviewError;
+
+              // Update local project state with new business overview
+              setCurrentProject((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  business_overview_summary: updatedBusinessOverview,
+                };
+              });
+            }
+          } catch (error) {
+            console.error("Error during stage transition:", error);
+            showToast("Error transitioning to next stage. Please try again.");
+          }
+        } else {
+          // This was the final stage
+          const completionMessage = `🎉 Congratulations! You've completed all stages of your ${currentProject.business_type} business plan! 
+
+You've successfully worked through all the stages and completed all tasks. Your business is now well-positioned for success.
+
+Would you like to:
+1. Review your overall progress and achievements
+2. Get additional guidance for scaling your business
+3. Start implementing advanced strategies
+
+Let me know how I can help you take your business to the next level!`;
+
+          await saveMessage(completionMessage, false);
+        }
       }
-    } catch (error) {
-      console.error("Error in handleModelChange:", error);
-    }
-  };
+    };
+
+    checkStageCompletion();
+  }, [currentProject?.todos, currentProject?.current_stage]);
 
   return (
     <div className="page-container">
@@ -2707,7 +2132,7 @@ Your first task is ready. Would you like to get started?`;
           {toasts.map((toast) => (
             <motion.div
               key={toast.id}
-              className={`toast ${toast.type || "info"}`}
+              className="toast"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -50 }}
@@ -3011,7 +2436,7 @@ Your first task is ready. Would you like to get started?`;
                         type="checkbox"
                         checked={todoItem.completed}
                         onChange={(e) =>
-                          handleTodoChange(todoItem.id, e.target.checked)
+                          handleTodoChange(todoItem.task, e.target.checked)
                         }
                         className="todo-checkbox"
                         // Stop propagation to prevent expanding when clicking the checkbox
@@ -3092,11 +2517,9 @@ Your first task is ready. Would you like to get started?`;
             )}
             <div ref={messagesEndRef} />
           </div>
-          <form
-            onSubmit={handleSubmit}
-            className="input-container"
-            style={inputContainerStyle}
-          >
+
+          {/* Input Container with Model Selector */}
+          <form onSubmit={handleSubmit} className="input-container">
             <div className="message-input-wrapper">
               <textarea
                 ref={inputRef}
@@ -3109,79 +2532,28 @@ Your first task is ready. Would you like to get started?`;
                 rows={1}
                 autoFocus
               />
+
+              <div className="model-selector">
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={useGPT4}
+                    onChange={() => setUseGPT4(!useGPT4)}
+                  />
+                  <span className="slider"></span>
+                </label>
+                <span className="model-label">GPT-{useGPT4 ? "4" : "3.5"}</span>
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading || !inputMessage.trim()}
-                className={`send-button ${
-                  inputMessage.trim() ? "visible" : ""
-                }`}
+                className="send-button"
               >
                 <span className="arrow-up">↑</span>
               </button>
             </div>
-            <div className="model-switch-container">
-              <div className="model-switch">
-                <label
-                  className={`switch-option ${
-                    selectedModel === "gpt-3.5-turbo" ? "active" : ""
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="model"
-                    value="gpt-3.5-turbo"
-                    checked={selectedModel === "gpt-3.5-turbo"}
-                    onChange={() => handleModelChange("gpt-3.5-turbo")}
-                    disabled={isLoading}
-                  />
-                  3.5
-                </label>
-                <label
-                  className={`switch-option ${
-                    selectedModel === "gpt-4" ? "active" : ""
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="model"
-                    value="gpt-4"
-                    checked={selectedModel === "gpt-4"}
-                    onChange={() => handleModelChange("gpt-4")}
-                    disabled={isLoading}
-                  />
-                  4
-                </label>
-              </div>
-            </div>
           </form>
-
-          {/* FAB Button */}
-          <motion.button
-            style={{
-              position: "fixed",
-              bottom: "24px",
-              right: "24px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "12px 20px",
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255, 255, 255, 0.2)",
-              borderRadius: "50px",
-              color: "white",
-              fontWeight: "500",
-              cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-              zIndex: "100",
-            }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={toggleChatPopup}
-          >
-            <img src="/logo-white.png" alt="Mentar" width={24} height={24} />
-            <span>Speak to Mentar</span>
-          </motion.button>
         </div>
       )}
 
@@ -3218,24 +2590,21 @@ Your first task is ready. Would you like to get started?`;
           <div ref={popupMessagesEndRef} />
         </div>
         <form onSubmit={handlePopupSubmit} className="chat-popup-input">
-          <div className="message-input-wrapper">
-            <textarea
-              ref={popupInputRef}
-              value={popupMessage}
-              onChange={handlePopupInputChange}
-              onKeyDown={handlePopupKeyDown}
-              placeholder="Enter chat here.."
-              disabled={isPopupLoading}
-              rows={1}
-            />
-            <button
-              type="submit"
-              disabled={isPopupLoading || !popupMessage.trim()}
-              className={`send-button ${popupMessage.trim() ? "visible" : ""}`}
-            >
-              <span className="arrow-up">↑</span>
-            </button>
-          </div>
+          <textarea
+            ref={popupInputRef}
+            value={popupMessage}
+            onChange={handlePopupInputChange}
+            onKeyDown={handlePopupKeyDown}
+            placeholder="Enter chat here.."
+            disabled={isPopupLoading}
+            rows={1}
+          />
+          <button
+            type="submit"
+            disabled={isPopupLoading || !popupMessage.trim()}
+          >
+            <span className="arrow-up">↑</span>
+          </button>
         </form>
       </div>
 
