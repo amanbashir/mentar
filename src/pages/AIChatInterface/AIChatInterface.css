@@ -931,64 +931,50 @@ input:checked + .slider:before {
   position: fixed;
   bottom: 32px;
   right: 32px;
-  width: 56px;
-  height: 56px;
-  background: linear-gradient(135deg, #2b87ff 0%, #4285f4 100%);
+  padding: 28px 24px;
+  height: 48px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
   color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 30px;
+  font-size: 16px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(43, 135, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 1000;
-}
-
-.speak-to-mentar::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  transform: translateX(-100%);
-  transition: transform 0.6s;
+  white-space: nowrap;
 }
 
 .speak-to-mentar:hover {
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 8px 25px rgba(43, 135, 255, 0.4);
-}
-
-.speak-to-mentar:hover::before {
-  transform: translateX(100%);
+  transform: translateY(-4px);
+  background: rgba(0, 0, 0, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 }
 
 .speak-to-mentar:active {
-  transform: translateY(-2px) scale(0.98);
-  box-shadow: 0 4px 15px rgba(43, 135, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-/* Add a subtle pulse animation */
+/* Update pulse animation for glassmorphism */
 @keyframes pulse {
   0% {
-    box-shadow: 0 4px 20px rgba(43, 135, 255, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.1);
   }
   50% {
-    box-shadow: 0 4px 30px rgba(43, 135, 255, 0.5);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.2);
   }
   100% {
-    box-shadow: 0 4px 20px rgba(43, 135, 255, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 }
 

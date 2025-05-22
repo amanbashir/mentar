@@ -1495,7 +1495,6 @@ Let me know how I can help you take your business to the next level!`;
       }, 0);
     }
   };
-
   const handlePopupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!popupMessage.trim() || isPopupLoading || !currentProject) return;
@@ -1526,15 +1525,6 @@ Let me know how I can help you take your business to the next level!`;
         return;
       }
 
-      // Use the getAIChatResponse utility function instead of implementing the API call here
-      // Convert popup messages to the format expected by getAIChatResponse
-      const formattedMessages = popupMessages.map((msg) => ({
-        id: msg.id,
-        content: msg.content,
-        is_user: msg.isUser,
-        created_at: new Date().toISOString(),
-      }));
-
       // Prepare prequalification context if available for ecommerce businesses
       let prequalificationContext = "";
       if (
@@ -1551,13 +1541,33 @@ Let me know how I can help you take your business to the next level!`;
         }
       }
 
-      let aiResponse = await getAIChatResponse(
-        formattedMessages,
-        userMessage + prequalificationContext,
-        currentProject,
-        getCombinedPrompt(currentProject.business_type),
-        useGPT4 // Pass the model selection
+      // Send message to OpenAI chat completion endpoint
+      const response = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: useGPT4 ? "gpt-4" : "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "system",
+                content: `Based on the user's message, provide an answer to the question. This is user's business type: ${currentProject.business_type}`,
+              },
+              {
+                role: "user",
+                content: userMessage + prequalificationContext,
+              },
+            ],
+          }),
+        }
       );
+
+      const data = await response.json();
+      let aiResponse = data.choices[0].message.content;
 
       // Add a follow-up question to the popup response if not already present
       if (
@@ -2607,6 +2617,18 @@ Let me know how I can help you take your business to the next level!`;
           </button>
         </form>
       </div>
+
+      {/* Floating Action Button - Speak to Mentar */}
+      {!isChatPopupOpen && (
+        <button className="speak-to-mentar" onClick={toggleChatPopup}>
+          <img
+            style={{ height: 28, width: "auto", marginRight: 8 }}
+            src="/logo-white.png"
+            alt="Mentar"
+          />
+          <span>Speak to Mentar</span>
+        </button>
+      )}
 
       {/* Add the DeleteProjectDialog component */}
       <DeleteProjectDialog
