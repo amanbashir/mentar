@@ -161,6 +161,15 @@ interface Toast {
   message: string;
 }
 
+// Add new interfaces
+interface SubscriptionData {
+  user_id: string;
+  plan: "free" | "pro" | "business";
+  messages_used_today: number;
+  messages_used_this_month: number;
+  last_message_date: string;
+}
+
 // Custom components for markdown
 const CodeBlock = ({
   children,
@@ -267,6 +276,44 @@ const parseLaunchDate = (dateInput: string): string | null => {
   return null;
 };
 
+// Add UpgradeModal component
+const UpgradeModal = ({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="upgrade-modal-overlay" onClick={onClose} />
+      <div className="upgrade-modal">
+        <h2>Upgrade to Pro</h2>
+        <p>Get access to advanced features:</p>
+        <ul>
+          <li>Use GPT-4 for more advanced responses</li>
+          <li>1000 GPT-4 messages per month</li>
+          <li>Unlimited GPT-3.5 messages</li>
+          <li>Priority support</li>
+        </ul>
+        <div className="modal-actions">
+          <button
+            onClick={() => (window.location.href = "/settings")}
+            className="upgrade-button"
+          >
+            Upgrade Now
+          </button>
+          <button onClick={onClose} className="cancel-button">
+            Maybe Later
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
 function AIChatInterface() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -315,6 +362,11 @@ function AIChatInterface() {
       answers: [],
       completed: false,
     });
+
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null
+  );
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const messagesContainerStyle = {
     gap: "28px",
@@ -1008,20 +1060,157 @@ I'll use this information to guide you through your ${currentProject?.business_t
     );
   };
 
-  // Update handleSubmit to let AI handle date formatting
+  // Add subscription check
+  const checkSubscriptionStatus = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      if (!userId) {
+        console.error("User ID not found");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      console.log("data", data);
+
+      if (data?.plan_type) {
+        setSubscription({
+          user_id: data.user_id,
+          plan: data.plan_type as any,
+          messages_used_today: data.messages_used_today,
+          messages_used_this_month: data.messages_used_this_month,
+          last_message_date: data.last_message_date,
+        });
+      }
+
+      if (error) {
+        console.error("Error fetching subscription:", error);
+        return;
+      }
+
+      // Initialize subscription data if not exists
+    } catch (error) {
+      console.error("Error in checkSubscriptionStatus:", error);
+    }
+  };
+
+  // Add function to check message limits
+  const checkMessageLimits = async (
+    model: "gpt-3.5" | "gpt-4"
+  ): Promise<boolean> => {
+    if (!subscription) return false;
+
+    // Reset counters if it's a new day
+    const today = new Date().toISOString().split("T")[0];
+    const lastMessageDate = subscription?.last_message_date?.split("T")[0];
+
+    if (today !== lastMessageDate) {
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({
+          messages_used_today: 0,
+          last_message_date: new Date().toISOString(),
+        })
+        .eq("user_id", subscription.user_id);
+
+      if (error) {
+        console.error("Error resetting message count:", error);
+        return false;
+      }
+
+      subscription.messages_used_today = 0;
+      subscription.last_message_date = new Date().toISOString();
+    }
+
+    // Check limits based on subscription plan
+    if (subscription.plan === "free") {
+      if (model === "gpt-4") {
+        showToast("Upgrade to Pro to use GPT-4");
+        setShowUpgradeModal(true);
+        return false;
+      }
+      if (subscription.messages_used_today >= 30) {
+        showToast("Daily message limit reached. Upgrade to Pro for more!");
+        setShowUpgradeModal(true);
+        return false;
+      }
+    } else if (subscription.plan === "pro") {
+      if (model === "gpt-4" && subscription.messages_used_this_month >= 1000) {
+        showToast("Monthly GPT-4 message limit reached");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Add function to update message counts
+  const updateMessageCounts = async (model: "gpt-3.5" | "gpt-4") => {
+    if (!subscription) return;
+
+    // Only increment counters for GPT-4 usage
+    if (model === "gpt-4") {
+      const updates = {
+        messages_used_today: subscription.messages_used_today + 1,
+        messages_used_this_month: subscription.messages_used_this_month + 1,
+        last_message_date: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from("subscriptions")
+        .update(updates)
+        .eq("user_id", subscription.user_id);
+
+      if (error) {
+        console.error("Error updating message counts:", error);
+        return;
+      }
+
+      setSubscription((prev) => (prev ? { ...prev, ...updates } : null));
+    } else {
+      // For GPT-3.5, just update the last message date
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({
+          last_message_date: new Date().toISOString(),
+        })
+        .eq("user_id", subscription.user_id);
+
+      if (error) {
+        console.error("Error updating last message date:", error);
+      }
+    }
+  };
+
+  // Modify handleSubmit to include subscription checks
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Early return if conditions not met
     if (!inputMessage.trim() || isLoading || !currentProject) return;
+
+    // Check message limits before proceeding
+    const modelToUse = useGPT4 ? "gpt-4" : "gpt-3.5";
+    const canProceed = await checkMessageLimits(modelToUse);
+
+    if (!canProceed) {
+      return;
+    }
 
     const userMessage = inputMessage.trim();
     setInputMessage("");
     setIsLoading(true);
 
     try {
-      // Save user message to chat history
       await saveMessage(userMessage, true);
+      await updateMessageCounts(modelToUse);
 
       // Handle prequalification flow
       if (prequalification.isPrequalifying) {
@@ -2132,6 +2321,11 @@ Let me know how I can help you take your business to the next level!`;
     checkStageCompletion();
   }, [currentProject?.todos, currentProject?.current_stage]);
 
+  // Add subscription check on mount
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, []);
+
   return (
     <div className="page-container">
       <Navbar />
@@ -2268,32 +2462,30 @@ Let me know how I can help you take your business to the next level!`;
           </div>
 
           {/* Business Overview */}
+
           <div className="overview-container">
-            <h2>
-              {/* <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M9 22V12H15V22"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg> */}
-              Business Overview
-            </h2>
+            <div className="subscription-status">
+              {subscription && (
+                <>
+                  <span className="plan-badge">
+                    {subscription.plan.toUpperCase()}
+                  </span>
+                  {subscription.plan === "free" ? (
+                    <span className="message-count">
+                      {30 - subscription.messages_used_today} messages left
+                      today
+                    </span>
+                  ) : (
+                    <span className="message-count">
+                      {1000 - subscription.messages_used_this_month} GPT-4
+                      messages left this month
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+            <h2>Business Overview</h2>
+
             <div className="overview-content">
               {currentProject.business_overview_summary ||
                 "No overview available yet. Start chatting to build your business plan!"}
@@ -2549,10 +2741,16 @@ Let me know how I can help you take your business to the next level!`;
                     type="checkbox"
                     checked={useGPT4}
                     onChange={() => setUseGPT4(!useGPT4)}
+                    disabled={subscription?.plan === "free"}
                   />
                   <span className="slider"></span>
                 </label>
-                <span className="model-label">GPT-{useGPT4 ? "4" : "3.5"}</span>
+                <span className="model-label">
+                  GPT-{useGPT4 ? "4" : "3.5"}
+                  {subscription?.plan === "free" && useGPT4 && (
+                    <span className="pro-only">(Pro only)</span>
+                  )}
+                </span>
               </div>
 
               <button
@@ -2639,6 +2837,11 @@ Let me know how I can help you take your business to the next level!`;
         }}
         onConfirm={handleConfirmDelete}
         projectType={projectToDelete?.business_type || ""}
+      />
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
       />
     </div>
   );

@@ -1759,3 +1759,151 @@ button.get-started-button:disabled {
   padding-top: 8px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
+
+/* Add subscription status styles */
+.subscription-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+
+.plan-badge {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.plan-badge:empty {
+  display: none;
+}
+
+.subscription-status .plan-badge {
+  background: #2196f3;
+  color: white;
+}
+
+.subscription-status .message-count {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+}
+
+.pro-only {
+  margin-left: 4px;
+  font-size: 10px;
+  color: #2196f3;
+  font-weight: 500;
+}
+
+/* Update model selector styles for disabled state */
+.switch input:disabled + .slider {
+  background-color: rgba(255, 255, 255, 0.1);
+  cursor: not-allowed;
+}
+
+.switch input:disabled + .slider:before {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Add styles for the upgrade modal if needed */
+.upgrade-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1a1a;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  z-index: 1000;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
+}
+
+.upgrade-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+}
+
+/* Upgrade Modal Styles */
+.upgrade-modal h2 {
+  color: white;
+  margin: 0 0 16px;
+  font-size: 24px;
+}
+
+.upgrade-modal p {
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 16px;
+}
+
+.upgrade-modal ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+}
+
+.upgrade-modal li {
+  color: rgba(255, 255, 255, 0.8);
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upgrade-modal li:before {
+  content: "✓";
+  color: #2196f3;
+  font-weight: bold;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.upgrade-button {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  background: #2196f3;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.upgrade-button:hover {
+  background: #1976d2;
+}
+
+.cancel-button {
+  flex: 1;
+  padding: 12px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: transparent;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cancel-button:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
