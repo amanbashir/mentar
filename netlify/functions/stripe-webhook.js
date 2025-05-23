@@ -3,10 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 
 // Validate environment variables
 const requiredEnvVars = {
-  VITE_STRIPE_SECRET_KEY: process.env.VITE_STRIPE_SECRET_KEY,
-  VITE_STRIPE_WEBHOOK_SECRET: process.env.VITE_STRIPE_WEBHOOK_SECRET,
-  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_SERVICE_ROLE_KEY: process.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
 };
 
 // Check for missing environment variables
@@ -22,21 +22,18 @@ if (missingEnvVars.length > 0) {
 }
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.VITE_STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Initialize Supabase client with validation
 let supabase;
 try {
-  if (
-    !process.env.VITE_SUPABASE_URL ||
-    !process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-  ) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("Supabase configuration is incomplete");
   }
 
   supabase = createClient(
-    process.env.VITE_SUPABASE_URL,
-    process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
   console.log("Supabase client initialized successfully");
@@ -49,10 +46,10 @@ export const handler = async (event, context) => {
   try {
     // Log environment variables (without sensitive values)
     console.log("Environment configuration:", {
-      hasStripeKey: !!process.env.VITE_STRIPE_SECRET_KEY,
-      hasWebhookSecret: !!process.env.VITE_STRIPE_WEBHOOK_SECRET,
-      hasSupabaseUrl: !!process.env.VITE_SUPABASE_URL,
-      hasSupabaseKey: !!process.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
+      hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+      hasWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       nodeEnv: process.env.NODE_ENV,
     });
 
@@ -70,8 +67,13 @@ export const handler = async (event, context) => {
       headers: event.headers,
     });
 
-    const sig = event.headers["stripe-signature"];
-    const endpointSecret = process.env.VITE_STRIPE_WEBHOOK_SECRET;
+    // Get the Stripe signature from headers (handle both cases)
+    const sig =
+      event.headers["stripe-signature"] || event.headers["Stripe-Signature"];
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    // Log headers for debugging
+    console.log("Received headers:", event.headers);
 
     let stripeEvent;
 
