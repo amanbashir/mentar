@@ -2,7 +2,6 @@ export const ecommerceBlueprint = {
   preQualification: {
     description: "Ask 6 questions to understand user's money, time, experience, and skill levels.",
     questions: [
-      "How much initial capital can you invest in your ecommerce business?",
       "How much time can you dedicate weekly to running and growing your store?",
       "Do you have any prior experience with ecommerce, dropshipping, or marketing?",
       "How comfortable are you with using digital tools like Shopify, Canva, Meta Ads?",

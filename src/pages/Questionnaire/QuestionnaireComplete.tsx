@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
+import React, { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "../../lib/supabaseClient";
 
 const QuestionnaireComplete = () => {
   const navigate = useNavigate();
@@ -8,9 +8,11 @@ const QuestionnaireComplete = () => {
 
   useEffect(() => {
     const completeQuestionnaire = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
-        navigate('/login');
+        navigate("/login");
         return;
       }
       // Expecting questionnaire answers and project in location.state
@@ -19,16 +21,14 @@ const QuestionnaireComplete = () => {
       if (userAnswers && project) {
         // Map questionnaire answers to project fields
         const updates: Record<string, any> = {};
-        if (userAnswers.capital) updates['budget'] = userAnswers.capital;
-        if (userAnswers.targetProfit) updates['goal'] = userAnswers.targetProfit;
+        if (userAnswers.capital) updates["budget"] = userAnswers.capital;
+        if (userAnswers.targetProfit)
+          updates["goal"] = userAnswers.targetProfit;
         if (Object.keys(updates).length > 0) {
-          await supabase
-            .from('projects')
-            .update(updates)
-            .eq('id', project.id);
+          await supabase.from("projects").update(updates).eq("id", project.id);
         }
       }
-      navigate('/chat');
+      navigate("/chat");
     };
     completeQuestionnaire();
   }, [navigate, location.state]);
@@ -36,4 +36,4 @@ const QuestionnaireComplete = () => {
   return null;
 };
 
-export default QuestionnaireComplete; 
+export default QuestionnaireComplete;
