@@ -1,0 +1,50 @@
+.project-details {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.project-details h2 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 1.5em;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.detail-section h3 {
+  color: #666;
+  margin-bottom: 10px;
+  font-size: 1.2em;
+}
+
+.detail-section p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.detail-section strong {
+  color: #444;
+  margin-right: 8px;
+}
+
+.detail-section ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.detail-section li {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.detail-section li:last-child {
+  border-bottom: none;
+} 
